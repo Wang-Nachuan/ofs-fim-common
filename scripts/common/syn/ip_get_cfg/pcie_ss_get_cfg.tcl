@@ -75,6 +75,20 @@ proc emit_ip_cfg {ofile_name ip_name} {
             }
         }
 
+        # Tile name
+        if { [string equal $p "TILE"] } {
+            set tile_name [get_instance_parameter_value $inst $p]
+            set tile_name_macro [string map {- _} [string toupper $tile_name]]
+        }
+
+        # Native endpoint mode?
+        if { [string equal $p "virtual_rp_ep_mode_hwtcl"] } {
+            set m [get_instance_parameter_value $inst $p]
+            if { [string first "Native Endpoint" $m] != -1 } {
+                set pcie_ss_rp_ep_mode "NATIVE_EP"
+            }
+        }
+
         # Functional mode, original PCIe SS ("AXI-ST Data Mover" or "Power User")
         if { [string equal $p "pcie_ss_func_mode_hwtcl"] } {
             set fm [get_instance_parameter_value $inst $p]
@@ -90,16 +104,23 @@ proc emit_ip_cfg {ofile_name ip_name} {
         }
     }
 
+    puts $of "`define OFS_FIM_IP_CFG_${ip_name}_IS_${tile_name_macro} 1"
+    puts $of "`define OFS_FIM_IP_CFG_${ip_name}_TILE_NAME \"${tile_name}\""
+    puts $of ""
+
     puts $of "// PCIe SS Topology"
     puts $of "`define OFS_FIM_IP_CFG_${ip_name}_${top_topology} 1"
     puts $of "`define OFS_FIM_IP_CFG_${ip_name}_NUM_LINKS ${topology_num_links}"
     puts $of ""
 
     puts $of "// PCIe SS Interface"
-    if { [info exists pcie_ss_func_mode] } {
-        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_FUNC_MODE \"${pcie_ss_func_mode}\""
-        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_FUNC_MODE_IS_${pcie_ss_func_mode} 1"
+    puts $of "`define OFS_FIM_IP_CFG_${ip_name}_FUNC_MODE \"${pcie_ss_func_mode}\""
+    puts $of "`define OFS_FIM_IP_CFG_${ip_name}_FUNC_MODE_IS_${pcie_ss_func_mode} 1"
+    if { ${pcie_ss_func_mode} != "DM" } {
+        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_PORT_MODE \"${pcie_ss_rp_ep_mode}\""
+        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_PORT_MODE_IS_${pcie_ss_rp_ep_mode} 1"
     }
+
     if { [info exists core(header_scheme_hwtcl)] } {
         set hdr [string map {- _} [string toupper $core(header_scheme_hwtcl)]]
         puts $of "`define OFS_FIM_IP_CFG_${ip_name}_HDR_SCHEME \"${hdr}\""

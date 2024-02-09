@@ -2,9 +2,6 @@
 # SPDX-License-Identifier: MIT
 
 default_component_params = {
-    "g3_pld_clkfreq_user_hwtcl": "250MHz",
-    "g4_pld_clkfreq_user_hwtcl": "500MHz",
-    "g5_pld_clkfreq_user_hwtcl": "500MHz",
     "axi_lite_clk_freq_user_hwtcl": 100,
     "core16_enable_multi_func_hwtcl": 1,
     "core16_enable_sriov_hwtcl": 0,
