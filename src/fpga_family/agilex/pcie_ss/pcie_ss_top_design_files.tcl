@@ -40,6 +40,11 @@ set_global_assignment -name SYSTEMVERILOG_FILE $::env(BUILD_ROOT_REL)/ofs-common
 set_global_assignment -name SYSTEMVERILOG_FILE $::env(BUILD_ROOT_REL)/ofs-common/src/fpga_family/agilex/pcie_ss/pcie_ss_if.sv
 
 #----------
+# PCIE shims -- PCIe SS edge to OFS mapping
+#----------
+set_global_assignment -name SYSTEMVERILOG_FILE $::env(BUILD_ROOT_REL)/ofs-common/src/fpga_family/agilex/pcie_ss/shims/ofs_fim_pcie_ss_sb2ib.sv
+
+#----------
 # PCIE top
 #----------
 set_global_assignment -name SYSTEMVERILOG_FILE $::env(BUILD_ROOT_REL)/ofs-common/src/fpga_family/agilex/pcie_ss/pcie_tx_arbiter.sv

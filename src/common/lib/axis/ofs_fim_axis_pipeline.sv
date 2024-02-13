@@ -47,7 +47,7 @@ generate
          axis_s.tready = axis_m.tready;
       end 
    end else begin : r
-      pcie_ss_axis_if axis_pl [PL_DEPTH:0] (clk, rst_n);
+      pcie_ss_axis_if#(.DATA_W(TDATA_WIDTH), .USER_W(TUSER_WIDTH)) axis_pl[PL_DEPTH:0] (clk, rst_n);
 
       always_comb begin
          axis_pl[0].tvalid       = axis_s.tvalid;
