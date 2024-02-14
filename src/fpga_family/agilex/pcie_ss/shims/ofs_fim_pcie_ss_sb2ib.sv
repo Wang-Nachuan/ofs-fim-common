@@ -1,4 +1,4 @@
-// Copyright 2022 Intel Corporation
+// Copyright 2024 Intel Corporation
 // SPDX-License-Identifier: MIT
 
 //
@@ -24,15 +24,13 @@ module ofs_fim_pcie_ss_sb2ib
     pcie_ss_axis_if.source stream_out
     );
 
-    logic clk;
-    assign clk = stream_out.clk;
-    logic rst_n;
-    assign rst_n = stream_out.rst_n;
+    wire clk = stream_in.clk;
+    wire rst_n = stream_in.rst_n;
 
     localparam TDATA_WIDTH = $bits(stream_out.tdata);
     localparam TKEEP_WIDTH = TDATA_WIDTH/8;
-    localparam OUT_TUSER_WIDTH = $bits(stream_out.tuser_vendor);
     localparam IN_TUSER_WIDTH = $bits(stream_in.tuser_vendor);
+    localparam OUT_TUSER_WIDTH = $bits(stream_out.tuser_vendor);
 
     // Size of a header. All header types are the same size.
     localparam HDR_WIDTH = $bits(pcie_ss_hdr_pkg::PCIe_PUReqHdr_t);
