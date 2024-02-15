@@ -6,7 +6,7 @@
 // at bit 0. The AXI-S must first be mapped to one request per cycle,
 // with requests starting at bit 0, before the module here can be used.
 //
-// Pass side-band headers at the end of stream_in.tuser_vendor.
+// Pass side-band headers in the high bits of stream_in.tuser_vendor.
 //
 
 module ofs_fim_pcie_ss_sb2ib
@@ -16,8 +16,8 @@ module ofs_fim_pcie_ss_sb2ib
     parameter PL_MODE_IN = 0
     )
    (
-    // Input stream with side-band headers. Put the header at the end of
-    // tuser_vendor.
+    // Input stream with side-band headers. Put the header at the high
+    // end of tuser_vendor.
     pcie_ss_axis_if.sink stream_in,
 
     // Output stream. tuser_vendor must be reduced by the size of a header.

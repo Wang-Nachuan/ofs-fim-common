@@ -277,7 +277,7 @@ module ofs_fim_pcie_ss_rx_seg_align
     t_work_ch_idx next_insertion_idx;
     assign next_insertion_idx =
         work_first_invalid -
-        ((work_out_valid & work_out_ready) ? work_out_num_valid : 0);
+        ((work_out_valid & work_out_ready) ? work_out_num_valid : '0);
 
     //
     // Finally, we are ready to update the work vectors.
