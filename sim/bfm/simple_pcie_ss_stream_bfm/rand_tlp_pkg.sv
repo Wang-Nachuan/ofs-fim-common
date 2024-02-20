@@ -403,6 +403,10 @@ package rand_tlp_pkg;
                         for (int i = 0; i < HDR_WIDTH/32; i += 1) begin
                             dw_data_stream.push_back(tuser_hdr[seg_num][i*32 +: 32]);
                         end
+
+                        // Payloads with no data must also set the last segment bit
+                        if (!tkeep[(seg_num*SEG_WIDTH)/8] && !tuser_last_segment[seg_num] && (NUM_OF_SEG > 1))
+                            $fatal(1, "Packet header without data is missing tuser_last_segment!");
                     end
                 end
 
