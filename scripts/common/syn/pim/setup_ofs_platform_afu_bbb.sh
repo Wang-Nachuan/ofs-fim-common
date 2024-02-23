@@ -42,7 +42,17 @@ if [ -z "${OFS_PLATFORM_AFU_BBB_REPO}" ]; then
     OFS_PLATFORM_AFU_BBB_REPO="https://github.com/OFS/ofs-platform-afu-bbb"
 fi
 
+# Default branch to 'master' if the branch variable is not set
 if [ -z "${OFS_PLATFORM_AFU_BBB_REPO_BRANCH}" ]; then
+    OFS_PLATFORM_AFU_BBB_REPO_BRANCH="master"
+    _branch_not_explicit=1
+fi
+
+# Default location to clone is $REPO_PATH/ofs-platform-afu-bbb
+if [ -z "${OFS_PLATFORM_AFU_BBB}" ]; then
+    export OFS_PLATFORM_AFU_BBB="${REPO_PATH}/ofs-platform-afu-bbb"
+    echo "Using cloned OFS_PLATFORM_AFU_BBB=${OFS_PLATFORM_AFU_BBB}"
+
     # If the current FIM repository is checked out at an ofs-* tag, a user is
     # most likely trying to build a release snapshot of a FIM. Although the
     # intent is to never break this compatibility, the ofs-platform-afu-bbb
@@ -55,22 +65,14 @@ if [ -z "${OFS_PLATFORM_AFU_BBB_REPO_BRANCH}" ]; then
     #
     # To override this heuristic, one can explicitly set
     # OFS_PLATFORM_AFU_BBB_REPO_BRANCH=main to unconditionally prefer
-    # auto-cloning the latest commits.
-    if _current_tag=$(git -C "$OFS_ROOTDIR" describe --tags --exact-match --match 'ofs-*' 2>/dev/null) \
+    # auto-cloning the latest ofs-platform-afu-bbb commits.
+    if [ "$_branch_not_explicit" = 1 ] \
+       && _current_tag=$(git -C "$OFS_ROOTDIR" describe --tags --exact-match --match 'ofs-*' 2>/dev/null) \
        && git ls-remote -t "$OFS_PLATFORM_AFU_BBB_REPO" | grep -qF refs/tags/"$_current_tag"
     then
         OFS_PLATFORM_AFU_BBB_REPO_BRANCH="$_current_tag"
-    else
-        # Default branch to 'master' if not otherwise set already.
-        OFS_PLATFORM_AFU_BBB_REPO_BRANCH="master"
     fi
-    unset _current_tag
-fi
-
-# Default location to clone is $REPO_PATH/ofs-platform-afu-bbb
-if [ -z "${OFS_PLATFORM_AFU_BBB}" ]; then
-    export OFS_PLATFORM_AFU_BBB="${REPO_PATH}/ofs-platform-afu-bbb"
-    echo "Using cloned OFS_PLATFORM_AFU_BBB=${OFS_PLATFORM_AFU_BBB}"
+    unset _branch_not_explicit _current_tag
 fi
 
 # clone PIM repo, holding a lock to guarantee that no other builds conflict
