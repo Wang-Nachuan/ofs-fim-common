@@ -7,9 +7,10 @@
 // The module assumes that the incoming RX streams have already been transformed
 // into OFS streams:
 //
-//  - In-band headers
-//  - SOP may only be at bit 0
-//  - Completions with data are all in a separate stream
+//  - In-band headers, though the managed upstream buffer may have either
+//    side-band headers. This affects the data credit calculation.
+//  - SOP may only be at bit 0.
+//  - Completions with data are all in a separate stream.
 //
 // The module also assumes that the streams are in an OFS clock domain. The
 // output credit updates are mapped internally to the PCIe SS AXI-S clock.
@@ -17,15 +18,41 @@
 
 module ofs_fim_pcie_ss_rxcrdt
   #(
+    parameter TDATA_WIDTH = 512,
     parameter NUM_OF_SEG = 1,
     parameter SB_HEADERS = 0,
+    parameter BUFFER_DEPTH = 512,
+    // While this module requires in-band headers in the TLP streams, the
+    // upstream buffer for which credits are managed may have side-band
+    // headers. When headers are side-band more data credits are available.
+    parameter BUFFER_SB_HEADERS = SB_HEADERS,
+    parameter HDR_WIDTH = 256,
 
-    parameter CPL_HDR_INIT = 256,
-    parameter CPL_DATA_INIT = 256,
-    parameter P_HDR_INIT = 128,
-    parameter P_DATA_INIT = 128,
-    parameter NP_HDR_INIT = 128,
-    parameter NP_DATA_INIT = 128
+    // Default initial credits. The defaults assume that there are separate
+    // buffers for completions and for P/NP requests. (P/NP requests share a
+    // buffer.) Both buffers are assumed to be the same depth.
+
+    // Number of credits per buffer entry for pure data. Each credit corresponds
+    // to 4 DWORDs. (Intermediate calculations -- don't override.)
+    parameter DATA_CRDT_WITHOUT_HDR = TDATA_WIDTH / (32 * 4),
+    // Number of credits per buffer entry when one header is present. Side-band
+    // headers take no space away from data.
+    parameter DATA_CRDT_WITH_HDR = (TDATA_WIDTH - (BUFFER_SB_HEADERS ? 0 : HDR_WIDTH)) / (32 * 4),
+
+    // Allocate 50% of entries for headers (one per slot)
+    parameter CPL_HDR_INIT = BUFFER_DEPTH / 2,
+    // Credits for data in header slots plus half of the remaining slots.
+    // This is probably conservative and the data-only fraction could be increased
+    // if necessary.
+    parameter CPL_DATA_INIT = CPL_HDR_INIT * DATA_CRDT_WITH_HDR +
+                              (BUFFER_DEPTH / 4) * DATA_CRDT_WITHOUT_HDR,
+
+    // P/NP share a separate buffer. Re-use the CPL calculations, giving more data
+    // to posted requests (writes).
+    parameter P_HDR_INIT = CPL_HDR_INIT / 2,
+    parameter P_DATA_INIT = (CPL_DATA_INIT * 3) / 4,
+    parameter NP_HDR_INIT = CPL_HDR_INIT / 2,
+    parameter NP_DATA_INIT = CPL_DATA_INIT / 4
     )
    (
     // Input streams with NUM_OF_SEG segments
@@ -50,6 +77,8 @@ module ofs_fim_pcie_ss_rxcrdt
             $fatal(2, "** ERROR ** %m: This module only works when NUM_OF_SEG is 1 (currently %0d)", NUM_OF_SEG);
         if (SB_HEADERS != 0)
             $fatal(2, "** ERROR ** %m: This module only works with in-band headers");
+        if (TDATA_WIDTH != $bits(stream_in_cpld.tdata))
+            $fatal(2, "** ERROR ** %m: TDATA_WIDTH does not match AXI-S configuration (%0d vs. %0d)", TDATA_WIDTH, $bits(stream_in_cpld.tdata));
     end
     // synthesis translate_on
 
@@ -74,7 +103,6 @@ module ofs_fim_pcie_ss_rxcrdt
         rst_n <= stream_in_cpld.rst_n & rxcrdt_rst_n_in_clk;
     end
 
-    localparam TDATA_WIDTH = $bits(stream_in_cpld.tdata);
     localparam TUSER_WIDTH = $bits(stream_in_cpld.tuser_vendor);
 
     typedef enum logic [2:0] {
@@ -248,57 +276,60 @@ module ofs_fim_pcie_ss_rxcrdt
     //
     // ====================================================================
 
-    // Destination side synchronization. New rxcrdt data is valid on the
-    // cycle where dst_ack goes low.
-    logic dst_ack, dst_ack_q;
-    assign rxcrdt_tvalid = dst_ack_q && !dst_ack && rxcrdt_rst_n;
+    logic [18:0] crdt_fifo_din;
+    logic [18:0] crdt_fifo_dout;
+    logic crdt_fifo_full;
+    logic crdt_fifo_empty;
 
-    always_ff @(posedge rxcrdt_clk) begin
-        dst_ack_q <= dst_ack;
-    end
-
-    // Source side data and synchronization. The payload is 3 bits of credit
-    // type index and a 16 bit credit counter.
-    bit [2:0] src_crdt_idx;
-    bit [15:0] src_crdt_cnt;
-    // Index isn't dense. 3'b011 and 3'b111 are unused (reserved).
-    wire [2:0] src_crdt_idx_next = src_crdt_idx + ((src_crdt_idx[1:0] == 2'b10) ? 2 : 1);
-    logic dst_sync_ack, dst_sync_ack_q;
-    logic src_initialized;
-    // Clock crossing message is complete when dst_sync_ack goes low.
-    wire src_done = dst_sync_ack_q && !dst_sync_ack;
+    logic [2:0] src_crdt_idx;
+    assign crdt_fifo_din = { src_crdt_idx, crdt_cnt[src_crdt_idx] };
 
     always_ff @(posedge clk) begin
-        dst_sync_ack_q <= dst_sync_ack;
-
-        if (src_done || !src_initialized) begin
-            // Next index/credit value
-            src_initialized <= 1'b1;
-            src_crdt_idx <= src_crdt_idx_next;
-            src_crdt_cnt <= crdt_cnt[src_crdt_idx_next];
+        if (!crdt_fifo_full) begin
+            // Index isn't dense. 3'b011 and 3'b111 are unused (reserved).
+            src_crdt_idx <= src_crdt_idx + ((src_crdt_idx[1:0] == 2'b10) ? 2 : 1);
         end
 
         if (!rst_n) begin
             src_crdt_idx <= '0;
-            src_crdt_cnt <= '0;
-            src_initialized <= 1'b0;
         end
     end
 
-    ipm_cdc_bus_sync
+    fim_dcfifo
       #(
-        .DATA_WIDTH(19)
+        .DATA_WIDTH(19),
+        .DEPTH_RADIX(3),
+        .READ_ACLR_SYNC("ON"),
+        .RDSYNC_DELAYPIPE_PARAM(3),
+        .WRSYNC_DELAYPIPE_PARAM(3)
         )
-      sync
+      crdt_fifo
        (
-        .src_clk(clk),
-        .src_sig({ src_crdt_idx, src_crdt_cnt }),
-        .dst_clk(rxcrdt_clk),
-        .dst_sig(rxcrdt_tdata),
-        .src_sync_req(),
-        .dst_sync_ack,
-        .src_req(),
-        .dst_ack
+        .aclr(~rst_n),
+        .data(crdt_fifo_din),
+        .rdclk(rxcrdt_clk),
+        .rdreq(!crdt_fifo_empty),
+        .wrclk(clk),
+        .wrreq(!crdt_fifo_full && rst_n),
+        .q(crdt_fifo_dout),
+        .rdempty(crdt_fifo_empty),
+        .rdfull(),
+        .rdusedw(),
+        .wrempty(),
+        .wrfull(crdt_fifo_full),
+        .wralmfull(),
+        .wrusedw()
         );
+
+    logic crdt_fifo_dout_valid;
+    always_ff @(posedge rxcrdt_clk) begin
+        crdt_fifo_dout_valid <= !crdt_fifo_empty;
+
+        rxcrdt_tvalid <= 1'b0;
+        if (crdt_fifo_dout_valid) begin
+            rxcrdt_tdata <= crdt_fifo_dout;
+            rxcrdt_tvalid <= rxcrdt_rst_n;
+        end
+    end
 
 endmodule // ofs_fim_pcie_ss_rxcrdt
