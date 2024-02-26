@@ -18,11 +18,10 @@ module afu_intf # (
                    parameter LEN_W            = 24,
                    parameter TAG_W            = 10,
                    parameter ADDR_W           = 64,
-                   parameter DATA_W           = 512,
+                   parameter DATA_W           = ofs_fim_cfg_pkg::PCIE_TDATA_WIDTH,
                    parameter PCIE_EP_MAX_TAGS = 96,
-                   parameter MAX_PLD_SIZE     = 512, //bytes
-                   //parameter MAX_RD_REQ_SIZE  = 256  //bytes
-                   parameter MAX_RD_REQ_SIZE  = 512  //bytes
+                   parameter MAX_PLD_SIZE     = ofs_fim_cfg_pkg::MAX_PAYLOAD_SIZE * 4, //bytes
+                   parameter MAX_RD_REQ_SIZE  = ofs_fim_cfg_pkg::MAX_RD_REQ_SIZE * 4  //bytes
                    
                    )
    (

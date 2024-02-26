@@ -57,7 +57,7 @@ module ofs_plat_afu
     ofs_plat_avalon_mem_if
       #(
         `HOST_CHAN_AVALON_MMIO_PARAMS(64),
-        .USER_WIDTH(axi_mmio64[0].USER_WIDTH_ + axi_mmio64[0].RID_WIDTH_),
+        .USER_WIDTH(axi_mmio64[0].USER_WIDTH + axi_mmio64[0].RID_WIDTH),
         .LOG_CLASS(ofs_plat_log_pkg::HOST_CHAN)
         )
       avmm_mmio64[NUM_ENG]();

@@ -101,7 +101,8 @@ localparam NLB_AFU_ID_L = (HE_MEM == 1) ? 64'hbb65_2a57_8330_a8eb : 64'hb94b_122
 
 // Software API version
 //  - version 2 adds req_len_log2_high to csr2eng.cfg (longer max. request length)
-localparam HE_LB_API_VERSION = 2;
+//  - version 3 adds bus width to info0 (assume 64 bytes before version 3)
+localparam HE_LB_API_VERSION = 3;
 
 //`ifndef SIM_MODE // PAR_MODE
 //  `ifdef NLB400_MODE_0
@@ -487,7 +488,8 @@ begin
            NO_STAGED_CSR,
            1'b1,
            {64{RO}},
-           {39'h0,
+           {37'h0,
+            2'($clog2(he_lb_pkg::DW/256)),  // Bus width (32 bytes << value)
             ~1'(ATOMICS_SUPPORTED), // Set when atomic operations are NOT supported
             8'(HE_LB_API_VERSION),
             16'(CLK_MHZ)}

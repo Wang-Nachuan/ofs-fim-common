@@ -196,8 +196,15 @@ module port_tx_fifo (
    //-------------------------
    // AFU TX FIFO
    //-------------------------
+   localparam BYPASS_FIFO_W = $bits(tx_hdr_is_pu_mode_r4) +
+                              $bits(debug_count) +
+                              $bits(i_tx_st_r4.tlast) +
+                              $bits(i_tx_st_r4.tuser_vendor) +
+                              $bits(i_tx_st_r4.tdata) +
+                              $bits(i_tx_st_r4.tkeep);
+
    bypass_fifo#(
-      .DATA_WIDTH            (587 + 9),
+      .DATA_WIDTH            (BYPASS_FIFO_W),
       .ADDR_WIDTH            (TX_FIFO_DEPTH_LOG2),
       .AFULL_COUNT           (TX_FIFO_ALMFULL_THRESHOLD),
       .BYPASS                (1)
