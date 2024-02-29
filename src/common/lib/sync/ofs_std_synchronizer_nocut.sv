@@ -1,5 +1,14 @@
-// Copyright 2020 Intel Corporation
-// SPDX-License-Identifier: MIT
+// (C) 2001-2023 Intel Corporation. All rights reserved.
+// Your use of Intel Corporation's design tools, logic functions and other 
+// software and tools, and its AMPP partner logic functions, and any output 
+// files from any of the foregoing (including device programming or simulation 
+// files), and any associated documentation or information are expressly subject 
+// to the terms and conditions of the Intel Program License Subscription 
+// Agreement, Intel FPGA IP License Agreement, or other applicable 
+// license agreement, including, without limitation, that your use is for the 
+// sole purpose of programming logic devices manufactured by Intel and sold by 
+// Intel or its authorized distributors.  Please refer to the applicable 
+// agreement for further details.
 
 // Description
 //-----------------------------------------------------------------------------
@@ -25,7 +34,7 @@
 
 `timescale 1ns / 1ns
 
-module altera_std_synchronizer_nocut (
+module ofs_std_synchronizer_nocut (
                                 clk, 
                                 reset_n, 
                                 din, 
@@ -34,6 +43,8 @@ module altera_std_synchronizer_nocut (
 
    parameter depth = 3; // This value must be >= 2 !
    parameter rst_value = 0;     
+   parameter turn_off_meta = 0;     
+   parameter turn_off_add_pipeline = 1;
      
    input   clk;
    input   reset_n;    
@@ -50,7 +61,9 @@ module altera_std_synchronizer_nocut (
    (* altera_attribute = {"-name ADV_NETLIST_OPT_ALLOWED NEVER_ALLOW; -name SYNCHRONIZER_IDENTIFICATION FORCED; -name DONT_MERGE_REGISTER ON; -name PRESERVE_REGISTER ON  "} *) reg din_s1;
 
    (* altera_attribute = {"-name ADV_NETLIST_OPT_ALLOWED NEVER_ALLOW; -name DONT_MERGE_REGISTER ON; -name PRESERVE_REGISTER ON"} *) reg [depth-2:0] dreg;    
-   
+
+   (* altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION OFF" *) reg dreg_R;    
+  
    //synthesis translate_off
    initial begin
       if (depth <2) begin
@@ -82,7 +95,14 @@ module altera_std_synchronizer_nocut (
         random <= $random;
    end
 
-   assign next_din_s1 = (din_last ^ din) ? random : din;   
+// for accuracy sensitive synchronizer to turn off metastability in meta test
+generate if (turn_off_meta == 1) begin: g_meta_off
+   assign next_din_s1 = din;
+end
+else begin: g_meta
+   assign next_din_s1 = (din_last ^ din) ? random : din;
+end
+endgenerate
 
    always @(posedge clk or negedge reset_n) begin
        if (reset_n == 0) 
@@ -101,22 +121,24 @@ module altera_std_synchronizer_nocut (
 `else 
 
    //synthesis translate_on   
-   generate if (rst_value == 0)
+   generate if (rst_value == 0) begin : g_rst_to_0
        always @(posedge clk or negedge reset_n) begin
            if (reset_n == 0) 
              din_s1 <= 1'b0;
            else
              din_s1 <= din;
        end
+   end
    endgenerate
    
-   generate if (rst_value == 1)
+   generate if (rst_value == 1) begin : g_rst_to_1
        always @(posedge clk or negedge reset_n) begin
            if (reset_n == 0) 
              din_s1 <= 1'b1;
            else
              din_s1 <= din;
        end
+   end
    endgenerate
    //synthesis translate_off      
 
@@ -135,7 +157,7 @@ module altera_std_synchronizer_nocut (
 
    // the remaining synchronizer registers form a simple shift register
    // of length depth-1
-   generate if (rst_value == 0)
+   generate if (rst_value == 0) begin : g_rst_to_0x
       if (depth < 3) begin
          always @(posedge clk or negedge reset_n) begin
             if (reset_n == 0) 
@@ -143,7 +165,7 @@ module altera_std_synchronizer_nocut (
             else
               dreg <= din_s1;
          end         
-      end else begin
+      end else begin : no_g_rst_to_0x
          always @(posedge clk or negedge reset_n) begin
             if (reset_n == 0) 
               dreg <= {depth-1{1'b0}};
@@ -151,9 +173,10 @@ module altera_std_synchronizer_nocut (
               dreg <= {dreg[depth-3:0], din_s1};
          end
       end
+   end
    endgenerate
    
-   generate if (rst_value == 1)
+   generate if (rst_value == 1) begin : g_rst_to_1x
       if (depth < 3) begin
          always @(posedge clk or negedge reset_n) begin
             if (reset_n == 0) 
@@ -161,7 +184,7 @@ module altera_std_synchronizer_nocut (
             else
               dreg <= din_s1;
          end         
-      end else begin
+      end else begin : no_g_rst_to_1x
          always @(posedge clk or negedge reset_n) begin
             if (reset_n == 0) 
               dreg <= {depth-1{1'b1}};
@@ -169,10 +192,21 @@ module altera_std_synchronizer_nocut (
               dreg <= {dreg[depth-3:0], din_s1};
          end
       end
+   end
    endgenerate
 
-   assign dout = dreg[depth-2];
-   
+    // for accuracy sensitive synchronizer to turn off additional pipeline
+    generate if (turn_off_add_pipeline == 1) begin: g_additional_pipeline_off
+       assign dout = dreg[depth-2];
+    end
+    else begin: g_additional_pipeline_on
+        always @(posedge clk) begin
+            dreg_R <= dreg[depth-2];
+        end
+        assign dout = dreg_R;
+    end
+    endgenerate
+
 endmodule 
 
 
