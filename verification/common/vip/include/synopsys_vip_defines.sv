@@ -32,6 +32,7 @@
    `define     PCIE_DEV_STATUS                                         svt_pcie_device_status
    `define     PCIE_DEV_CFG_CLASS                                      svt_pcie_device_configuration
    `define     PCIE_DEV_AGNT_X16_8G_HDL                                svt_pcie_device_agent_serdes_x16_8g_hdl
+   `define     PCIE_DEV_AGNT_X8_8G_HDL                                svt_pcie_device_agent_serdes_x8_8g_hdl
    `define     PCIE_DEV_VIR_BASE_SEQ                                   svt_pcie_device_virtual_base_sequence
    `define     PCIE_DEV_VIR_SQR                                        svt_pcie_device_virtual_sequencer
    `define     PCIE_DL_LINK_EN_SEQ                                     svt_pcie_dl_service_set_link_en_sequence
