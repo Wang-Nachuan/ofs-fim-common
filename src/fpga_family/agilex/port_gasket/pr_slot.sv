@@ -10,6 +10,7 @@ import pcie_ss_axis_pkg::*;
 import ofs_fim_eth_if_pkg::*;
 
 module  pr_slot #(
+   parameter PG_NUM_LINKS      = 1,
    parameter PG_NUM_PORTS      = 1,  // Number of PCIe VF ports to PR region
    // PF/VF to which each port is mapped
    parameter pcie_ss_hdr_pkg::ReqHdr_pf_vf_info_t[PG_NUM_PORTS-1:0] PORT_PF_VF_INFO =
@@ -33,7 +34,7 @@ module  pr_slot #(
    input                       uclk_usr_div2,
    input                       rst_n,
    input                       softreset,
-   input  logic [PG_NUM_PORTS-1:0] port_rst_n,
+   input  logic [PG_NUM_PORTS-1:0] port_rst_n[PG_NUM_LINKS-1:0],
 
    // PR region freeze signal for isolation
    input                       pr_freeze,
@@ -44,10 +45,10 @@ module  pr_slot #(
 `endif
 
    // PCIe 
-   pcie_ss_axis_if.source      axi_tx_a_if,
-   pcie_ss_axis_if.sink        axi_rx_a_if,
-   pcie_ss_axis_if.source      axi_tx_b_if,
-   pcie_ss_axis_if.sink        axi_rx_b_if,
+   pcie_ss_axis_if.source      axi_tx_a_if[PG_NUM_LINKS-1:0],
+   pcie_ss_axis_if.sink        axi_rx_a_if[PG_NUM_LINKS-1:0],
+   pcie_ss_axis_if.source      axi_tx_b_if[PG_NUM_LINKS-1:0],
+   pcie_ss_axis_if.sink        axi_rx_b_if[PG_NUM_LINKS-1:0],
  
    // HSSI
 `ifdef INCLUDE_HSSI
@@ -103,12 +104,12 @@ module  pr_slot #(
 `endif //INCLUDE_PR
 
 logic               pr_freeze_fnmx_q0, pr_freeze_fnmx_q1;
-pcie_ss_axis_if     axi_tx_a_if_t1();
-pcie_ss_axis_if     axi_rx_a_if_t1();
-pcie_ss_axis_if     axi_tx_b_if_t1();
-pcie_ss_axis_if     axi_rx_b_if_t1();
+pcie_ss_axis_if     axi_tx_a_if_t1[PG_NUM_LINKS-1:0]();
+pcie_ss_axis_if     axi_rx_a_if_t1[PG_NUM_LINKS-1:0]();
+pcie_ss_axis_if     axi_tx_b_if_t1[PG_NUM_LINKS-1:0]();
+pcie_ss_axis_if     axi_rx_b_if_t1[PG_NUM_LINKS-1:0]();
 
-logic [PG_NUM_PORTS-1:0] port_rst_n_t1;
+logic [PG_NUM_PORTS-1:0] port_rst_n_t1[PG_NUM_LINKS-1:0];
 
 // Flop freeze signal
 always_ff @ (posedge clk) begin
@@ -118,6 +119,13 @@ end
 
 
 
+for (genvar j=0; j<PG_NUM_LINKS; j++) begin : PORT_RESET
+   always @(posedge clk) begin
+      port_rst_n_t1[j] <= port_rst_n[j];
+   end
+end
+
+for (genvar j=0; j<PG_NUM_LINKS; j++) begin : PCIE_FREEZE_BRIDGE
    // Port A
    axis_pcie_pr_freeze_bridge #(
       .TDATA_WIDTH (TDATA_WIDTH),
@@ -129,10 +137,10 @@ end
    ) pr_frz_afu_pcie_a_port (
       .port_rst_n  (~softreset),
       .pr_freeze   (pr_freeze_fnmx_q1),
-      .axi_rx_if_s (axi_rx_a_if),    // <--- PCIe SS
-      .axi_tx_if_m (axi_tx_a_if),    // ---> PCIe SS
-      .axi_rx_if_m (axi_rx_a_if_t1), // ---> PR slot AFU 
-      .axi_tx_if_s (axi_tx_a_if_t1)  // <--- PR slot AFU
+      .axi_rx_if_s (axi_rx_a_if[j]),    // <--- PCIe SS
+      .axi_tx_if_m (axi_tx_a_if[j]),    // ---> PCIe SS
+      .axi_rx_if_m (axi_rx_a_if_t1[j]), // ---> PR slot AFU
+      .axi_tx_if_s (axi_tx_a_if_t1[j])  // <--- PR slot AFU
    );
 
    // Port B
@@ -146,30 +154,25 @@ end
    ) pr_frz_afu_pcie_b_port (
       .port_rst_n  (~softreset),
       .pr_freeze   (pr_freeze_fnmx_q1),
-      .axi_rx_if_s (axi_rx_b_if),    // <--- PCIe SS
-      .axi_tx_if_m (axi_tx_b_if),    // ---> PCIe SS
-      .axi_rx_if_m (axi_rx_b_if_t1), // ---> PR slot AFU 
-      .axi_tx_if_s (axi_tx_b_if_t1)  // <--- PR slot AFU
+      .axi_rx_if_s (axi_rx_b_if[j]),    // <--- PCIe SS
+      .axi_tx_if_m (axi_tx_b_if[j]),    // ---> PCIe SS
+      .axi_rx_if_m (axi_rx_b_if_t1[j]), // ---> PR slot AFU
+      .axi_tx_if_s (axi_tx_b_if_t1[j])  // <--- PR slot AFU
    );
 
    // Assign clk & resets to interface package
    // rst_n from PCIe SS needs to be replaced with port_rst_n
-   assign axi_rx_a_if_t1.clk     = axi_rx_a_if.clk;
-   assign axi_rx_a_if_t1.rst_n   = ~softreset;
-   assign axi_tx_a_if_t1.clk     = axi_tx_a_if.clk;
-   assign axi_tx_a_if_t1.rst_n   = ~softreset;
+   assign axi_rx_a_if_t1[j].clk     = axi_rx_a_if[j].clk;
+   assign axi_rx_a_if_t1[j].rst_n   = ~softreset;
+   assign axi_tx_a_if_t1[j].clk     = axi_tx_a_if[j].clk;
+   assign axi_tx_a_if_t1[j].rst_n   = ~softreset;
 
-   assign axi_rx_b_if_t1.clk     = axi_rx_b_if.clk;
-   assign axi_rx_b_if_t1.rst_n   = ~softreset;
-   assign axi_tx_b_if_t1.clk     = axi_tx_b_if.clk;
-   assign axi_tx_b_if_t1.rst_n   = ~softreset;
+   assign axi_rx_b_if_t1[j].clk     = axi_rx_b_if[j].clk;
+   assign axi_rx_b_if_t1[j].rst_n   = ~softreset;
+   assign axi_tx_b_if_t1[j].clk     = axi_tx_b_if[j].clk;
+   assign axi_tx_b_if_t1[j].rst_n   = ~softreset;
 
-for (genvar j=0; j<PG_NUM_PORTS; j++) begin : PORT_RESET
-   always @(posedge clk) begin
-      port_rst_n_t1[j] <= port_rst_n[j];
-   end
-end
-
+end //for
 
 // ----------------------------------------------------------------------------------------------------
 // 2. PR Freeze: AFU-MEM_IF to MEM SS
@@ -327,6 +330,7 @@ end
 // PIM-based AFU.
 //
 afu_main #(
+   .PG_NUM_LINKS          (PG_NUM_LINKS),
    .PG_NUM_PORTS          (PG_NUM_PORTS),
    .PORT_PF_VF_INFO       (PORT_PF_VF_INFO),
    .NUM_MEM_CH            (NUM_MEM_CH),

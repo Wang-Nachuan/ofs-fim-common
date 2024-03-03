@@ -18,20 +18,21 @@ import pcie_ss_axis_pkg::*;
 
 module pcie_ss_top # (
    parameter PCIE_LANES = 16,
+   parameter PCIE_NUM_LINKS = 1,
    parameter SOC_ATTACH = 0
 )(
 
    input  logic                     fim_clk,
-   input  logic                     fim_rst_n,
    input  logic                     csr_clk,
-   input  logic                     csr_rst_n,
    input  logic                     ninit_done,
-   output logic                     reset_status,
+   output logic [PCIE_NUM_LINKS-1:0] reset_status,
 
-   input  logic                     p0_subsystem_cold_rst_n,  
-   input  logic                     p0_subsystem_warm_rst_n,    
-   output logic                     p0_subsystem_cold_rst_ack_n,
-   output logic                     p0_subsystem_warm_rst_ack_n,
+   input  logic [PCIE_NUM_LINKS-1:0] fim_rst_n,
+   input  logic [PCIE_NUM_LINKS-1:0] csr_rst_n,
+   input  logic [PCIE_NUM_LINKS-1:0] subsystem_cold_rst_n,  
+   input  logic [PCIE_NUM_LINKS-1:0] subsystem_warm_rst_n,    
+   output logic [PCIE_NUM_LINKS-1:0] subsystem_cold_rst_ack_n,
+   output logic [PCIE_NUM_LINKS-1:0] subsystem_warm_rst_ack_n,
 
    // PCIe pins
    input  logic                     pin_pcie_refclk0_p,
@@ -43,39 +44,36 @@ module pcie_ss_top # (
    output logic [PCIE_LANES-1:0]    pin_pcie_tx_n,
 
    //TXREQ ports
-   output logic                     p0_ss_app_st_txreq_tready,
-   input  logic                     p0_app_ss_st_txreq_tvalid,
-   input  logic [255:0]             p0_app_ss_st_txreq_tdata,
-   input  logic                     p0_app_ss_st_txreq_tlast,
+   pcie_ss_axis_if.sink             axi_st_txreq_if[PCIE_NUM_LINKS-1:0],
 
    //Ctrl Shadow ports
-   output logic                     p0_ss_app_st_ctrlshadow_tvalid,
-   output logic [39:0]              p0_ss_app_st_ctrlshadow_tdata,
+   output logic [PCIE_NUM_LINKS-1:0]         ss_app_st_ctrlshadow_tvalid,
+   output logic [PCIE_NUM_LINKS-1:0][39:0]   ss_app_st_ctrlshadow_tdata,
 
    // Application to FPGA request port (MMIO/VDM)
-   pcie_ss_axis_if.source           axi_st_rxreq_if,
+   pcie_ss_axis_if.source           axi_st_rxreq_if[PCIE_NUM_LINKS-1:0],
 
    // FPGA to application request/response ports (DM req/rsp, MMIO rsp)
-   pcie_ss_axis_if.source           axi_st_rx_if,
-   pcie_ss_axis_if.sink             axi_st_tx_if,
+   pcie_ss_axis_if.source           axi_st_rx_if[PCIE_NUM_LINKS-1:0],
+   pcie_ss_axis_if.sink             axi_st_tx_if[PCIE_NUM_LINKS-1:0],
    
-   ofs_fim_axi_lite_if.slave        ss_csr_lite_if,
+   ofs_fim_axi_lite_if.slave        ss_csr_lite_if[PCIE_NUM_LINKS-1:0],
  
    // FLR interface
-   output t_axis_pcie_flr           flr_req_if,
-   input  t_axis_pcie_flr           flr_rsp_if,
+   output t_axis_pcie_flr           flr_req_if[PCIE_NUM_LINKS-1:0],
+   input  t_axis_pcie_flr           flr_rsp_if[PCIE_NUM_LINKS-1:0],
 
    // Completion Timeout interface
-   output t_axis_pcie_cplto         cpl_timeout_if,
+   output t_axis_pcie_cplto         cpl_timeout_if[PCIE_NUM_LINKS-1:0],
 
-   output t_sideband_from_pcie      pcie_p2c_sideband
+   output t_sideband_from_pcie      pcie_p2c_sideband[PCIE_NUM_LINKS-1:0]
 );
 
 import ofs_fim_pcie_pkg::*;
 
 // Clock & Reset
 logic                             coreclkout_hip;
-logic                             reset_status_n;
+logic [PCIE_NUM_LINKS-1:0]        reset_status_n;
 
 assign reset_status = ~reset_status_n;
 
@@ -85,129 +83,129 @@ ofs_fim_pcie_txs_axis_if          axis_tx_st();
 
 
 //PCIE SS signals
-logic                             p0_ss_app_st_rx_tvalid;      
-logic                             p0_app_ss_st_rx_tready;      
-logic [511:0]                     p0_ss_app_st_rx_tdata;       
-logic [63:0]                      p0_ss_app_st_rx_tkeep;      
-logic                             p0_ss_app_st_rx_tlast;      
-logic [2:0]                       p0_ss_app_st_rx_tuser_vendor;
-logic [7:0]                       p0_ss_app_st_rx_tuser; 
+logic [PCIE_NUM_LINKS-1:0]                             ss_app_st_rx_tvalid;      
+logic [PCIE_NUM_LINKS-1:0]                             app_ss_st_rx_tready;      
+logic [PCIE_NUM_LINKS-1:0] [511:0]                     ss_app_st_rx_tdata;       
+logic [PCIE_NUM_LINKS-1:0] [63:0]                      ss_app_st_rx_tkeep;      
+logic [PCIE_NUM_LINKS-1:0]                             ss_app_st_rx_tlast;      
+logic [PCIE_NUM_LINKS-1:0] [2:0]                       ss_app_st_rx_tuser_vendor;
+logic [PCIE_NUM_LINKS-1:0] [7:0]                       ss_app_st_rx_tuser; 
 
-logic                             p0_ss_app_st_rxreq_tvalid;      
-logic                             p0_app_ss_st_rxreq_tready;       
-logic  [511:0]                    p0_ss_app_st_rxreq_tdata;         
-logic  [63:0]                     p0_ss_app_st_rxreq_tkeep;        
-logic                             p0_ss_app_st_rxreq_tlast;        
-logic  [2:0]                      p0_ss_app_st_rxreq_tuser_vendor;  
+logic [PCIE_NUM_LINKS-1:0]                             ss_app_st_rxreq_tvalid;      
+logic [PCIE_NUM_LINKS-1:0]                             app_ss_st_rxreq_tready;       
+logic [PCIE_NUM_LINKS-1:0] [511:0]                     ss_app_st_rxreq_tdata;         
+logic [PCIE_NUM_LINKS-1:0] [63:0]                      ss_app_st_rxreq_tkeep;        
+logic [PCIE_NUM_LINKS-1:0]                             ss_app_st_rxreq_tlast;        
+logic [PCIE_NUM_LINKS-1:0] [2:0]                       ss_app_st_rxreq_tuser_vendor;  
 
-logic                             p0_app_ss_st_tx_tvalid;
-logic                             p0_ss_app_st_tx_tready;     
-logic [511:0]                     p0_app_ss_st_tx_tdata;     
-logic [63:0]                      p0_app_ss_st_tx_tkeep;      
-logic                             p0_app_ss_st_tx_tlast;      
-logic [1:0]                       p0_app_ss_st_tx_tuser_vendor;
-logic [7:0]                       p0_app_ss_st_tx_tuser;
+logic [PCIE_NUM_LINKS-1:0]                             app_ss_st_tx_tvalid;
+logic [PCIE_NUM_LINKS-1:0]                             ss_app_st_tx_tready;     
+logic [PCIE_NUM_LINKS-1:0] [511:0]                     app_ss_st_tx_tdata;     
+logic [PCIE_NUM_LINKS-1:0] [63:0]                      app_ss_st_tx_tkeep;      
+logic [PCIE_NUM_LINKS-1:0]                             app_ss_st_tx_tlast;      
+logic [PCIE_NUM_LINKS-1:0] [1:0]                       app_ss_st_tx_tuser_vendor;
+logic [PCIE_NUM_LINKS-1:0] [7:0]                       app_ss_st_tx_tuser;
 
 //FLR Signals
-logic                             p0_ss_app_st_flrrcvd_tvalid;
-logic [19:0]                      p0_ss_app_st_flrrcvd_tdata;
-logic                             p0_app_ss_st_flrcmpl_tvalid;
-logic [19:0]                      p0_app_ss_st_flrcmpl_tdata;
+logic [PCIE_NUM_LINKS-1:0]                             ss_app_st_flrrcvd_tvalid;
+logic [PCIE_NUM_LINKS-1:0] [19:0]                      ss_app_st_flrrcvd_tdata;
+logic [PCIE_NUM_LINKS-1:0]                             app_ss_st_flrcmpl_tvalid;
+logic [PCIE_NUM_LINKS-1:0] [19:0]                      app_ss_st_flrcmpl_tdata;
 
 //Completion Timeout
-logic                             p0_ss_app_st_cplto_tvalid;
-logic [29:0]                      p0_ss_app_st_cplto_tdata;
+logic [PCIE_NUM_LINKS-1:0]                             ss_app_st_cplto_tvalid;
+logic [PCIE_NUM_LINKS-1:0] [29:0]                      ss_app_st_cplto_tdata;
 
-logic                             p0_ss_app_lite_csr_awready;
-logic                             p0_ss_app_lite_csr_wready;
-logic                             p0_ss_app_lite_csr_arready;
-logic                             p0_ss_app_lite_csr_bvalid;
-logic                             p0_ss_app_lite_csr_rvalid; 
-logic                             p0_app_ss_lite_csr_awvalid;
-logic [ofs_fim_cfg_pkg::PCIE_LITE_CSR_WIDTH-1:0] p0_app_ss_lite_csr_awaddr;
-logic                             p0_app_ss_lite_csr_wvalid;
-logic [31:0]                      p0_app_ss_lite_csr_wdata;
-logic [3:0]                       p0_app_ss_lite_csr_wstrb;  
-logic                             p0_app_ss_lite_csr_bready; 
-logic [1:0]                       p0_ss_app_lite_csr_bresp;
-logic                             p0_app_ss_lite_csr_arvalid;
-logic [ofs_fim_cfg_pkg::PCIE_LITE_CSR_WIDTH-1:0] p0_app_ss_lite_csr_araddr; 
-logic                             p0_app_ss_lite_csr_rready; 
-logic [31:0]                      p0_ss_app_lite_csr_rdata;  
-logic [1:0]                       p0_ss_app_lite_csr_rresp;  
+logic [PCIE_NUM_LINKS-1:0]                             ss_app_lite_csr_awready;
+logic [PCIE_NUM_LINKS-1:0]                             ss_app_lite_csr_wready;
+logic [PCIE_NUM_LINKS-1:0]                             ss_app_lite_csr_arready;
+logic [PCIE_NUM_LINKS-1:0]                             ss_app_lite_csr_bvalid;
+logic [PCIE_NUM_LINKS-1:0]                             ss_app_lite_csr_rvalid; 
+logic [PCIE_NUM_LINKS-1:0]                             app_ss_lite_csr_awvalid;
+logic [PCIE_NUM_LINKS-1:0] [ofs_fim_cfg_pkg::PCIE_LITE_CSR_WIDTH-1:0] app_ss_lite_csr_awaddr;
+logic [PCIE_NUM_LINKS-1:0]                             app_ss_lite_csr_wvalid;
+logic [PCIE_NUM_LINKS-1:0] [31:0]                      app_ss_lite_csr_wdata;
+logic [PCIE_NUM_LINKS-1:0] [3:0]                       app_ss_lite_csr_wstrb;  
+logic [PCIE_NUM_LINKS-1:0]                             app_ss_lite_csr_bready; 
+logic [PCIE_NUM_LINKS-1:0] [1:0]                       ss_app_lite_csr_bresp;
+logic [PCIE_NUM_LINKS-1:0]                             app_ss_lite_csr_arvalid;
+logic [PCIE_NUM_LINKS-1:0] [ofs_fim_cfg_pkg::PCIE_LITE_CSR_WIDTH-1:0] app_ss_lite_csr_araddr; 
+logic [PCIE_NUM_LINKS-1:0]                             app_ss_lite_csr_rready; 
+logic [PCIE_NUM_LINKS-1:0] [31:0]                      ss_app_lite_csr_rdata;  
+logic [PCIE_NUM_LINKS-1:0] [1:0]                       ss_app_lite_csr_rresp;  
 
-logic                             p0_initiate_warmrst_req;
-logic                             p1_initiate_warmrst_req;
-logic                             p0_ss_app_dlup;
-logic                             p0_ss_app_serr;
+logic [PCIE_NUM_LINKS-1:0]                             initiate_warmrst_req;
+logic [PCIE_NUM_LINKS-1:0]        ss_app_dlup;
+logic [PCIE_NUM_LINKS-1:0]        ss_app_serr;
 
+
+localparam CSR_STAT_SYNC_WIDTH = 33;
+for (genvar j=0; j<PCIE_NUM_LINKS; j++) begin : PCIE_LINK_CONN
 
 //---------------------------------------------------------------
 //Connecting the RX ST Interface
-assign axi_st_rx_if.tvalid            = p0_ss_app_st_rx_tvalid ;     
-assign p0_app_ss_st_rx_tready         = axi_st_rx_if.tready    ;
-assign axi_st_rx_if.tdata             = p0_ss_app_st_rx_tdata  ;     
-assign axi_st_rx_if.tkeep             = p0_ss_app_st_rx_tkeep  ;     
-assign axi_st_rx_if.tlast             = p0_ss_app_st_rx_tlast  ;     
-assign axi_st_rx_if.tuser_vendor[2:0] = p0_ss_app_st_rx_tuser_vendor[2:0];
-assign axi_st_rx_if.tuser_vendor[9:3] = p0_ss_app_st_rx_tuser; 
+assign axi_st_rx_if[j].tvalid            = ss_app_st_rx_tvalid[j] ;     
+assign app_ss_st_rx_tready[j]         = axi_st_rx_if[j].tready    ;
+assign axi_st_rx_if[j].tdata             = ss_app_st_rx_tdata[j] ;     
+assign axi_st_rx_if[j].tkeep             = ss_app_st_rx_tkeep[j] ;     
+assign axi_st_rx_if[j].tlast             = ss_app_st_rx_tlast[j] ;     
+assign axi_st_rx_if[j].tuser_vendor[2:0] = ss_app_st_rx_tuser_vendor[j][2:0];
+assign axi_st_rx_if[j].tuser_vendor[9:3] = ss_app_st_rx_tuser[j]; 
 
 //Connecting the RX-REQ ST Interface
-assign axi_st_rxreq_if.tvalid            = p0_ss_app_st_rxreq_tvalid ;     
-assign p0_app_ss_st_rxreq_tready         = axi_st_rxreq_if.tready    ;
-assign axi_st_rxreq_if.tdata             = p0_ss_app_st_rxreq_tdata  ;     
-assign axi_st_rxreq_if.tkeep             = p0_ss_app_st_rxreq_tkeep  ;     
-assign axi_st_rxreq_if.tlast             = p0_ss_app_st_rxreq_tlast  ;     
-assign axi_st_rxreq_if.tuser_vendor[2:0] = p0_ss_app_st_rxreq_tuser_vendor;
-assign axi_st_rxreq_if.tuser_vendor[9:3] = 7'h0;
+assign axi_st_rxreq_if[j].tvalid            = ss_app_st_rxreq_tvalid[j] ;     
+assign app_ss_st_rxreq_tready[j]         = axi_st_rxreq_if[j].tready    ;
+assign axi_st_rxreq_if[j].tdata             = ss_app_st_rxreq_tdata[j] ;     
+assign axi_st_rxreq_if[j].tkeep             = ss_app_st_rxreq_tkeep[j] ;     
+assign axi_st_rxreq_if[j].tlast             = ss_app_st_rxreq_tlast[j] ;     
+assign axi_st_rxreq_if[j].tuser_vendor[2:0] = ss_app_st_rxreq_tuser_vendor[j];
+assign axi_st_rxreq_if[j].tuser_vendor[9:3] = 7'h0;
 
 //Connecting the TX ST Interface
-assign p0_app_ss_st_tx_tvalid         = axi_st_tx_if.tvalid; 
-assign axi_st_tx_if.tready            = p0_ss_app_st_tx_tready;
-assign p0_app_ss_st_tx_tdata          = axi_st_tx_if.tdata;
-assign p0_app_ss_st_tx_tkeep          = axi_st_tx_if.tkeep;
-assign p0_app_ss_st_tx_tlast          = axi_st_tx_if.tlast;
-assign p0_app_ss_st_tx_tuser_vendor   = axi_st_tx_if.tuser_vendor[1:0];
-assign p0_app_ss_st_tx_tuser          = axi_st_tx_if.tuser_vendor[9:2];
+assign app_ss_st_tx_tvalid[j]         = axi_st_tx_if[j].tvalid; 
+assign axi_st_tx_if[j].tready            = ss_app_st_tx_tready[j];
+assign app_ss_st_tx_tdata[j]          = axi_st_tx_if[j].tdata;
+assign app_ss_st_tx_tkeep[j]          = axi_st_tx_if[j].tkeep;
+assign app_ss_st_tx_tlast[j]          = axi_st_tx_if[j].tlast;
+assign app_ss_st_tx_tuser_vendor[j]   = axi_st_tx_if[j].tuser_vendor[1:0];
+assign app_ss_st_tx_tuser[j]          = axi_st_tx_if[j].tuser_vendor[9:2];
 
 //Connecting the FLR Interface
-assign flr_req_if.tvalid = p0_ss_app_st_flrrcvd_tvalid;
-assign flr_req_if.tdata  = p0_ss_app_st_flrrcvd_tdata;
+assign flr_req_if[j].tvalid = ss_app_st_flrrcvd_tvalid[j];
+assign flr_req_if[j].tdata  = ss_app_st_flrrcvd_tdata[j];
 
-assign p0_app_ss_st_flrcmpl_tvalid = flr_rsp_if.tvalid;
-assign p0_app_ss_st_flrcmpl_tdata  = flr_rsp_if.tdata;
+assign app_ss_st_flrcmpl_tvalid[j] = flr_rsp_if[j].tvalid;
+assign app_ss_st_flrcmpl_tdata[j]  = flr_rsp_if[j].tdata;
 
 
 //Connecting the csr interface
-assign ss_csr_lite_if.awready        = p0_ss_app_lite_csr_awready;
-assign ss_csr_lite_if.wready         = p0_ss_app_lite_csr_wready;
-assign ss_csr_lite_if.arready        = p0_ss_app_lite_csr_arready;
-assign ss_csr_lite_if.bvalid         = p0_ss_app_lite_csr_bvalid;
-assign ss_csr_lite_if.rvalid         = p0_ss_app_lite_csr_rvalid;
-assign p0_app_ss_lite_csr_awvalid    = ss_csr_lite_if.awvalid; 
-assign p0_app_ss_lite_csr_awaddr     = ss_csr_lite_if.awaddr;
-assign p0_app_ss_lite_csr_wvalid     = ss_csr_lite_if.wvalid;
-assign p0_app_ss_lite_csr_wdata      = ss_csr_lite_if.wdata;
-assign p0_app_ss_lite_csr_wstrb      = ss_csr_lite_if.wstrb;
-assign p0_app_ss_lite_csr_bready     = ss_csr_lite_if.bready;
-assign ss_csr_lite_if.bresp          = p0_ss_app_lite_csr_bresp;
-assign p0_app_ss_lite_csr_arvalid    = ss_csr_lite_if.arvalid;
-assign p0_app_ss_lite_csr_araddr     = ss_csr_lite_if.araddr;
-assign p0_app_ss_lite_csr_rready     = ss_csr_lite_if.rready;
-assign ss_csr_lite_if.rdata          = p0_ss_app_lite_csr_rdata;
-assign ss_csr_lite_if.rresp          = p0_ss_app_lite_csr_rresp;
+assign ss_csr_lite_if[j].awready        = ss_app_lite_csr_awready[j];
+assign ss_csr_lite_if[j].wready         = ss_app_lite_csr_wready[j];
+assign ss_csr_lite_if[j].arready        = ss_app_lite_csr_arready[j];
+assign ss_csr_lite_if[j].bvalid         = ss_app_lite_csr_bvalid[j];
+assign ss_csr_lite_if[j].rvalid         = ss_app_lite_csr_rvalid[j];
+assign app_ss_lite_csr_awvalid[j]    = ss_csr_lite_if[j].awvalid; 
+assign app_ss_lite_csr_awaddr[j]     = ss_csr_lite_if[j].awaddr;
+assign app_ss_lite_csr_wvalid[j]     = ss_csr_lite_if[j].wvalid;
+assign app_ss_lite_csr_wdata[j]      = ss_csr_lite_if[j].wdata;
+assign app_ss_lite_csr_wstrb[j]      = ss_csr_lite_if[j].wstrb;
+assign app_ss_lite_csr_bready[j]     = ss_csr_lite_if[j].bready;
+assign ss_csr_lite_if[j].bresp          = ss_app_lite_csr_bresp[j];
+assign app_ss_lite_csr_arvalid[j]    = ss_csr_lite_if[j].arvalid;
+assign app_ss_lite_csr_araddr[j]     = ss_csr_lite_if[j].araddr;
+assign app_ss_lite_csr_rready[j]     = ss_csr_lite_if[j].rready;
+assign ss_csr_lite_if[j].rdata          = ss_app_lite_csr_rdata[j];
+assign ss_csr_lite_if[j].rresp          = ss_app_lite_csr_rresp[j];
 
 //-------------------------------------
 // Completion timeout interface 
 //-------------------------------------
 always_comb begin
-   cpl_timeout_if.tvalid = p0_ss_app_st_cplto_tvalid;
-   cpl_timeout_if.tdata  = p0_ss_app_st_cplto_tdata;
+   cpl_timeout_if[j].tvalid = ss_app_st_cplto_tvalid[j];
+   cpl_timeout_if[j].tdata  = ss_app_st_cplto_tdata[j];
 end
 
-
 // PCIE stat signals clock crossing (fim_clk -> csr_clk)
-localparam CSR_STAT_SYNC_WIDTH = 33;
 fim_resync #(
    .SYNC_CHAIN_LENGTH(3),
    .WIDTH(CSR_STAT_SYNC_WIDTH),
@@ -215,10 +213,15 @@ fim_resync #(
    .NO_CUT(1)
 ) csr_resync (
    .clk   (csr_clk),
-   .reset (~csr_rst_n),
-   .d     ({p0_ss_app_dlup,32'b0}),
-   .q     ({pcie_p2c_sideband.pcie_linkup, pcie_p2c_sideband.pcie_chk_rx_err_code})
+   .reset (~csr_rst_n[j]),
+   .d     ({ss_app_dlup[j],32'b0}),
+   .q     ({pcie_p2c_sideband[j].pcie_linkup, pcie_p2c_sideband[j].pcie_chk_rx_err_code})
 );
+
+
+
+end //for (genvar j=0; j<PCIE_NUM_LINKS;..
+
 
 //-------------------------------------
 // PCIe SS
@@ -230,73 +233,73 @@ soc_pcie_ss pcie_ss(
 .pin_perst_n                    (pin_pcie_in_perst_n            ),
 .coreclkout_hip_toapp           (coreclkout_hip                 ),
 .p0_pin_perst_n                 (                               ), 
-.p0_reset_status_n              (reset_status_n                 ),
+.p0_reset_status_n              (reset_status_n[0]                 ),
 .ninit_done                     (ninit_done                     ), 
 .dummy_user_avmm_rst            (                               ), 
 .p0_axi_st_clk                  (fim_clk                        ),
 .p0_axi_lite_clk                (csr_clk                        ),  
-.p0_axi_st_areset_n             (fim_rst_n                      ),       
-.p0_axi_lite_areset_n           (csr_rst_n                      ),        
-.p0_subsystem_cold_rst_n        (p0_subsystem_cold_rst_n        ),
-.p0_subsystem_warm_rst_n        (p0_subsystem_warm_rst_n        ),
-.p0_subsystem_cold_rst_ack_n    (p0_subsystem_cold_rst_ack_n    ),
-.p0_subsystem_warm_rst_ack_n    (p0_subsystem_warm_rst_ack_n    ),
+.p0_axi_st_areset_n             (fim_rst_n[0]                      ),       
+.p0_axi_lite_areset_n           (csr_rst_n[0]                      ),        
+.p0_subsystem_cold_rst_n        (subsystem_cold_rst_n[0]        ),
+.p0_subsystem_warm_rst_n        (subsystem_warm_rst_n[0]        ),
+.p0_subsystem_cold_rst_ack_n    (subsystem_cold_rst_ack_n[0]    ),
+.p0_subsystem_warm_rst_ack_n    (subsystem_warm_rst_ack_n[0]    ),
 .p0_subsystem_rst_req           ('0                             ),
 .p0_subsystem_rst_rdy           (                               ),      
-.p0_initiate_warmrst_req        (p0_initiate_warmrst_req        ),
-.p0_initiate_rst_req_rdy        (p0_initiate_warmrst_req        ),          
-.p0_ss_app_st_rx_tvalid         (p0_ss_app_st_rx_tvalid         ),   
-.p0_app_ss_st_rx_tready         (p0_app_ss_st_rx_tready         ),   
-.p0_ss_app_st_rx_tdata          (p0_ss_app_st_rx_tdata          ), 
-.p0_ss_app_st_rx_tkeep          (p0_ss_app_st_rx_tkeep          ),
-.p0_ss_app_st_rx_tlast          (p0_ss_app_st_rx_tlast          ),
-.p0_ss_app_st_rx_tuser          (p0_ss_app_st_rx_tuser          ),
-.p0_ss_app_st_rx_tuser_vendor   (p0_ss_app_st_rx_tuser_vendor   ),
-.p0_app_ss_st_tx_tvalid         (p0_app_ss_st_tx_tvalid         ),
-.p0_ss_app_st_tx_tready         (p0_ss_app_st_tx_tready         ),
-.p0_app_ss_st_tx_tdata          (p0_app_ss_st_tx_tdata          ),
-.p0_app_ss_st_tx_tkeep          (p0_app_ss_st_tx_tkeep          ),
-.p0_app_ss_st_tx_tlast          (p0_app_ss_st_tx_tlast          ),
-.p0_app_ss_st_tx_tuser          (p0_app_ss_st_tx_tuser          ),
-.p0_app_ss_st_tx_tuser_vendor   (p0_app_ss_st_tx_tuser_vendor   ),
-.p0_ss_app_st_rxreq_tvalid      (p0_ss_app_st_rxreq_tvalid      ),  
-.p0_app_ss_st_rxreq_tready      (p0_app_ss_st_rxreq_tready      ),  
-.p0_ss_app_st_rxreq_tdata       (p0_ss_app_st_rxreq_tdata       ),  
-.p0_ss_app_st_rxreq_tkeep       (p0_ss_app_st_rxreq_tkeep       ),  
-.p0_ss_app_st_rxreq_tlast       (p0_ss_app_st_rxreq_tlast       ),  
-.p0_ss_app_st_rxreq_tuser_vendor(p0_ss_app_st_rxreq_tuser_vendor),  
-.p0_app_ss_st_txreq_tvalid      (p0_app_ss_st_txreq_tvalid      ),  
-.p0_ss_app_st_txreq_tready      (p0_ss_app_st_txreq_tready      ),    
-.p0_app_ss_st_txreq_tdata       (p0_app_ss_st_txreq_tdata       ), 
-.p0_app_ss_st_txreq_tlast       (p0_app_ss_st_txreq_tlast       ),      
-.p0_ss_app_st_flrrcvd_tvalid    (p0_ss_app_st_flrrcvd_tvalid    ),
-.p0_ss_app_st_flrrcvd_tdata     (p0_ss_app_st_flrrcvd_tdata     ),
-.p0_app_ss_st_flrcmpl_tvalid    (p0_app_ss_st_flrcmpl_tvalid    ),
-.p0_app_ss_st_flrcmpl_tdata     (p0_app_ss_st_flrcmpl_tdata     ),
-.p0_ss_app_st_ctrlshadow_tvalid (p0_ss_app_st_ctrlshadow_tvalid ),
-.p0_ss_app_st_ctrlshadow_tdata  (p0_ss_app_st_ctrlshadow_tdata  ),
+.p0_initiate_warmrst_req        (initiate_warmrst_req[0]        ),
+.p0_initiate_rst_req_rdy        (initiate_warmrst_req[0]        ),          
+.p0_ss_app_st_rx_tvalid         (ss_app_st_rx_tvalid[0]         ),   
+.p0_app_ss_st_rx_tready         (app_ss_st_rx_tready[0]         ),   
+.p0_ss_app_st_rx_tdata          (ss_app_st_rx_tdata[0]          ), 
+.p0_ss_app_st_rx_tkeep          (ss_app_st_rx_tkeep[0]          ),
+.p0_ss_app_st_rx_tlast          (ss_app_st_rx_tlast[0]          ),
+.p0_ss_app_st_rx_tuser          (ss_app_st_rx_tuser[0]          ),
+.p0_ss_app_st_rx_tuser_vendor   (ss_app_st_rx_tuser_vendor[0]   ),
+.p0_app_ss_st_tx_tvalid         (app_ss_st_tx_tvalid[0]         ),
+.p0_ss_app_st_tx_tready         (ss_app_st_tx_tready[0]         ),
+.p0_app_ss_st_tx_tdata          (app_ss_st_tx_tdata[0]          ),
+.p0_app_ss_st_tx_tkeep          (app_ss_st_tx_tkeep[0]          ),
+.p0_app_ss_st_tx_tlast          (app_ss_st_tx_tlast[0]          ),
+.p0_app_ss_st_tx_tuser          (app_ss_st_tx_tuser[0]          ),
+.p0_app_ss_st_tx_tuser_vendor   (app_ss_st_tx_tuser_vendor[0]   ),
+.p0_ss_app_st_rxreq_tvalid      (ss_app_st_rxreq_tvalid[0]      ),  
+.p0_app_ss_st_rxreq_tready      (app_ss_st_rxreq_tready[0]      ),  
+.p0_ss_app_st_rxreq_tdata       (ss_app_st_rxreq_tdata[0]       ),  
+.p0_ss_app_st_rxreq_tkeep       (ss_app_st_rxreq_tkeep[0]       ),  
+.p0_ss_app_st_rxreq_tlast       (ss_app_st_rxreq_tlast[0]       ),  
+.p0_ss_app_st_rxreq_tuser_vendor(ss_app_st_rxreq_tuser_vendor[0]),  
+.p0_app_ss_st_txreq_tvalid      (axi_st_txreq_if[0].tvalid      ),  
+.p0_ss_app_st_txreq_tready      (axi_st_txreq_if[0].tready      ),    
+.p0_app_ss_st_txreq_tdata       (axi_st_txreq_if[0].tdata[255:0]), 
+.p0_app_ss_st_txreq_tlast       (axi_st_txreq_if[0].tlast       ),      
+.p0_ss_app_st_flrrcvd_tvalid    (ss_app_st_flrrcvd_tvalid[0]    ),
+.p0_ss_app_st_flrrcvd_tdata     (ss_app_st_flrrcvd_tdata[0]     ),
+.p0_app_ss_st_flrcmpl_tvalid    (app_ss_st_flrcmpl_tvalid[0]    ),
+.p0_app_ss_st_flrcmpl_tdata     (app_ss_st_flrcmpl_tdata[0]     ),
+.p0_ss_app_st_ctrlshadow_tvalid (ss_app_st_ctrlshadow_tvalid[0] ),
+.p0_ss_app_st_ctrlshadow_tdata  (ss_app_st_ctrlshadow_tdata[0]  ),
 .p0_ss_app_st_txcrdt_tvalid     (                               ),
 .p0_ss_app_st_txcrdt_tdata      (                               ),
-.p0_ss_app_st_cplto_tvalid      (p0_ss_app_st_cplto_tvalid      ),    
-.p0_ss_app_st_cplto_tdata       (p0_ss_app_st_cplto_tdata       ),
-.p0_app_ss_lite_csr_awvalid     (p0_app_ss_lite_csr_awvalid     ),
-.p0_ss_app_lite_csr_awready     (p0_ss_app_lite_csr_awready     ),
-.p0_app_ss_lite_csr_awaddr      (p0_app_ss_lite_csr_awaddr      ),
-.p0_app_ss_lite_csr_wvalid      (p0_app_ss_lite_csr_wvalid      ),
-.p0_ss_app_lite_csr_wready      (p0_ss_app_lite_csr_wready      ),
-.p0_app_ss_lite_csr_wdata       (p0_app_ss_lite_csr_wdata       ),
-.p0_app_ss_lite_csr_wstrb       (p0_app_ss_lite_csr_wstrb       ),
-.p0_ss_app_lite_csr_bvalid      (p0_ss_app_lite_csr_bvalid      ),
-.p0_app_ss_lite_csr_bready      (p0_app_ss_lite_csr_bready      ),
-.p0_ss_app_lite_csr_bresp       (p0_ss_app_lite_csr_bresp       ),
-.p0_app_ss_lite_csr_arvalid     (p0_app_ss_lite_csr_arvalid     ),
-.p0_ss_app_lite_csr_arready     (p0_ss_app_lite_csr_arready     ),
-.p0_app_ss_lite_csr_araddr      (p0_app_ss_lite_csr_araddr      ),
-.p0_ss_app_lite_csr_rvalid      (p0_ss_app_lite_csr_rvalid      ),
-.p0_app_ss_lite_csr_rready      (p0_app_ss_lite_csr_rready      ),
-.p0_ss_app_lite_csr_rdata       (p0_ss_app_lite_csr_rdata       ),
-.p0_ss_app_lite_csr_rresp       (p0_ss_app_lite_csr_rresp       ),
-.p0_ss_app_dlup                 (p0_ss_app_dlup                 ),
+.p0_ss_app_st_cplto_tvalid      (ss_app_st_cplto_tvalid[0]      ),    
+.p0_ss_app_st_cplto_tdata       (ss_app_st_cplto_tdata[0]       ),
+.p0_app_ss_lite_csr_awvalid     (app_ss_lite_csr_awvalid[0]     ),
+.p0_ss_app_lite_csr_awready     (ss_app_lite_csr_awready[0]     ),
+.p0_app_ss_lite_csr_awaddr      (app_ss_lite_csr_awaddr[0]      ),
+.p0_app_ss_lite_csr_wvalid      (app_ss_lite_csr_wvalid[0]      ),
+.p0_ss_app_lite_csr_wready      (ss_app_lite_csr_wready[0]      ),
+.p0_app_ss_lite_csr_wdata       (app_ss_lite_csr_wdata[0]       ),
+.p0_app_ss_lite_csr_wstrb       (app_ss_lite_csr_wstrb[0]       ),
+.p0_ss_app_lite_csr_bvalid      (ss_app_lite_csr_bvalid[0]      ),
+.p0_app_ss_lite_csr_bready      (app_ss_lite_csr_bready[0]      ),
+.p0_ss_app_lite_csr_bresp       (ss_app_lite_csr_bresp[0]       ),
+.p0_app_ss_lite_csr_arvalid     (app_ss_lite_csr_arvalid[0]     ),
+.p0_ss_app_lite_csr_arready     (ss_app_lite_csr_arready[0]     ),
+.p0_app_ss_lite_csr_araddr      (app_ss_lite_csr_araddr[0]      ),
+.p0_ss_app_lite_csr_rvalid      (ss_app_lite_csr_rvalid[0]      ),
+.p0_app_ss_lite_csr_rready      (app_ss_lite_csr_rready[0]      ),
+.p0_ss_app_lite_csr_rdata       (ss_app_lite_csr_rdata[0]       ),
+.p0_ss_app_lite_csr_rresp       (ss_app_lite_csr_rresp[0]       ),
+.p0_ss_app_dlup                 (ss_app_dlup[0]                 ),
 .tx_n_out0                      (pin_pcie_tx_n[0]               ),      
 .tx_n_out1                      (pin_pcie_tx_n[1]               ),      
 .tx_n_out2                      (pin_pcie_tx_n[2]               ),      
@@ -370,139 +373,142 @@ pcie_ss pcie_ss(
 .pin_perst_n                    (pin_pcie_in_perst_n            ),
 .coreclkout_hip_toapp           (coreclkout_hip                 ),
 .p0_pin_perst_n                 (                               ), 
-.p0_reset_status_n              (reset_status_n                 ),
+.p0_reset_status_n              (reset_status_n[0]              ),
 .ninit_done                     (ninit_done                     ), 
 .dummy_user_avmm_rst            (                               ), 
 .p0_axi_st_clk                  (fim_clk                        ),
 .p0_axi_lite_clk                (csr_clk                        ),  
-.p0_axi_st_areset_n             (fim_rst_n                      ),       
-.p0_axi_lite_areset_n           (csr_rst_n                      ),        
-.p0_subsystem_cold_rst_n        (p0_subsystem_cold_rst_n        ),
-.p0_subsystem_warm_rst_n        (p0_subsystem_warm_rst_n        ),
-.p0_subsystem_cold_rst_ack_n    (p0_subsystem_cold_rst_ack_n    ),
-.p0_subsystem_warm_rst_ack_n    (p0_subsystem_warm_rst_ack_n    ),
+.p0_axi_st_areset_n             (fim_rst_n[0]                   ),       
+.p0_axi_lite_areset_n           (csr_rst_n[0]                   ),        
+.p0_subsystem_cold_rst_n        (subsystem_cold_rst_n[0]     ),
+.p0_subsystem_warm_rst_n        (subsystem_warm_rst_n[0]     ),
+.p0_subsystem_cold_rst_ack_n    (subsystem_cold_rst_ack_n[0] ),
+.p0_subsystem_warm_rst_ack_n    (subsystem_warm_rst_ack_n[0] ),
 .p0_subsystem_rst_req           ('0                             ),
 .p0_subsystem_rst_rdy           (                               ),      
-.p0_initiate_warmrst_req        (p0_initiate_warmrst_req        ),
-.p0_initiate_rst_req_rdy        (p0_initiate_warmrst_req        ),          
-.p0_ss_app_st_rx_tvalid         (p0_ss_app_st_rx_tvalid         ),   
-.p0_app_ss_st_rx_tready         (p0_app_ss_st_rx_tready         ),   
-.p0_ss_app_st_rx_tdata          (p0_ss_app_st_rx_tdata          ), 
-.p0_ss_app_st_rx_tkeep          (p0_ss_app_st_rx_tkeep          ),
-.p0_ss_app_st_rx_tlast          (p0_ss_app_st_rx_tlast          ),
-.p0_ss_app_st_rx_tuser          (p0_ss_app_st_rx_tuser          ),
-.p0_ss_app_st_rx_tuser_vendor   (p0_ss_app_st_rx_tuser_vendor   ),
-.p0_app_ss_st_tx_tvalid         (p0_app_ss_st_tx_tvalid         ),
-.p0_ss_app_st_tx_tready         (p0_ss_app_st_tx_tready         ),
-.p0_app_ss_st_tx_tdata          (p0_app_ss_st_tx_tdata          ),
-.p0_app_ss_st_tx_tkeep          (p0_app_ss_st_tx_tkeep          ),
-.p0_app_ss_st_tx_tlast          (p0_app_ss_st_tx_tlast          ),
-.p0_app_ss_st_tx_tuser          (p0_app_ss_st_tx_tuser          ),
-.p0_app_ss_st_tx_tuser_vendor   (p0_app_ss_st_tx_tuser_vendor   ),
-.p0_ss_app_st_rxreq_tvalid      (p0_ss_app_st_rxreq_tvalid      ),   
-.p0_app_ss_st_rxreq_tready      (p0_app_ss_st_rxreq_tready      ),   
-.p0_ss_app_st_rxreq_tdata       (p0_ss_app_st_rxreq_tdata       ),   
-.p0_ss_app_st_rxreq_tkeep       (p0_ss_app_st_rxreq_tkeep       ),   
-.p0_ss_app_st_rxreq_tlast       (p0_ss_app_st_rxreq_tlast       ),   
-.p0_ss_app_st_rxreq_tuser_vendor(p0_ss_app_st_rxreq_tuser_vendor),   
-.p0_app_ss_st_txreq_tvalid      (p0_app_ss_st_txreq_tvalid      ),  
-.p0_ss_app_st_txreq_tready      (p0_ss_app_st_txreq_tready      ),    
-.p0_app_ss_st_txreq_tdata       (p0_app_ss_st_txreq_tdata       ), 
-.p0_app_ss_st_txreq_tlast       (p0_app_ss_st_txreq_tlast       ),      
-.p0_ss_app_st_flrrcvd_tvalid    (p0_ss_app_st_flrrcvd_tvalid    ),
-.p0_ss_app_st_flrrcvd_tdata     (p0_ss_app_st_flrrcvd_tdata     ),
-.p0_app_ss_st_flrcmpl_tvalid    (p0_app_ss_st_flrcmpl_tvalid    ),
-.p0_app_ss_st_flrcmpl_tdata     (p0_app_ss_st_flrcmpl_tdata     ),
-.p0_ss_app_st_ctrlshadow_tvalid (p0_ss_app_st_ctrlshadow_tvalid ),
-.p0_ss_app_st_ctrlshadow_tdata  (p0_ss_app_st_ctrlshadow_tdata  ),
+.p0_initiate_warmrst_req        (initiate_warmrst_req[0]        ),
+.p0_initiate_rst_req_rdy        (initiate_warmrst_req[0]        ),          
+.p0_ss_app_st_rx_tvalid         (ss_app_st_rx_tvalid[0]         ),   
+.p0_app_ss_st_rx_tready         (app_ss_st_rx_tready[0]         ),   
+.p0_ss_app_st_rx_tdata          (ss_app_st_rx_tdata[0]          ), 
+.p0_ss_app_st_rx_tkeep          (ss_app_st_rx_tkeep[0]          ),
+.p0_ss_app_st_rx_tlast          (ss_app_st_rx_tlast[0]          ),
+.p0_ss_app_st_rx_tuser          (ss_app_st_rx_tuser[0]          ),
+.p0_ss_app_st_rx_tuser_vendor   (ss_app_st_rx_tuser_vendor[0]   ),
+.p0_app_ss_st_tx_tvalid         (app_ss_st_tx_tvalid[0]         ),
+.p0_ss_app_st_tx_tready         (ss_app_st_tx_tready[0]         ),
+.p0_app_ss_st_tx_tdata          (app_ss_st_tx_tdata[0]          ),
+.p0_app_ss_st_tx_tkeep          (app_ss_st_tx_tkeep[0]          ),
+.p0_app_ss_st_tx_tlast          (app_ss_st_tx_tlast[0]          ),
+.p0_app_ss_st_tx_tuser          (app_ss_st_tx_tuser[0]          ),
+.p0_app_ss_st_tx_tuser_vendor   (app_ss_st_tx_tuser_vendor[0]   ),
+.p0_ss_app_st_rxreq_tvalid      (ss_app_st_rxreq_tvalid[0]      ),   
+.p0_app_ss_st_rxreq_tready      (app_ss_st_rxreq_tready[0]      ),   
+.p0_ss_app_st_rxreq_tdata       (ss_app_st_rxreq_tdata[0]       ),   
+.p0_ss_app_st_rxreq_tkeep       (ss_app_st_rxreq_tkeep[0]       ),   
+.p0_ss_app_st_rxreq_tlast       (ss_app_st_rxreq_tlast[0]       ),   
+.p0_ss_app_st_rxreq_tuser_vendor(ss_app_st_rxreq_tuser_vendor[0]),   
+.p0_app_ss_st_txreq_tvalid      (axi_st_txreq_if[0].tvalid      ),  
+.p0_ss_app_st_txreq_tready      (axi_st_txreq_if[0].tready      ),    
+.p0_app_ss_st_txreq_tdata       (axi_st_txreq_if[0].tdata[255:0]), 
+.p0_app_ss_st_txreq_tlast       (axi_st_txreq_if[0].tlast       ),      
+.p0_ss_app_st_flrrcvd_tvalid    (ss_app_st_flrrcvd_tvalid[0]    ),
+.p0_ss_app_st_flrrcvd_tdata     (ss_app_st_flrrcvd_tdata[0]     ),
+.p0_app_ss_st_flrcmpl_tvalid    (app_ss_st_flrcmpl_tvalid[0]    ),
+.p0_app_ss_st_flrcmpl_tdata     (app_ss_st_flrcmpl_tdata[0]     ),
+.p0_ss_app_st_ctrlshadow_tvalid (ss_app_st_ctrlshadow_tvalid[0] ),
+.p0_ss_app_st_ctrlshadow_tdata  (ss_app_st_ctrlshadow_tdata[0]  ),
 .p0_ss_app_st_txcrdt_tvalid     (                               ),
 .p0_ss_app_st_txcrdt_tdata      (                               ),
-.p0_ss_app_st_cplto_tvalid      (p0_ss_app_st_cplto_tvalid      ),    
-.p0_ss_app_st_cplto_tdata       (p0_ss_app_st_cplto_tdata       ),
-.p0_app_ss_lite_csr_awvalid     (p0_app_ss_lite_csr_awvalid     ),
-.p0_ss_app_lite_csr_awready     (p0_ss_app_lite_csr_awready     ),
-.p0_app_ss_lite_csr_awaddr      (p0_app_ss_lite_csr_awaddr      ),
-.p0_app_ss_lite_csr_wvalid      (p0_app_ss_lite_csr_wvalid      ),
-.p0_ss_app_lite_csr_wready      (p0_ss_app_lite_csr_wready      ),
-.p0_app_ss_lite_csr_wdata       (p0_app_ss_lite_csr_wdata       ),
-.p0_app_ss_lite_csr_wstrb       (p0_app_ss_lite_csr_wstrb       ),
-.p0_ss_app_lite_csr_bvalid      (p0_ss_app_lite_csr_bvalid      ),
-.p0_app_ss_lite_csr_bready      (p0_app_ss_lite_csr_bready      ),
-.p0_ss_app_lite_csr_bresp       (p0_ss_app_lite_csr_bresp       ),
-.p0_app_ss_lite_csr_arvalid     (p0_app_ss_lite_csr_arvalid     ),
-.p0_ss_app_lite_csr_arready     (p0_ss_app_lite_csr_arready     ),
-.p0_app_ss_lite_csr_araddr      (p0_app_ss_lite_csr_araddr      ),
-.p0_ss_app_lite_csr_rvalid      (p0_ss_app_lite_csr_rvalid      ),
-.p0_app_ss_lite_csr_rready      (p0_app_ss_lite_csr_rready      ),
-.p0_ss_app_lite_csr_rdata       (p0_ss_app_lite_csr_rdata       ),
-.p0_ss_app_lite_csr_rresp       (p0_ss_app_lite_csr_rresp       ),
-.p0_ss_app_dlup                 (p0_ss_app_dlup                 ),
+.p0_ss_app_st_cplto_tvalid      (ss_app_st_cplto_tvalid[0]      ),    
+.p0_ss_app_st_cplto_tdata       (ss_app_st_cplto_tdata[0]       ),
+.p0_app_ss_lite_csr_awvalid     (app_ss_lite_csr_awvalid[0]     ),
+.p0_ss_app_lite_csr_awready     (ss_app_lite_csr_awready[0]     ),
+.p0_app_ss_lite_csr_awaddr      (app_ss_lite_csr_awaddr[0]      ),
+.p0_app_ss_lite_csr_wvalid      (app_ss_lite_csr_wvalid[0]      ),
+.p0_ss_app_lite_csr_wready      (ss_app_lite_csr_wready[0]      ),
+.p0_app_ss_lite_csr_wdata       (app_ss_lite_csr_wdata[0]       ),
+.p0_app_ss_lite_csr_wstrb       (app_ss_lite_csr_wstrb[0]       ),
+.p0_ss_app_lite_csr_bvalid      (ss_app_lite_csr_bvalid[0]      ),
+.p0_app_ss_lite_csr_bready      (app_ss_lite_csr_bready[0]      ),
+.p0_ss_app_lite_csr_bresp       (ss_app_lite_csr_bresp[0]       ),
+.p0_app_ss_lite_csr_arvalid     (app_ss_lite_csr_arvalid[0]     ),
+.p0_ss_app_lite_csr_arready     (ss_app_lite_csr_arready[0]     ),
+.p0_app_ss_lite_csr_araddr      (app_ss_lite_csr_araddr[0]      ),
+.p0_ss_app_lite_csr_rvalid      (ss_app_lite_csr_rvalid[0]      ),
+.p0_app_ss_lite_csr_rready      (app_ss_lite_csr_rready[0]      ),
+.p0_ss_app_lite_csr_rdata       (ss_app_lite_csr_rdata[0]       ),
+.p0_ss_app_lite_csr_rresp       (ss_app_lite_csr_rresp[0]       ),
+.p0_ss_app_dlup                 (ss_app_dlup[0]                 ),
 
 `ifdef OFS_FIM_IP_CFG_PCIE_SS_GEN5_2X8
 // Hip doesn't support Gen5x8 config, hence Gen5_2x8 is used.
 // Second PCIe port is tied off and not used in OFS example
+.p1_reset_status_n              (reset_status_n[1]              ),
 .p1_axi_st_clk                  (fim_clk                        ),
 .p1_axi_lite_clk                (csr_clk                        ),  
-.p1_axi_st_areset_n             (fim_rst_n                      ),       
-.p1_axi_lite_areset_n           (csr_rst_n                      ),        
-.p1_subsystem_cold_rst_n        (p0_subsystem_cold_rst_n        ),
-.p1_subsystem_warm_rst_n        (p0_subsystem_warm_rst_n        ),
-.p1_subsystem_cold_rst_ack_n    (                               ),
-.p1_subsystem_warm_rst_ack_n    (                               ),
+.p1_axi_st_areset_n             (fim_rst_n[1]                   ),       
+.p1_axi_lite_areset_n           (csr_rst_n[1]                   ),        
+.p1_subsystem_cold_rst_n        (subsystem_cold_rst_n[1]     ),
+.p1_subsystem_warm_rst_n        (subsystem_warm_rst_n[1]     ),
+.p1_subsystem_cold_rst_ack_n    (subsystem_cold_rst_ack_n[1] ),
+.p1_subsystem_warm_rst_ack_n    (subsystem_warm_rst_ack_n[1] ),
 .p1_subsystem_rst_req           ('0                             ),
 .p1_subsystem_rst_rdy           (                               ),      
-.p1_initiate_warmrst_req        (p1_initiate_warmrst_req        ),
-.p1_initiate_rst_req_rdy        (p1_initiate_warmrst_req        ),          
-.p1_ss_app_st_rx_tvalid         (                               ),   
-.p1_app_ss_st_rx_tready         (1'b1                           ),   
-.p1_ss_app_st_rx_tdata          (                               ), 
-.p1_ss_app_st_rx_tkeep          (                               ),
-.p1_ss_app_st_rx_tlast          (                               ),
-.p1_ss_app_st_rx_tuser          (                               ),
-.p1_ss_app_st_rx_tuser_vendor   (                               ),
-.p1_app_ss_st_tx_tvalid         ('0                             ),
-.p1_ss_app_st_tx_tready         (                               ),
-.p1_app_ss_st_tx_tdata          ('0                             ),
-.p1_app_ss_st_tx_tkeep          ('0                             ),
-.p1_app_ss_st_tx_tlast          ('0                             ),
-.p1_app_ss_st_tx_tuser          ('0                             ),
-.p1_app_ss_st_tx_tuser_vendor   ('0                             ),
-.p1_ss_app_st_rxreq_tvalid      (                               ),
-.p1_app_ss_st_rxreq_tready      (1'b1                           ),
-.p1_ss_app_st_rxreq_tdata       (                               ),
-.p1_ss_app_st_rxreq_tkeep       (                               ),
-.p1_ss_app_st_rxreq_tlast       (                               ),
-.p1_ss_app_st_rxreq_tuser_vendor(                               ),
-.p1_app_ss_st_txreq_tvalid      ('0                             ),  
-.p1_ss_app_st_txreq_tready      (                               ),    
-.p1_app_ss_st_txreq_tdata       ('0                             ), 
-.p1_app_ss_st_txreq_tlast       ('0                             ),      
-.p1_ss_app_st_flrrcvd_tvalid    (                               ),
-.p1_ss_app_st_flrrcvd_tdata     (                               ),
-.p1_app_ss_st_flrcmpl_tvalid    ('0                             ),
-.p1_app_ss_st_flrcmpl_tdata     ('0                             ),
+.p1_initiate_warmrst_req        (initiate_warmrst_req[1]        ),
+.p1_initiate_rst_req_rdy        (initiate_warmrst_req[1]        ),          
+.p1_ss_app_st_rx_tvalid         (ss_app_st_rx_tvalid[1]         ),   
+.p1_app_ss_st_rx_tready         (app_ss_st_rx_tready[1]         ),   
+.p1_ss_app_st_rx_tdata          (ss_app_st_rx_tdata[1]          ), 
+.p1_ss_app_st_rx_tkeep          (ss_app_st_rx_tkeep[1]          ),
+.p1_ss_app_st_rx_tlast          (ss_app_st_rx_tlast[1]          ),
+.p1_ss_app_st_rx_tuser          (ss_app_st_rx_tuser[1]          ),
+.p1_ss_app_st_rx_tuser_vendor   (ss_app_st_rx_tuser_vendor[1]   ),
+.p1_app_ss_st_tx_tvalid         (app_ss_st_tx_tvalid[1]         ),
+.p1_ss_app_st_tx_tready         (ss_app_st_tx_tready[1]         ),
+.p1_app_ss_st_tx_tdata          (app_ss_st_tx_tdata[1]          ),
+.p1_app_ss_st_tx_tkeep          (app_ss_st_tx_tkeep[1]          ),
+.p1_app_ss_st_tx_tlast          (app_ss_st_tx_tlast[1]          ),
+.p1_app_ss_st_tx_tuser          (app_ss_st_tx_tuser[1]          ),
+.p1_app_ss_st_tx_tuser_vendor   (app_ss_st_tx_tuser_vendor[1]   ),
+.p1_ss_app_st_rxreq_tvalid      (ss_app_st_rxreq_tvalid[1]      ),
+.p1_app_ss_st_rxreq_tready      (app_ss_st_rxreq_tready[1]      ),
+.p1_ss_app_st_rxreq_tdata       (ss_app_st_rxreq_tdata[1]       ),
+.p1_ss_app_st_rxreq_tkeep       (ss_app_st_rxreq_tkeep[1]       ),
+.p1_ss_app_st_rxreq_tlast       (ss_app_st_rxreq_tlast[1]       ),
+.p1_ss_app_st_rxreq_tuser_vendor(ss_app_st_rxreq_tuser_vendor[1]),
+.p1_app_ss_st_txreq_tvalid      (axi_st_txreq_if[1].tvalid      ),  
+.p1_ss_app_st_txreq_tready      (axi_st_txreq_if[1].tready      ),    
+.p1_app_ss_st_txreq_tdata       (axi_st_txreq_if[1].tdata[255:0]), 
+.p1_app_ss_st_txreq_tlast       (axi_st_txreq_if[1].tlast       ),      
+.p1_ss_app_st_flrrcvd_tvalid    (ss_app_st_flrrcvd_tvalid[1]    ),
+.p1_ss_app_st_flrrcvd_tdata     (ss_app_st_flrrcvd_tdata[1]     ),
+.p1_app_ss_st_flrcmpl_tvalid    (app_ss_st_flrcmpl_tvalid[1]    ),
+.p1_app_ss_st_flrcmpl_tdata     (app_ss_st_flrcmpl_tdata[1]  ),
+.p1_ss_app_st_ctrlshadow_tvalid (ss_app_st_ctrlshadow_tvalid[1] ),
+.p1_ss_app_st_ctrlshadow_tdata  (ss_app_st_ctrlshadow_tdata[1]  ),
 .p1_ss_app_st_txcrdt_tvalid     (                               ),
 .p1_ss_app_st_txcrdt_tdata      (                               ),
-//1p0_ss_app_st_cplto_tvalid      (p0_ss_app_st_cplto_tvalid      ),    
-//1p0_ss_app_st_cplto_tdata       (p0_ss_app_st_cplto_tdata       ),
-.p1_app_ss_lite_csr_awvalid     ('0                             ),
-.p1_ss_app_lite_csr_awready     (                               ),
-.p1_app_ss_lite_csr_awaddr      ('0                             ),
-.p1_app_ss_lite_csr_wvalid      ('0                             ),
-.p1_ss_app_lite_csr_wready      (                               ),
-.p1_app_ss_lite_csr_wdata       ('0                             ),
-.p1_app_ss_lite_csr_wstrb       ('0                             ),
-.p1_ss_app_lite_csr_bvalid      (                               ),
-.p1_app_ss_lite_csr_bready      ('0                             ),
-.p1_ss_app_lite_csr_bresp       (                               ),
-.p1_app_ss_lite_csr_arvalid     ('0                             ),
-.p1_ss_app_lite_csr_arready     (                               ),
-.p1_app_ss_lite_csr_araddr      ('0                             ),
-.p1_ss_app_lite_csr_rvalid      (                               ),
-.p1_app_ss_lite_csr_rready      ('0                             ),
-.p1_ss_app_lite_csr_rdata       (                               ),
-.p1_ss_app_lite_csr_rresp       (                               ),
-.p1_ss_app_dlup                 (                               ),
+.p1_ss_app_st_cplto_tvalid      (ss_app_st_cplto_tvalid[1]      ),    
+.p1_ss_app_st_cplto_tdata       (ss_app_st_cplto_tdata[1]       ),
+.p1_app_ss_lite_csr_awvalid     (app_ss_lite_csr_awvalid[1]     ),
+.p1_ss_app_lite_csr_awready     (ss_app_lite_csr_awready[1]     ),
+.p1_app_ss_lite_csr_awaddr      (app_ss_lite_csr_awaddr[1]      ),
+.p1_app_ss_lite_csr_wvalid      (app_ss_lite_csr_wvalid[1]      ),
+.p1_ss_app_lite_csr_wready      (ss_app_lite_csr_wready[1]      ),
+.p1_app_ss_lite_csr_wdata       (app_ss_lite_csr_wdata[1]       ),
+.p1_app_ss_lite_csr_wstrb       (app_ss_lite_csr_wstrb[1]       ),
+.p1_ss_app_lite_csr_bvalid      (ss_app_lite_csr_bvalid[1]      ),
+.p1_app_ss_lite_csr_bready      (app_ss_lite_csr_bready[1]      ),
+.p1_ss_app_lite_csr_bresp       (ss_app_lite_csr_bresp[1]       ),
+.p1_app_ss_lite_csr_arvalid     (app_ss_lite_csr_arvalid[1]     ),
+.p1_ss_app_lite_csr_arready     (ss_app_lite_csr_arready[1]     ),
+.p1_app_ss_lite_csr_araddr      (app_ss_lite_csr_araddr[1]      ),
+.p1_ss_app_lite_csr_rvalid      (ss_app_lite_csr_rvalid[1]      ),
+.p1_app_ss_lite_csr_rready      (app_ss_lite_csr_rready[1]      ),
+.p1_ss_app_lite_csr_rdata       (ss_app_lite_csr_rdata[1]       ),
+.p1_ss_app_lite_csr_rresp       (ss_app_lite_csr_rresp[1]       ),
+.p1_ss_app_dlup                 (ss_app_dlup[1]                 ),
 `endif
 
 .tx_n_out0                      (pin_pcie_tx_n[0]               ),      

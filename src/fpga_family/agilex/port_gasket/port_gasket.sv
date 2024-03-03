@@ -11,6 +11,7 @@ import ofs_fim_if_pkg::*;
 import ofs_fim_eth_if_pkg::*;
 
 module  port_gasket #(
+   parameter PG_NUM_LINKS      = 1,
    parameter PG_NUM_PORTS      = 1,
    parameter NUM_PF       = top_cfg_pkg::FIM_NUM_PF,
    parameter NUM_VF       = top_cfg_pkg::FIM_NUM_VF,
@@ -42,9 +43,9 @@ module  port_gasket #(
    input                       rst_n_100,
    input                       rst_n_csr,
 
-   input  logic                pg_pf_flr_rst_n,
-   input  t_axis_pcie_flr      flr_req,
-   output t_axis_pcie_flr      flr_rsp,
+   input  logic                pg_pf_flr_rst_n[PG_NUM_LINKS-1:0],
+   input  t_axis_pcie_flr      flr_req[PG_NUM_LINKS-1:0],
+   output t_axis_pcie_flr      flr_rsp[PG_NUM_LINKS-1:0],
 
    input  logic                i_sel_mmio_rsp,
    input  logic                i_read_flush_done,
@@ -52,10 +53,10 @@ module  port_gasket #(
    output logic                o_afu_softreset,
    output logic                o_pr_parity_error,
    
-   pcie_ss_axis_if.source      axi_tx_a_if,
-   pcie_ss_axis_if.sink        axi_rx_a_if,
-   pcie_ss_axis_if.source      axi_tx_b_if,
-   pcie_ss_axis_if.sink        axi_rx_b_if,
+   pcie_ss_axis_if.source      axi_tx_a_if[PG_NUM_LINKS-1:0],
+   pcie_ss_axis_if.sink        axi_rx_a_if[PG_NUM_LINKS-1:0],
+   pcie_ss_axis_if.source      axi_tx_b_if[PG_NUM_LINKS-1:0],
+   pcie_ss_axis_if.sink        axi_rx_b_if[PG_NUM_LINKS-1:0],
 
 `ifdef INCLUDE_DDR4
    ofs_fim_emif_axi_mm_if.user afu_mem_if  [NUM_MEM_CH-1:0],
@@ -107,29 +108,31 @@ ofs_fim_axi_lite_if                 m_remote_stp_csr_if();
 ofs_jtag_if                         stp_jtag_if();
     
 
-   // FLR to reset vector 
-   logic [PG_NUM_PORTS-1:0] 	    func_pf_rst_n;
-   logic [PG_NUM_PORTS-1:0] 	    func_vf_rst_n;
-   
+// FLR to reset vector 
+logic [PG_NUM_PORTS-1:0] 	    func_vf_rst_n[PG_NUM_LINKS-1:0];
+logic [NUM_PF-1:0][NUM_VF-1:0]      vf_flr_rst_n[PG_NUM_LINKS-1:0];
 
-logic [NUM_PF-1:0][NUM_VF-1:0]  vf_flr_rst_n;
+generate
+   for (genvar link = 0; link < PG_NUM_LINKS; link = link + 1) begin : flr
+      flr_rst_mgr #(
+         .NUM_PF     (NUM_PF),
+         .NUM_VF     (NUM_VF),
+         .MAX_NUM_VF (MAX_NUM_VF)
+      ) flr_rst_mgr (
+         .clk_sys      (clk),             // Global clock
+         .rst_n_sys    (rst_n),
 
- flr_rst_mgr #(
-    .NUM_PF     (NUM_PF),
-    .NUM_VF     (NUM_VF),
-    .MAX_NUM_VF (MAX_NUM_VF)
- ) flr_rst_mgr (
-    .clk_sys      (clk),             // Global clock
-    .rst_n_sys    (rst_n),
+         .clk_csr      (clk_csr),         // Clock for pcie_flr_req/rsp
+         .rst_n_csr    (rst_n_csr),
 
-    .clk_csr      (clk_csr),         // Clock for pcie_flr_req/rsp
-    .rst_n_csr    (rst_n_csr),
+         .pcie_flr_req (flr_req[link]),
+         .pcie_flr_rsp (flr_rsp[link]),
 
-    .pcie_flr_req (flr_req),
-    .pcie_flr_rsp (flr_rsp),
+         .vf_flr_rst_n (vf_flr_rst_n[link])
+      );
+   end
+endgenerate
 
-    .vf_flr_rst_n (vf_flr_rst_n)
- );
 
 //
 // Macros for mapping port defintions to PF/VF resets. We use macros instead
@@ -138,31 +141,38 @@ logic [NUM_PF-1:0][NUM_VF-1:0]  vf_flr_rst_n;
 
 // Get the VF function level reset if VF is active for the function.
 // If VF is not active, return a constant: not in reset.
-`define GET_FUNC_VF_RST_N(PF, VF, VF_ACTIVE) ((VF_ACTIVE != 0) ? vf_flr_rst_n[PF][VF] : 1'b1)
+`define GET_FUNC_VF_RST_N(LINK, PF, VF, VF_ACTIVE) ((VF_ACTIVE != 0) ? vf_flr_rst_n[LINK][PF][VF] : 1'b1)
 
-logic [PG_NUM_PORTS-1:0] port_rst_n = {PG_NUM_PORTS{1'b0}};
+logic [PG_NUM_PORTS-1:0] port_rst_n[PG_NUM_LINKS-1:0] = '{PG_NUM_LINKS{'0}};
+
 // ----------------------------------------------------------------------------------------------------
 //  PCIe port_rst_n generation
 // ----------------------------------------------------------------------------------------------------
 
 genvar c;
 generate
-   for (c = 0; c < PG_NUM_PORTS; c = c + 1) begin : pg_flr_port_map
-      assign func_vf_rst_n[c] = `GET_FUNC_VF_RST_N(PORT_PF_VF_INFO[c].pf_num,
-                                                   PORT_PF_VF_INFO[c].vf_num,
-                                                   PORT_PF_VF_INFO[c].vf_active);
+   for (genvar link = 0; link < PG_NUM_LINKS; link = link + 1) begin : vf_link
+      for (genvar c = 0; c < PG_NUM_PORTS; c = c + 1) begin : pg_flr_port_map
+         assign func_vf_rst_n[link][c] = `GET_FUNC_VF_RST_N(link,
+                                                            PORT_PF_VF_INFO[c].pf_num,
+                                                            PORT_PF_VF_INFO[c].vf_num,
+                                                            PORT_PF_VF_INFO[c].vf_active);
 
-      // Reset generation for each PCIe VF port in PR slot
-      // Reset sources
-      // - afu_softreset
-      // --- PCIe hip
-      // --- Reset from PR FSM
-      // --- softreset from Port CSR
-      // - PF Flr containing the VFs in PR slot
-      // - VF Flr
-      // - PCIe system reset
-      always @(posedge clk) port_rst_n[c] <= ~o_afu_softreset && pg_pf_flr_rst_n && func_vf_rst_n[c] && rst_n;
-   end //for
+         // Reset generation for each PCIe VF port in PR slot
+         // Reset sources
+         // - afu_softreset
+         // --- PCIe hip
+         // --- Reset from PR FSM
+         // --- softreset from Port CSR
+         // - PF Flr containing the VFs in PR slot
+         // - VF Flr
+         // - PCIe system reset
+         always @(posedge clk) begin
+            port_rst_n[link][c] <= ~o_afu_softreset && pg_pf_flr_rst_n[link] &&
+                                   func_vf_rst_n[link][c] && rst_n;
+         end
+      end
+   end
 endgenerate
 
 
@@ -170,6 +180,7 @@ endgenerate
 //  PR Slot Inst
 // ----------------------------------------------------------------------------------------------------
 pr_slot #(
+   .PG_NUM_LINKS          (PG_NUM_LINKS),
    .PG_NUM_PORTS          (PG_NUM_PORTS),
    .PORT_PF_VF_INFO       (PORT_PF_VF_INFO),
    .EMIF                  (EMIF),
@@ -333,7 +344,7 @@ integer i;
 always_comb begin
    pcie_p2c_sideband                   = '0;
    for ( i = 0 ; i < PG_NUM_PORTS ; i = i + 1'b1 )
-      if ( !func_vf_rst_n[i] ) begin
+      if ( !func_vf_rst_n[0][i] ) begin
          pcie_p2c_sideband.flr_rcvd_vf_num   = i + 1'b1;    // [0] = VF1, [1] = VF2, ...
          pcie_p2c_sideband.flr_rcvd_vf       = 1'b1;
       end

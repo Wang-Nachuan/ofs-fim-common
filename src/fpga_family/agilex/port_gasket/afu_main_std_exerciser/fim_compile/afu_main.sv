@@ -1,20 +1,10 @@
-// Copyright 2020 Intel Corporation
+// Copyright 2020-2024 Intel Corporation
 // SPDX-License-Identifier: MIT
 
 // Description
-//-----------------------------------------------------------------------------
-//  Instantiates HE-MEM, HE-HSSI and HE-MEM-TG in FIM base compile
-//               HE-LPBK, HE-HSSI and HE-MEM-TG in-tree PR compile
-// -----------------------------------------------------------------------------
-//
-// This simple AFU example connects test exercisers directly to the PCIe VF
-// ports available in PR slot. This file is used in both Base/PR compile and can be 
-// used as en example to bring up PR flow in a new platform. One of 
-// exerciser is replaced using 'PR_COMPILE' during in-tree gbs compilation. This gbs
-// can be used to bring up PR in a new platform. 
-// A new AFU could be constructed by starting with this afu_main()
-// and replacing the body with RTL that instantiates the desired accelerator.
-//
+// Map the multiplexed ports coming from the FIM into demultiplexed PF/VF
+// ports. Then pass an array of independent ports to port_afu_instances().
+
 
 // Set this macro to disable this shared afu_main() and provide an AFU-specific
 // version.
@@ -24,6 +14,7 @@
 
 module afu_main 
 #(
+   parameter PG_NUM_LINKS    = 1,
    parameter PG_NUM_PORTS    = 1,
    // PF/VF to which each port is mapped
    parameter pcie_ss_hdr_pkg::ReqHdr_pf_vf_info_t[PG_NUM_PORTS-1:0] PORT_PF_VF_INFO =
@@ -34,8 +25,13 @@ module afu_main
 
    parameter int PG_NUM_RTABLE_ENTRIES = 3,
 
-   parameter pf_vf_mux_pkg::t_pfvf_rtable_entry[PG_NUM_RTABLE_ENTRIES-1:0] PG_PFVF_ROUTING_TABLE = {PG_NUM_RTABLE_ENTRIES{pf_vf_mux_pkg::t_pfvf_rtable_entry'(0)}}
+   parameter pf_vf_mux_pkg::t_pfvf_rtable_entry[PG_NUM_RTABLE_ENTRIES-1:0] PG_PFVF_ROUTING_TABLE = {PG_NUM_RTABLE_ENTRIES{pf_vf_mux_pkg::t_pfvf_rtable_entry'(0)}},
 
+   // When set, afu_main will pass the link number set in PORT_PF_VF_INFO on to
+   // port_afu_instances(). The parameter is used mainly by ASE, which does not
+   // have underlying support for multiple links. Most configurations should
+   // not set this parameter in the parent and leave it at the default.
+   parameter LINK_NUM_FROM_PORT_INFO = 0
 )(
    input  logic clk,
    input  logic clk_div2,
@@ -44,18 +40,18 @@ module afu_main
    input  logic uclk_usr_div2,
 
    input  logic rst_n,
-   input  logic [PG_NUM_PORTS-1:0] port_rst_n,
+   input  logic [PG_NUM_PORTS-1:0] port_rst_n[PG_NUM_LINKS-1:0],
    
    // PCIe A ports are the standard TLP channels. All host responses
    // arrive on the RX A port.
-   pcie_ss_axis_if.source        afu_axi_tx_a_if,
-   pcie_ss_axis_if.sink          afu_axi_rx_a_if,
+   pcie_ss_axis_if.source        afu_axi_tx_a_if[PG_NUM_LINKS-1:0],
+   pcie_ss_axis_if.sink          afu_axi_rx_a_if[PG_NUM_LINKS-1:0],
    // PCIe B ports are a second channel on which reads and interrupts
    // may be sent from the AFU. To improve throughput, reads on B may flow
    // around writes on A through PF/VF MUX trees until writes are committed
    // to the PCIe subsystem. AFUs may tie off the B port and send all
    // messages to A.
-   pcie_ss_axis_if.source        afu_axi_tx_b_if,
+   pcie_ss_axis_if.source        afu_axi_tx_b_if[PG_NUM_LINKS-1:0],
    // Write commits are signaled here on the RX B port, indicating the
    // point at which the A and B channels become ordered within the FIM.
    // Commits are signaled after tlast of a write on TX A, after arbitration
@@ -63,7 +59,7 @@ module afu_main
    // returning the tag value from the write request. AFUs that do not
    // need local write commits may ignore this port, but must set
    // tready to 1.
-   pcie_ss_axis_if.sink          afu_axi_rx_b_if,
+   pcie_ss_axis_if.sink          afu_axi_rx_b_if[PG_NUM_LINKS-1:0],
 
    `ifdef INCLUDE_DDR4
       // Local memory
@@ -81,34 +77,71 @@ module afu_main
    ofs_jtag_if.sink              remote_stp_jtag_if
 );
 
-// Index of each feature in the AXIS bus
-localparam AXIS_HEM_TG_PID = 2;
-localparam AXIS_HEH_PID    = 1;
-localparam AXIS_HEM_PID    = 0;
-
 //PCIe port pipelines
 localparam PL_DEPTH       = 1;
 localparam TDATA_WIDTH    = pcie_ss_axis_pkg::TDATA_WIDTH;
 localparam TUSER_WIDTH    = pcie_ss_axis_pkg::TUSER_WIDTH;
+localparam TOTAL_PORTS    = PG_NUM_LINKS * PG_NUM_PORTS;
 
-logic [PG_NUM_PORTS-1:0] port_rst_n_q1 = {PG_NUM_PORTS{1'b0}};
-logic [PG_NUM_PORTS-1:0] port_rst_n_q2 = {PG_NUM_PORTS{1'b0}};
+logic [TOTAL_PORTS-1:0] port_rst_n_q1 = {TOTAL_PORTS{1'b0}};
+logic [TOTAL_PORTS-1:0] port_rst_n_q2 = {TOTAL_PORTS{1'b0}};
 
-// 1 PCIe-ST Physical port containing all VF transactions to PR region
-(* noprune *) pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_tx_a_if_t1 (.clk(clk), .rst_n(rst_n));
-(* noprune *) pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_rx_a_if_t1 (.clk(clk), .rst_n(rst_n));
-(* noprune *) pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_tx_b_if_t1 (.clk(clk), .rst_n(rst_n));
-(* noprune *) pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_rx_b_if_t1 (.clk(clk), .rst_n(rst_n));
-// Array of PCIe-ST ports with VF(n) from PG_MUX to AFU
-pcie_ss_axis_if  #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) mux_afu_axi_rx_a_if [PG_NUM_PORTS-1:0](clk, port_rst_n_q2);
-pcie_ss_axis_if  #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) mux_afu_axi_tx_a_if [PG_NUM_PORTS-1:0](clk, port_rst_n_q2);
-pcie_ss_axis_if  #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) mux_afu_axi_rx_b_if [PG_NUM_PORTS-1:0](clk, port_rst_n_q2);
-pcie_ss_axis_if  #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) mux_afu_axi_tx_b_if [PG_NUM_PORTS-1:0](clk, port_rst_n_q2);
+// Registered streams, still on the FIM side of the PF/VF MUX.
+(* noprune *) pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_tx_a_if_t1 [PG_NUM_LINKS-1:0](.clk(clk), .rst_n(rst_n));
+(* noprune *) pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_rx_a_if_t1 [PG_NUM_LINKS-1:0](.clk(clk), .rst_n(rst_n));
+(* noprune *) pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_tx_b_if_t1 [PG_NUM_LINKS-1:0](.clk(clk), .rst_n(rst_n));
+(* noprune *) pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_rx_b_if_t1 [PG_NUM_LINKS-1:0](.clk(clk), .rst_n(rst_n));
+
+// Demultiplexed streams on the AFU side of the PF/VF MUX.
+// The port_afu_instances() module receives a flattened array
+// of ports, merging links and ports into a single dimension.
+pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_rx_a_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q2));
+pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_tx_a_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q2));
+pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_rx_b_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q2));
+pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_tx_b_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q2));
+
+
+// Linear mapping function from link/port to the array that
+// will reach port_afu_instances().
+function automatic int linearLinkPort(int link, int port);
+   // The linearization function interleaves ports from all
+   // links. OFS requires that each incoming link have the same
+   // PF/VF settings so that there is an equal number of ports
+   // on each link.
+   //
+   // Concatenate ports, starting with link 0, then link 1...
+   return port + PG_NUM_PORTS * link;
+endfunction
+
+
+// Generate the full linearized vector describing the ports that will
+// be passed to port_afu_instances(). Ports from each link are concatenated.
+typedef pcie_ss_hdr_pkg::ReqHdr_pf_vf_info_t[TOTAL_PORTS-1:0] t_afu_prr_pf_vf_map;
+function automatic t_afu_prr_pf_vf_map gen_prr_pf_vf_map();
+   t_afu_prr_pf_vf_map map;
+   for (int link = 0; link < PG_NUM_LINKS; link = link + 1) begin
+      for (int p = 0; p < PG_NUM_PORTS; p = p + 1) begin
+         map[link * PG_NUM_PORTS + p].pf_num = PORT_PF_VF_INFO[p].pf_num;
+         map[link * PG_NUM_PORTS + p].vf_num = PORT_PF_VF_INFO[p].vf_num;
+         map[link * PG_NUM_PORTS + p].vf_active = PORT_PF_VF_INFO[p].vf_active;
+         if (LINK_NUM_FROM_PORT_INFO)
+            map[link * PG_NUM_PORTS + p].link_num = PORT_PF_VF_INFO[p].link_num;
+         else
+            map[link * PG_NUM_PORTS + p].link_num = link;
+      end
+   end
+   return map;
+endfunction // gen_prr_pf_vf_map
+
+localparam pcie_ss_hdr_pkg::ReqHdr_pf_vf_info_t[TOTAL_PORTS-1:0] TOTAL_PORT_PF_VF_INFO =
+   gen_prr_pf_vf_map();
+
 
 // ======================================================
 // Pipeline PCIe ports in PR region before consuming
 // ======================================================
 
+for (genvar j=0; j<PG_NUM_LINKS; j++) begin : PCIE_FREEZE_BRIDGE
    // All ports need to flopped and preserved
    // Port A - Primary Port for all Traffic
    ofs_fim_axis_pipeline #(
@@ -117,10 +150,10 @@ pcie_ss_axis_if  #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) mux_afu_axi_tx_
       .PRESERVE_REG(1),
       .PL_DEPTH    (PL_DEPTH)
    ) pcie_pipeline_rx_a (
-      .clk     (afu_axi_rx_a_if.clk),
-      .rst_n   (afu_axi_rx_a_if.rst_n),
-      .axis_s  (afu_axi_rx_a_if),         // <--- PCIe SS
-      .axis_m  (afu_axi_rx_a_if_t1)      // ---> AFU workload
+      .clk     (afu_axi_rx_a_if[j].clk),
+      .rst_n   (afu_axi_rx_a_if[j].rst_n),
+      .axis_s  (afu_axi_rx_a_if[j]),        // <--- PCIe SS
+      .axis_m  (afu_axi_rx_a_if_t1[j])      // ---> AFU workload
    );
 
    ofs_fim_axis_pipeline #(
@@ -129,10 +162,10 @@ pcie_ss_axis_if  #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) mux_afu_axi_tx_
       .PRESERVE_REG(1),
       .PL_DEPTH    (PL_DEPTH)
    ) pcie_pipeline_tx_a (
-      .clk     (afu_axi_tx_a_if.clk),
-      .rst_n   (afu_axi_tx_a_if.rst_n),
-      .axis_s  (afu_axi_tx_a_if_t1),      // <--- AFU workload
-      .axis_m  (afu_axi_tx_a_if)         // ---> PCIe SS
+      .clk     (afu_axi_tx_a_if[j].clk),
+      .rst_n   (afu_axi_tx_a_if[j].rst_n),
+      .axis_s  (afu_axi_tx_a_if_t1[j]),     // <--- AFU workload
+      .axis_m  (afu_axi_tx_a_if[j])         // ---> PCIe SS
    );
  
    // Port B - Secondary Port
@@ -142,10 +175,10 @@ pcie_ss_axis_if  #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) mux_afu_axi_tx_
       .PRESERVE_REG(1),
       .PL_DEPTH    (PL_DEPTH)
    ) pcie_pipeline_rx_b (
-      .clk     (afu_axi_rx_b_if.clk),
-      .rst_n   (afu_axi_rx_b_if.rst_n),
-      .axis_s  (afu_axi_rx_b_if),         // <--- PCIe SS
-      .axis_m  (afu_axi_rx_b_if_t1)      // ---> AFU workload
+      .clk     (afu_axi_rx_b_if[j].clk),
+      .rst_n   (afu_axi_rx_b_if[j].rst_n),
+      .axis_s  (afu_axi_rx_b_if[j]),        // <--- PCIe SS
+      .axis_m  (afu_axi_rx_b_if_t1[j])      // ---> AFU workload
    );
 
    ofs_fim_axis_pipeline #(
@@ -154,61 +187,82 @@ pcie_ss_axis_if  #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) mux_afu_axi_tx_
       .PRESERVE_REG(1),
       .PL_DEPTH    (PL_DEPTH)
    ) pcie_pipeline_tx_b (
-      .clk     (afu_axi_tx_b_if.clk),
-      .rst_n   (afu_axi_tx_b_if.rst_n),
-      .axis_s  (afu_axi_tx_b_if_t1),      // <--- AFU workload
-      .axis_m  (afu_axi_tx_b_if)         // ---> PCIe SS
+      .clk     (afu_axi_tx_b_if[j].clk),
+      .rst_n   (afu_axi_tx_b_if[j].rst_n),
+      .axis_s  (afu_axi_tx_b_if_t1[j]),     // <--- AFU workload
+      .axis_m  (afu_axi_tx_b_if[j])         // ---> PCIe SS
    );
+end // for: PCIE_FREEZE_BRIDGE
 
 
-   // Primary PF/VF MUX ("A" ports). Map individual TX A ports from
-   // AFUs down to a single, merged A channel. The RX port from host
-   // to FPGA is demultiplexed and individual connections are forwarded
-   // to AFUs.
-   pf_vf_mux_w_params #(
-      .MUX_NAME("PG_A"),
-      .NUM_PORT(PG_NUM_PORTS),
-      .NUM_RTABLE_ENTRIES(PG_NUM_RTABLE_ENTRIES),
-      .PFVF_ROUTING_TABLE(PG_PFVF_ROUTING_TABLE)
-   ) pg_pf_vf_mux_a (
-      .clk             (clk               ),
-      .rst_n           (rst_n             ),
-      .ho2mx_rx_port   (afu_axi_rx_a_if_t1),
-      .mx2ho_tx_port   (afu_axi_tx_a_if_t1),
-      .mx2fn_rx_port   (mux_afu_axi_rx_a_if),
-      .fn2mx_tx_port   (mux_afu_axi_tx_a_if),
-      .out_fifo_err    (),
-      .out_fifo_perr   ()
-   );
+generate
+   for (genvar link = 0; link < PG_NUM_LINKS; link = link + 1) begin: mux
+      // Build a separate PF/VF MUX for each PCIe link.
+      pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) rx_a_if [PG_NUM_PORTS-1:0](.clk(clk),.rst_n(port_rst_n[link]));
+      pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) tx_a_if [PG_NUM_PORTS-1:0](.clk(clk),.rst_n(port_rst_n[link]));
+      pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) rx_b_if [PG_NUM_PORTS-1:0](.clk(clk),.rst_n(port_rst_n[link]));
+      pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) tx_b_if [PG_NUM_PORTS-1:0](.clk(clk),.rst_n(port_rst_n[link]));
 
-   // Secondary PF/VF MUX ("B" ports). Only TX is implemented, since a
-   // single RX stream is sufficient. The RX input to the MUX is tied off.
-   // AFU B TX ports are multiplexed into a single TX B channel that is
-   // passed to the A/B MUX above.
-   pf_vf_mux_w_params  #(
-      .MUX_NAME ("PG_B"),
-      .NUM_PORT(PG_NUM_PORTS),
-      .NUM_RTABLE_ENTRIES(PG_NUM_RTABLE_ENTRIES),
-      .PFVF_ROUTING_TABLE(PG_PFVF_ROUTING_TABLE)
-   ) pg_pf_vf_mux_b (
-      .clk             (clk               ),
-      .rst_n           (rst_n             ),
-      .ho2mx_rx_port   (afu_axi_rx_b_if_t1),
-      .mx2ho_tx_port   (afu_axi_tx_b_if_t1),
-      .mx2fn_rx_port   (mux_afu_axi_rx_b_if),
-      .fn2mx_tx_port   (mux_afu_axi_tx_b_if),
-      .out_fifo_err    (),
-      .out_fifo_perr   ()
-   );
+       // Primary PF/VF MUX ("A" ports). Map individual TX A ports from
+       // AFUs down to a single, merged A channel. The RX port from host
+       // to FPGA is demultiplexed and individual connections are forwarded
+       // to AFUs.
+      pf_vf_mux_w_params #(
+         .MUX_NAME("PG_A"),
+         .NUM_PORT(PG_NUM_PORTS),
+         .NUM_RTABLE_ENTRIES(PG_NUM_RTABLE_ENTRIES),
+         .PFVF_ROUTING_TABLE(PG_PFVF_ROUTING_TABLE)
+      ) pg_pf_vf_mux_a (
+         .clk             (clk               ),
+         .rst_n           (rst_n             ),
+         .ho2mx_rx_port   (afu_axi_rx_a_if_t1[link]),
+         .mx2ho_tx_port   (afu_axi_tx_a_if_t1[link]),
+         .mx2fn_rx_port   (rx_a_if),
+         .fn2mx_tx_port   (tx_a_if),
+         .out_fifo_err    (),
+         .out_fifo_perr   ()
+         );
 
+      // Secondary PF/VF MUX ("B" ports). Only TX is implemented, since a
+      // single RX stream is sufficient. The RX input to the MUX is tied off.
+      // AFU B TX ports are multiplexed into a single TX B channel that is
+      // passed to the A/B MUX above.
+      pf_vf_mux_w_params #(
+         .MUX_NAME ("PG_B"),
+         .NUM_PORT(PG_NUM_PORTS),
+         .NUM_RTABLE_ENTRIES(PG_NUM_RTABLE_ENTRIES),
+         .PFVF_ROUTING_TABLE(PG_PFVF_ROUTING_TABLE)
+      ) pg_pf_vf_mux_b (
+         .clk             (clk               ),
+         .rst_n           (rst_n             ),
+         .ho2mx_rx_port   (afu_axi_rx_b_if_t1[link]),
+         .mx2ho_tx_port   (afu_axi_tx_b_if_t1[link]),
+         .mx2fn_rx_port   (rx_b_if),
+         .fn2mx_tx_port   (tx_b_if),
+         .out_fifo_err    (),
+         .out_fifo_perr   ()
+         );
+
+      // Map the AFU side of the current link's PF/VF MUX into the linearized
+      // port vector that will connect to port_afu_instances().
+      for (genvar p = 0; p < PG_NUM_PORTS; p = p + 1) begin: conn
+         localparam c = linearLinkPort(link, p);
+
+         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_tx_a (.clk, .rst_n(port_rst_n_q2[c]), .axis_s(port_tx_a_if[c]), .axis_m(tx_a_if[p]));
+         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_rx_a (.clk, .rst_n(port_rst_n_q2[c]), .axis_s(rx_a_if[p]), .axis_m(port_rx_a_if[c]));
+         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_tx_b (.clk, .rst_n(port_rst_n_q2[c]), .axis_s(port_tx_b_if[c]), .axis_m(tx_b_if[p]));
+         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_rx_b (.clk, .rst_n(port_rst_n_q2[c]), .axis_s(rx_b_if[p]), .axis_m(port_rx_b_if[c]));
+      end
+   end // block: mux
+endgenerate
 
 // ======================================================
 // Instantiate AFUs
 // ======================================================
 
 port_afu_instances #(
-   .PG_NUM_PORTS    (PG_NUM_PORTS),
-   .PORT_PF_VF_INFO (PORT_PF_VF_INFO),
+   .PG_NUM_PORTS    (TOTAL_PORTS),
+   .PORT_PF_VF_INFO (TOTAL_PORT_PF_VF_INFO),
    .NUM_MEM_CH      (NUM_MEM_CH),
    .MAX_ETH_CH      (MAX_ETH_CH)
 ) port_afu_instances (
@@ -231,23 +285,29 @@ port_afu_instances #(
    .ext_mem_if    (ext_mem_if),
 `endif
 
-   .afu_axi_rx_a_if (mux_afu_axi_rx_a_if),
-   .afu_axi_tx_a_if (mux_afu_axi_tx_a_if),
-   .afu_axi_rx_b_if (mux_afu_axi_rx_b_if),
-   .afu_axi_tx_b_if (mux_afu_axi_tx_b_if)
+   .afu_axi_rx_a_if (port_rx_a_if),
+   .afu_axi_tx_a_if (port_tx_a_if),
+   .afu_axi_rx_b_if (port_rx_b_if),
+   .afu_axi_tx_b_if (port_tx_b_if)
 );
+
 
 logic rst_n_q1;
 always_ff @(posedge clk) begin
    rst_n_q1        <= rst_n;
 end
 
-genvar c;
+// Map incoming port-level resets to the same order as the
+// flattend port vectors port_rx_a_if, etc.
 generate
-   for (c = 0; c < PG_NUM_PORTS; c = c + 1) begin: pcie_port_rst
-      always @(posedge clk) port_rst_n_q1[c] <= port_rst_n[c];
-      always @(posedge clk) port_rst_n_q2[c] <= port_rst_n_q1[c] && rst_n_q1;
-   end 
+   for (genvar link = 0; link < PG_NUM_LINKS; link = link + 1) begin: rst_link
+      for (genvar p = 0; p < PG_NUM_PORTS; p = p + 1) begin: rst_p
+         localparam c = linearLinkPort(link, p);
+
+         always @(posedge clk) port_rst_n_q1[c] <= port_rst_n[link][p];
+         always @(posedge clk) port_rst_n_q2[c] <= port_rst_n_q1[c] && rst_n_q1;
+      end
+   end
 endgenerate
 
 

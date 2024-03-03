@@ -12,6 +12,7 @@
 `ifndef OPAE_PLATFORM_GEN
 
 `include "ofs_plat_if.vh"
+`include "ofs_ip_cfg_db.vh"
 
 module ase_afu_main_emul
   #(
@@ -38,6 +39,19 @@ module ase_afu_main_emul
     //
     // ====================================================================
 
+    // ASE currently supports only one link, independent of the emulated
+    // platform. On multi-link platforms, ASE represents the full array
+    // of ports as independent VF numbers. VF numbering in ASE does not
+    // match VF numbering in Quartus builds.
+    localparam PG_NUM_LINKS = 1;
+
+`ifdef OFS_FIM_IP_CFG_PCIE_SS_NUM_LINKS
+    // Actual number of PCIe links on the platform
+    localparam PLATFORM_NUM_LINKS = `OFS_FIM_IP_CFG_PCIE_SS_NUM_LINKS;
+`else
+    localparam PLATFORM_NUM_LINKS = 1;
+`endif
+
     // Map the PF/VF association of AFU ports to the parameters that will be
     // passed to the port gasket.
     typedef pcie_ss_hdr_pkg::ReqHdr_pf_vf_info_t[PG_NUM_PORTS-1:0] t_afu_pf_vf_info;
@@ -49,7 +63,12 @@ module ase_afu_main_emul
             info[p].pf_num = 0;
             info[p].vf_num = p;
             info[p].vf_active = 1'b1;
-            info[p].link_num = 0;
+            // Despite ASE not supporting multiple links and requiring
+            // unique vf_nums for each port, map ports to the link numbers
+            // that would be used on the platform. This way, AFUs that
+            // walk the ports looking for link numbers will get the same
+            // result in ASE.
+            info[p].link_num = p / (PG_NUM_PORTS / PLATFORM_NUM_LINKS);
         end
 
         return info;
@@ -248,6 +267,25 @@ module ase_afu_main_emul
     //
     // ====================================================================
 
+    localparam TDATA_WIDTH = pcie_ss_axis_pkg::TDATA_WIDTH;
+    localparam TUSER_WIDTH = pcie_ss_axis_pkg::TUSER_WIDTH;
+
+    logic [PG_NUM_PORTS-1:0] port_rst_n[PG_NUM_LINKS-1:0];
+    pcie_ss_axis_if #(.DATA_W(TDATA_WIDTH), .USER_W(TUSER_WIDTH)) link_tx_a_if [PG_NUM_LINKS-1:0](.clk(pClk),.rst_n(~softReset));
+    pcie_ss_axis_if #(.DATA_W(TDATA_WIDTH), .USER_W(TUSER_WIDTH)) link_rx_a_if [PG_NUM_LINKS-1:0](.clk(pClk),.rst_n(~softReset));
+    pcie_ss_axis_if #(.DATA_W(TDATA_WIDTH), .USER_W(TUSER_WIDTH)) link_tx_b_if [PG_NUM_LINKS-1:0](.clk(pClk),.rst_n(~softReset));
+    pcie_ss_axis_if #(.DATA_W(TDATA_WIDTH), .USER_W(TUSER_WIDTH)) link_rx_b_if [PG_NUM_LINKS-1:0](.clk(pClk),.rst_n(~softReset));
+
+    for (genvar link = 0; link < PG_NUM_LINKS; link = link + 1) begin: rst_link
+        ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_tx_a (.clk(pClk), .rst_n(~softReset), .axis_s(link_tx_a_if[link]), .axis_m(afu_axi_tx_a_if));
+        ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_rx_a (.clk(pClk), .rst_n(~softReset), .axis_s(afu_axi_rx_a_if), .axis_m(link_rx_a_if[link]));
+        ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_tx_b (.clk(pClk), .rst_n(~softReset), .axis_s(link_tx_b_if[link]), .axis_m(afu_axi_tx_b_if));
+        ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_rx_b (.clk(pClk), .rst_n(~softReset), .axis_s(afu_axi_rx_b_if), .axis_m(link_rx_b_if[link]));
+        for (genvar p = 0; p < PG_NUM_PORTS; p = p + 1) begin: rst_p
+            assign port_rst_n[link][p] = ~softReset;
+        end
+    end
+
     afu_main #(
         .PG_NUM_PORTS(PG_NUM_PORTS),
         .PORT_PF_VF_INFO(PORT_PF_VF_INFO),
@@ -255,7 +293,8 @@ module ase_afu_main_emul
         .MAX_ETH_CH(NUM_ETH_CH),
 
         .PG_NUM_RTABLE_ENTRIES(PG_NUM_PORTS),
-        .PG_PFVF_ROUTING_TABLE(PG_PFVF_ROUTING_TABLE)
+        .PG_PFVF_ROUTING_TABLE(PG_PFVF_ROUTING_TABLE),
+        .LINK_NUM_FROM_PORT_INFO(1)
       ) afu_main (
         .clk(pClk),
         .clk_div2(pClkDiv2),
@@ -264,12 +303,12 @@ module ase_afu_main_emul
         .uclk_usr_div2(uClk_usrDiv2),
 
         .rst_n(~softReset),
-        .port_rst_n({PG_NUM_PORTS{~softReset}}),
+        .port_rst_n(port_rst_n),
 
-        .afu_axi_tx_a_if,
-        .afu_axi_rx_a_if,
-        .afu_axi_tx_b_if,
-        .afu_axi_rx_b_if,
+        .afu_axi_tx_a_if(link_tx_a_if),
+        .afu_axi_rx_a_if(link_rx_a_if),
+        .afu_axi_tx_b_if(link_tx_b_if),
+        .afu_axi_rx_b_if(link_rx_b_if),
 
         `ifdef INCLUDE_DDR4
             // Local memory
