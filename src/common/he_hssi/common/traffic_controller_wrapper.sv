@@ -12,10 +12,7 @@
 //-----------------------------------------------------------------------------
 import ofs_fim_eth_avst_if_pkg::*;
 `include "fpga_defines.vh"
-
-`ifdef DEVICE_FAMILY_IS_AGILEX
-   `include  "ofs_ip_cfg_hssi_ss.vh"
-`endif
+`include  "ofs_ip_cfg_db.vh"
 
 module traffic_controller_wrapper (
    input logic      csr_clk,

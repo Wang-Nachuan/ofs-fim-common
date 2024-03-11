@@ -12,9 +12,7 @@
 import ofs_fim_eth_if_pkg::*;
 `include "fpga_defines.vh"
 
-`ifdef DEVICE_FAMILY_IS_AGILEX
-   `include  "ofs_ip_cfg_hssi_ss.vh"
-`endif
+`include  "ofs_ip_cfg_db.vh"
 
 module he_hssi_top #(
    parameter PF_NUM=0,

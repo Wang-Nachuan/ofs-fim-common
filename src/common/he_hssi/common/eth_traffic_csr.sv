@@ -12,6 +12,7 @@
 //-----------------------------------------------------------------------------
 
 `include "fpga_defines.vh"
+`include "ofs_ip_cfg_db.vh"
 
 module eth_traffic_csr #(
    parameter AFU_CSR_ADDR_WIDTH = 16, // CSR address space width bytes-level
@@ -49,9 +50,6 @@ module eth_traffic_csr #(
 
 import ofs_csr_pkg::*;
 import eth_traffic_csr_pkg::*;
-`ifdef DEVICE_FAMILY_IS_AGILEX
-    `include "ofs_ip_cfg_hssi_ss.vh"
-`endif
 
 //----------------------------------------------------------------------------
 // Local parameters.

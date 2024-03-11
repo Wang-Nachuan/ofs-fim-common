@@ -27,12 +27,21 @@ localparam NUM_QSFP_PORTS_USED  = 2; // Number of QSFP cages on board used by ta
 `else
 localparam NUM_QSFP_PORTS_USED  = 1; // 1 QSFPDD cage used for 200G and 400G config   
 `endif
+
+`ifdef INCLUDE_HSSI
 localparam NUM_ETH_CHANNELS     = `OFS_FIM_IP_CFG_HSSI_SS_NUM_ETH_PORTS; // Number of ethernet ports used by target hssi configuration. For ex for 8x25G, 8 HSSI ports are active on HSSI IP 
+localparam NUM_LANES            = `OFS_FIM_IP_CFG_HSSI_SS_NUM_LANES;        // Number of XCVR Lanes/Port used by the configuration. For ex. for 100GCAUI-4, 4 lanes per HSSI port are used
+localparam ETH_PACKET_WIDTH     = `OFS_FIM_IP_CFG_HSSI_SS_ETH_PACKET_WIDTH;
+`else
+// No HSSI. Set defaults to avoid compilation errors.
+localparam NUM_ETH_CHANNELS     = 1;
+localparam NUM_LANES            = 1;
+localparam ETH_PACKET_WIDTH     = 64;
+`endif
+
 localparam NUM_QSFP_LANES       = 4;    // Lanes/QSFP cage
 localparam NUM_CVL_LANES        = 0;    // Number for Lanes for CVL
-localparam NUM_LANES            = `OFS_FIM_IP_CFG_HSSI_SS_NUM_LANES;        // Number of XCVR Lanes/Port used by the configuration. For ex. for 100GCAUI-4, 4 lanes per HSSI port are used
 localparam NUM_ETH_LANES        = NUM_ETH_CHANNELS*NUM_LANES; // Total XCVR lanes active = Number of ethernet ports active * number of lanes per port 
-localparam ETH_PACKET_WIDTH     = `OFS_FIM_IP_CFG_HSSI_SS_ETH_PACKET_WIDTH;
 
 localparam ETH_RX_ERROR_WIDTH = 6;
 localparam ETH_TX_ERROR_WIDTH = 1;
@@ -71,10 +80,13 @@ localparam ETH_TUSER_LAST_SEGMENT_WIDTH	=ETH_PACKET_WIDTH/64;
 // Port enums have been moved to $OFS_ROOTDIR/ipss/hssi/inc/ofs_fim_eth_plat_defines.svh
 // so that they can be accessed by UVM. The macro is INST_FULL_UVM_PORT_INDEX and is 
 // represented by the following expression:
-`INST_FULL_ENUM_PORT_INDEX
-localparam int ETH_PORT_EN_ARRAY[NUM_ETH_CHANNELS + 1] = { `ENUM_PORT_INDEX 
-                                                     PORT_MAX};
-
+`ifdef INCLUDE_HSSI
+  `INST_FULL_ENUM_PORT_INDEX
+  localparam int ETH_PORT_EN_ARRAY[NUM_ETH_CHANNELS + 1] = { `ENUM_PORT_INDEX 
+                                                             PORT_MAX};
+`else
+  localparam int ETH_PORT_EN_ARRAY[NUM_ETH_CHANNELS + 1] = '{ default: '0 };
+`endif
 
 //----------------HE-HSSI related---------
 typedef struct packed {

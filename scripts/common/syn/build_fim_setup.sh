@@ -187,7 +187,7 @@ done
 if [ ! -z ${ENA_PRE_COMPILE_SCRIPT} ]; then
     if [ "${ENA_PRE_COMPILE_SCRIPT}" == "1" ]; then
         echo "Running pre compile script: ${WORK_PRE_COMPILE_SCRIPT_SH_FILE}"
-        ${WORK_PRE_COMPILE_SCRIPT_SH_FILE}
+        source ${WORK_PRE_COMPILE_SCRIPT_SH_FILE}
         chk_exit_code "${WORK_PRE_COMPILE_SCRIPT_SH_FILE}"
     fi
 fi
