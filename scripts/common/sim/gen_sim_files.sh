@@ -205,7 +205,7 @@ if [ ! -z "${__NB_JOBID}" -a ! -z "${ARC_JOB_STORAGE}" ]; then
     qsys_gen_extra_args="--parallel=off"
 fi
 
-if ([ $TILE == "F-Tile" ] || [ $TILE_HIGHSPEED == "F-Tile" ]); then
+if [ "$TILE" == "F-Tile" -o "$TILE_HIGHSPEED" == "F-Tile" ]; then
     # Generate synthesis files for quartus elaboration during TLG
     qsys_gen_extra_args="$qsys_gen_extra_args --synthesis=VERILOG"
 fi
@@ -220,7 +220,7 @@ fi
 echo "**** Done generating HDL for $OFS_TARGET ****"
 
 # Quartus Tile logic generation (F-Tile specific flow)
-if ([ $TILE == "F-Tile" ] || [ $TILE_HIGHSPEED == "F-Tile" ]); then
+if [ "$TILE" == "F-Tile" -o "$TILE_HIGHSPEED" == "F-Tile" ]; then
     (cd "${PROJECT_DIR}"
      echo "**** Generating support logic files ****"
      quartus_tlg  ${Q_PROJECT} -c ${Q_REVISION}
