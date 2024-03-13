@@ -32,7 +32,7 @@ class PCIe(OFS):
         self.pcie_gen, self.pcie_instances = None, None
         self.pcie_lane_width = None
         self.PCIE_AVAILABLE_LANES = 16
-        self.pcie_instances_enabled = 2
+        self.pcie_instances_enabled = 1
 
         self.PCIE_SS_PARAM = None
         self.set_ip_params()

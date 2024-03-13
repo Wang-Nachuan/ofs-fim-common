@@ -223,6 +223,14 @@ fim_resync #(
 end //for (genvar j=0; j<PCIE_NUM_LINKS;..
 
 
+`ifdef OFS_FIM_IP_CFG_PCIE_SS_GEN5_2X8    
+`ifndef OFS_FIM_IP_CFG_PCIE_SS_EN_LINK_1
+// IP topology is Gen5_2x8 but link1 is tied off
+// Signals used in Tieoff
+wire p1_initiate_warmrst_req;
+`endif
+`endif
+
 //-------------------------------------
 // PCIe SS
 //-------------------------------------
@@ -441,9 +449,11 @@ pcie_ss pcie_ss(
 .p0_ss_app_lite_csr_rresp       (ss_app_lite_csr_rresp[0]       ),
 .p0_ss_app_dlup                 (ss_app_dlup[0]                 ),
 
-`ifdef OFS_FIM_IP_CFG_PCIE_SS_GEN5_2X8
-// Hip doesn't support Gen5x8 config, hence Gen5_2x8 is used.
-// Second PCIe port is tied off and not used in OFS example
+
+
+`ifdef OFS_FIM_IP_CFG_PCIE_SS_GEN5_2X8    
+`ifdef OFS_FIM_IP_CFG_PCIE_SS_EN_LINK_1
+// Gen5_2x8 IP topology and ports used in OFS reference design
 .p1_reset_status_n              (reset_status_n[1]              ),
 .p1_axi_st_clk                  (fim_clk                        ),
 .p1_axi_lite_clk                (csr_clk                        ),  
@@ -509,7 +519,75 @@ pcie_ss pcie_ss(
 .p1_ss_app_lite_csr_rdata       (ss_app_lite_csr_rdata[1]       ),
 .p1_ss_app_lite_csr_rresp       (ss_app_lite_csr_rresp[1]       ),
 .p1_ss_app_dlup                 (ss_app_dlup[1]                 ),
-`endif
+
+`else
+// Gen5_2x8 IP topology but second PCIe port is tied off 
+// and not used in OFS example
+.p1_axi_st_clk                  (fim_clk                        ),
+.p1_axi_lite_clk                (csr_clk                        ),  
+.p1_axi_st_areset_n             (fim_rst_n[0]                   ),       
+.p1_axi_lite_areset_n           (csr_rst_n[0]                   ),        
+.p1_subsystem_cold_rst_n        (subsystem_cold_rst_n[0]        ),
+.p1_subsystem_warm_rst_n        (subsystem_warm_rst_n[0]        ),
+.p1_subsystem_cold_rst_ack_n    (                               ),
+.p1_subsystem_warm_rst_ack_n    (                               ),
+.p1_subsystem_rst_req           ('0                             ),
+.p1_subsystem_rst_rdy           (                               ),      
+.p1_initiate_warmrst_req        (p1_initiate_warmrst_req        ),
+.p1_initiate_rst_req_rdy        (p1_initiate_warmrst_req        ),          
+.p1_ss_app_st_rx_tvalid         (                               ),   
+.p1_app_ss_st_rx_tready         (1'b1                           ),   
+.p1_ss_app_st_rx_tdata          (                               ), 
+.p1_ss_app_st_rx_tkeep          (                               ),
+.p1_ss_app_st_rx_tlast          (                               ),
+.p1_ss_app_st_rx_tuser          (                               ),
+.p1_ss_app_st_rx_tuser_vendor   (                               ),
+.p1_app_ss_st_tx_tvalid         ('0                             ),
+.p1_ss_app_st_tx_tready         (                               ),
+.p1_app_ss_st_tx_tdata          ('0                             ),
+.p1_app_ss_st_tx_tkeep          ('0                             ),
+.p1_app_ss_st_tx_tlast          ('0                             ),
+.p1_app_ss_st_tx_tuser          ('0                             ),
+.p1_app_ss_st_tx_tuser_vendor   ('0                             ),
+.p1_ss_app_st_rxreq_tvalid      (                               ),
+.p1_app_ss_st_rxreq_tready      (1'b1                           ),
+.p1_ss_app_st_rxreq_tdata       (                               ),
+.p1_ss_app_st_rxreq_tkeep       (                               ),
+.p1_ss_app_st_rxreq_tlast       (                               ),
+.p1_ss_app_st_rxreq_tuser_vendor(                               ),
+.p1_app_ss_st_txreq_tvalid      ('0                             ),  
+.p1_ss_app_st_txreq_tready      (                               ),    
+.p1_app_ss_st_txreq_tdata       ('0                             ), 
+.p1_app_ss_st_txreq_tlast       ('0                             ),      
+.p1_ss_app_st_flrrcvd_tvalid    (                               ),
+.p1_ss_app_st_flrrcvd_tdata     (                               ),
+.p1_app_ss_st_flrcmpl_tvalid    ('0                             ),
+.p1_app_ss_st_flrcmpl_tdata     ('0                             ),
+.p1_ss_app_st_txcrdt_tvalid     (                               ),
+.p1_ss_app_st_txcrdt_tdata      (                               ),
+//1p0_ss_app_st_cplto_tvalid      (p0_ss_app_st_cplto_tvalid      ),    
+//1p0_ss_app_st_cplto_tdata       (p0_ss_app_st_cplto_tdata       ),
+.p1_app_ss_lite_csr_awvalid     ('0                             ),
+.p1_ss_app_lite_csr_awready     (                               ),
+.p1_app_ss_lite_csr_awaddr      ('0                             ),
+.p1_app_ss_lite_csr_wvalid      ('0                             ),
+.p1_ss_app_lite_csr_wready      (                               ),
+.p1_app_ss_lite_csr_wdata       ('0                             ),
+.p1_app_ss_lite_csr_wstrb       ('0                             ),
+.p1_ss_app_lite_csr_bvalid      (                               ),
+.p1_app_ss_lite_csr_bready      ('0                             ),
+.p1_ss_app_lite_csr_bresp       (                               ),
+.p1_app_ss_lite_csr_arvalid     ('0                             ),
+.p1_ss_app_lite_csr_arready     (                               ),
+.p1_app_ss_lite_csr_araddr      ('0                             ),
+.p1_ss_app_lite_csr_rvalid      (                               ),
+.p1_app_ss_lite_csr_rready      ('0                             ),
+.p1_ss_app_lite_csr_rdata       (                               ),
+.p1_ss_app_lite_csr_rresp       (                               ),
+.p1_ss_app_dlup                 (                               ),
+`endif // `else
+`endif // `ifdef OFS_FIM_IP_CFG_PCIE_SS_GEN5_2X8
+
 
 .tx_n_out0                      (pin_pcie_tx_n[0]               ),      
 .tx_n_out1                      (pin_pcie_tx_n[1]               ),      

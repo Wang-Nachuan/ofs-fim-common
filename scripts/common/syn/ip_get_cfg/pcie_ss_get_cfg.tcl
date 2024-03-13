@@ -42,7 +42,8 @@ proc emit_ip_cfg {ofile_name ip_name} {
     set width 0
     foreach p [get_instance_parameters $inst] {
         if { [regexp {core([0-9]+)_pf0_pci_type0_device_id_hwtcl} $p key w] } {
-            if { [get_instance_parameter_value $inst "core${w}_pf0_pci_type0_device_id_hwtcl"] != 0 } {
+            set device_id [get_instance_parameter_value $inst "core${w}_pf0_pci_type0_device_id_hwtcl"]
+            if { $device_id != 0 } {
                 # Found an instance with a non-zero device ID
                 set width $w
                 send_message INFO "PCIe x${width} is active"
@@ -56,6 +57,7 @@ proc emit_ip_cfg {ofile_name ip_name} {
         exit 1
     }
 
+    set pcie_num_links 0
     set interfaces [get_interfaces]
 
     # Create an associative array of all the active core's parameters. It's easier
@@ -72,6 +74,14 @@ proc emit_ip_cfg {ofile_name ip_name} {
             if { [regsub -all {.*_+([0-9]+)X.*} $top_topology {\1} topology_num_links] == 0 } {
                 # Pattern match failed. Assume 1.
                 set topology_num_links 1
+            }
+        }
+
+        # Number of links used by OFS, check every links pf0 device id
+        if { [regexp {core([0-9]+)_pf0_pci_type0_device_id_hwtcl} $p key w] } {
+            if { [get_instance_parameter_value $inst "core${w}_pf0_pci_type0_device_id_hwtcl"] == $device_id } {
+                # increment pcie links used by OFS
+                incr pcie_num_links
             }
         }
 
@@ -104,13 +114,18 @@ proc emit_ip_cfg {ofile_name ip_name} {
         }
     }
 
+
     puts $of "`define OFS_FIM_IP_CFG_${ip_name}_IS_${tile_name_macro} 1"
     puts $of "`define OFS_FIM_IP_CFG_${ip_name}_TILE_NAME \"${tile_name}\""
     puts $of ""
 
     puts $of "// PCIe SS Topology"
     puts $of "`define OFS_FIM_IP_CFG_${ip_name}_${top_topology} 1"
-    puts $of "`define OFS_FIM_IP_CFG_${ip_name}_NUM_LINKS ${topology_num_links}"
+    puts $of "`define OFS_FIM_IP_CFG_${ip_name}_NUM_LINKS ${pcie_num_links}"
+    for {set idx 0} { $idx < $pcie_num_links } {incr idx} {
+        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_EN_LINK_${idx} 1"
+    }
+
     puts $of ""
 
     puts $of "// PCIe SS Interface"
