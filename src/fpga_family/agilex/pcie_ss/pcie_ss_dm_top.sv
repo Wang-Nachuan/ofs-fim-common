@@ -16,7 +16,7 @@ import ofs_fim_cfg_pkg::*;
 import ofs_fim_if_pkg::*;
 import pcie_ss_axis_pkg::*;
 
-module pcie_ss_top # (
+module pcie_ss_dm_top # (
    parameter PCIE_LANES = 16,
    parameter PCIE_NUM_LINKS = 1,
    parameter SOC_ATTACH = 0
@@ -223,12 +223,12 @@ fim_resync #(
 end //for (genvar j=0; j<PCIE_NUM_LINKS;..
 
 
-`ifdef OFS_FIM_IP_CFG_PCIE_SS_GEN5_2X8    
-`ifndef OFS_FIM_IP_CFG_PCIE_SS_EN_LINK_1
-// IP topology is Gen5_2x8 but link1 is tied off
-// Signals used in Tieoff
-wire p1_initiate_warmrst_req;
-`endif
+`ifdef OFS_FIM_IP_CFG_PCIE_SS_NUM_PHYS_LINKS_IS_2
+  `ifndef OFS_FIM_IP_CFG_PCIE_SS_EN_LINK_1
+    // IP topology has 2 links but link1 is tied off.
+    // Signals used in Tieoff
+    wire p1_initiate_warmrst_req;
+  `endif
 `endif
 
 //-------------------------------------
@@ -451,9 +451,9 @@ pcie_ss pcie_ss(
 
 
 
-`ifdef OFS_FIM_IP_CFG_PCIE_SS_GEN5_2X8    
+`ifdef OFS_FIM_IP_CFG_PCIE_SS_NUM_PHYS_LINKS_IS_2
 `ifdef OFS_FIM_IP_CFG_PCIE_SS_EN_LINK_1
-// Gen5_2x8 IP topology and ports used in OFS reference design
+// Two ports used in OFS reference design
 .p1_reset_status_n              (reset_status_n[1]              ),
 .p1_axi_st_clk                  (fim_clk                        ),
 .p1_axi_lite_clk                (csr_clk                        ),  
@@ -520,9 +520,8 @@ pcie_ss pcie_ss(
 .p1_ss_app_lite_csr_rresp       (ss_app_lite_csr_rresp[1]       ),
 .p1_ss_app_dlup                 (ss_app_dlup[1]                 ),
 
-`else
-// Gen5_2x8 IP topology but second PCIe port is tied off 
-// and not used in OFS example
+`else // !`ifdef OFS_FIM_IP_CFG_PCIE_SS_EN_LINK_1
+// Second port is tied off and not used in OFS example
 .p1_axi_st_clk                  (fim_clk                        ),
 .p1_axi_lite_clk                (csr_clk                        ),  
 .p1_axi_st_areset_n             (fim_rst_n[0]                   ),       
@@ -585,9 +584,8 @@ pcie_ss pcie_ss(
 .p1_ss_app_lite_csr_rdata       (                               ),
 .p1_ss_app_lite_csr_rresp       (                               ),
 .p1_ss_app_dlup                 (                               ),
-`endif // `else
-`endif // `ifdef OFS_FIM_IP_CFG_PCIE_SS_GEN5_2X8
-
+`endif // !`ifdef OFS_FIM_IP_CFG_PCIE_SS_EN_LINK_1
+`endif // `ifdef OFS_FIM_IP_CFG_PCIE_SS_NUM_PHYS_LINKS_IS_2
 
 .tx_n_out0                      (pin_pcie_tx_n[0]               ),      
 .tx_n_out1                      (pin_pcie_tx_n[1]               ),      

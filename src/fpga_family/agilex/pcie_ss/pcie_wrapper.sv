@@ -51,7 +51,7 @@ import ofs_fim_pcie_hdr_def::*;
    output logic [PCIE_LANES-1:0]    pin_pcie_tx_p,
    output logic [PCIE_LANES-1:0]    pin_pcie_tx_n,
 
-   //Ctrl Shadow ports
+   // Ctrl Shadow ports
    output logic [PCIE_NUM_LINKS-1:0]                     ss_app_st_ctrlshadow_tvalid,
    output logic [PCIE_NUM_LINKS-1:0] [39:0]              ss_app_st_ctrlshadow_tdata,
 
@@ -64,7 +64,7 @@ import ofs_fim_pcie_hdr_def::*;
    // AXI4-lite CSR interface
    ofs_fim_axi_lite_if.slave        csr_lite_if[PCIE_NUM_LINKS-1:0],
   
-   //Completion Timeout Interface
+   // Completion Timeout Interface
    output pcie_ss_axis_pkg::t_axis_pcie_cplto axis_cpl_timeout[PCIE_NUM_LINKS-1:0],
  
    output pcie_ss_axis_pkg::t_pcie_tag_mode tag_mode[PCIE_NUM_LINKS-1:0],
@@ -221,41 +221,41 @@ generate
 endgenerate
 
 
-   pcie_ss_top #(
+   pcie_ss_dm_top #(
       .PCIE_LANES       (ofs_fim_cfg_pkg::PCIE_LANES),
       .PCIE_NUM_LINKS   (PCIE_NUM_LINKS),
       .SOC_ATTACH       (SOC_ATTACH)
    ) pcie_ss_top (
-      .fim_clk                        (fim_clk                        ),
-      .fim_rst_n                      (fim_rst_n                      ),
-      .csr_clk                        (csr_clk                        ),
-      .csr_rst_n                      (csr_rst_n                      ),
-      .ninit_done                     (ninit_done                     ),
-      .subsystem_cold_rst_n        (subsystem_cold_rst_n        ),
-      .subsystem_warm_rst_n        (subsystem_warm_rst_n        ),
-      .subsystem_cold_rst_ack_n    (subsystem_cold_rst_ack_n    ),
-      .subsystem_warm_rst_ack_n    (subsystem_warm_rst_ack_n    ),
-      .pin_pcie_refclk0_p             (pin_pcie_refclk0_p             ),
-      .pin_pcie_refclk1_p             (pin_pcie_refclk1_p             ),
-      .pin_pcie_in_perst_n            (pin_pcie_in_perst_n            ),
-      .pin_pcie_rx_p                  (pin_pcie_rx_p                  ),
-      .pin_pcie_rx_n                  (pin_pcie_rx_n                  ),
-      .axi_st_txreq_if             (axi_st_txreq_if                ),
-      .axi_st_rxreq_if             (rxreq_in             ),
-      .ss_app_st_ctrlshadow_tvalid    (ss_app_st_ctrlshadow_tvalid ),
-      .ss_app_st_ctrlshadow_tdata     (ss_app_st_ctrlshadow_tdata  ),
-      .axi_st_rx_if                     (axi_st_rx_if                ),
-      .axi_st_tx_if                     (axi_st_tx_committed         ),
-      .ss_csr_lite_if                 (ss_csr_lite_if              ),
-      .flr_req_if                     (axi_st_flr_req              ),
-      .flr_rsp_if                     (axi_st_flr_rsp              ),
-      .reset_status                   (reset_status                   ),
-      .pin_pcie_tx_p                  (pin_pcie_tx_p                  ),
-      .pin_pcie_tx_n                  (pin_pcie_tx_n                  ),
-      .cpl_timeout_if                 (axis_cpl_timeout            ),
+      .fim_clk                     (fim_clk),
+      .fim_rst_n                   (fim_rst_n),
+      .csr_clk                     (csr_clk),
+      .csr_rst_n                   (csr_rst_n),
+      .ninit_done                  (ninit_done),
+      .subsystem_cold_rst_n        (subsystem_cold_rst_n),
+      .subsystem_warm_rst_n        (subsystem_warm_rst_n),
+      .subsystem_cold_rst_ack_n    (subsystem_cold_rst_ack_n),
+      .subsystem_warm_rst_ack_n    (subsystem_warm_rst_ack_n),
+      .pin_pcie_refclk0_p          (pin_pcie_refclk0_p),
+      .pin_pcie_refclk1_p          (pin_pcie_refclk1_p),
+      .pin_pcie_in_perst_n         (pin_pcie_in_perst_n),
+      .pin_pcie_rx_p               (pin_pcie_rx_p),
+      .pin_pcie_rx_n               (pin_pcie_rx_n),
+      .axi_st_txreq_if             (axi_st_txreq_if),
+      .axi_st_rxreq_if             (rxreq_in),
+      .ss_app_st_ctrlshadow_tvalid (ss_app_st_ctrlshadow_tvalid),
+      .ss_app_st_ctrlshadow_tdata  (ss_app_st_ctrlshadow_tdata),
+      .axi_st_rx_if                (axi_st_rx_if),
+      .axi_st_tx_if                (axi_st_tx_committed),
+      .ss_csr_lite_if              (ss_csr_lite_if),
+      .flr_req_if                  (axi_st_flr_req),
+      .flr_rsp_if                  (axi_st_flr_rsp),
+      .reset_status                (reset_status),
+      .pin_pcie_tx_p               (pin_pcie_tx_p),
+      .pin_pcie_tx_n               (pin_pcie_tx_n),
+      .cpl_timeout_if              (axis_cpl_timeout),
       
-      .pcie_p2c_sideband              (pcie_p2c_sideband              )
- );
+      .pcie_p2c_sideband           (pcie_p2c_sideband)
+);
 
 
 endmodule : pcie_wrapper

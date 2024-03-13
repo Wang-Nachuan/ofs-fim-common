@@ -37,17 +37,16 @@ proc emit_ip_cfg {ofile_name ip_name} {
     }
     set inst [lindex $instances 0]
 
-    # Figure out which PCIe width is active. Only one instance of
-    # "core<width>_pf0_pci_type0_device_id_hwtcl" is expected to have a non-zero value.
+    # Find the largest PCIe core that is active.
     set width 0
     foreach p [get_instance_parameters $inst] {
         if { [regexp {core([0-9]+)_pf0_pci_type0_device_id_hwtcl} $p key w] } {
             set device_id [get_instance_parameter_value $inst "core${w}_pf0_pci_type0_device_id_hwtcl"]
             if { $device_id != 0 } {
                 # Found an instance with a non-zero device ID
-                set width $w
-                send_message INFO "PCIe x${width} is active"
-                break
+                if { $w > $width } {
+                    set width $w
+                }
             }
         }
     }
@@ -56,6 +55,8 @@ proc emit_ip_cfg {ofile_name ip_name} {
         send_message ERROR "Did not find an active PCIe width"
         exit 1
     }
+
+    send_message INFO "PCIe x${width} is active"
 
     set pcie_num_links 0
     set interfaces [get_interfaces]
@@ -121,6 +122,10 @@ proc emit_ip_cfg {ofile_name ip_name} {
 
     puts $of "// PCIe SS Topology"
     puts $of "`define OFS_FIM_IP_CFG_${ip_name}_${top_topology} 1"
+    puts $of "// Number of links active inside the PCIe SS"
+    puts $of "`define OFS_FIM_IP_CFG_${ip_name}_NUM_PHYS_LINKS ${topology_num_links}"
+    puts $of "`define OFS_FIM_IP_CFG_${ip_name}_NUM_PHYS_LINKS_IS_${topology_num_links} 1"
+    puts $of "// Number of links used by the OFS FIM"
     puts $of "`define OFS_FIM_IP_CFG_${ip_name}_NUM_LINKS ${pcie_num_links}"
     for {set idx 0} { $idx < $pcie_num_links } {incr idx} {
         puts $of "`define OFS_FIM_IP_CFG_${ip_name}_EN_LINK_${idx} 1"
