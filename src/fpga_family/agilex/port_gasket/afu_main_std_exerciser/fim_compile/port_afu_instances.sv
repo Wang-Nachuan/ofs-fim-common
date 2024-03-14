@@ -59,7 +59,7 @@ module port_afu_instances
    // tready to 1.
    pcie_ss_axis_if.sink          afu_axi_rx_b_if [PG_NUM_PORTS-1:0]
 
-   `ifdef INCLUDE_DDR4
+   `ifdef INCLUDE_LOCAL_MEM
       // Local memory
      ,ofs_fim_emif_axi_mm_if.user     ext_mem_if [NUM_MEM_CH-1:0]
    `endif
@@ -104,7 +104,7 @@ localparam AR_REG_MODE   = SKID_BUFFER;
    localparam AXIS_HLB_PID = 0;
    localparam HE_MEM_CH = 0;
   `else
-   `ifdef INCLUDE_DDR4
+   `ifdef INCLUDE_LOCAL_MEM
    localparam AXIS_HEM_PID = 0;
    localparam AXIS_HLB_PID = -1;
    localparam HE_MEM_CH = 1;
@@ -121,7 +121,7 @@ localparam AR_REG_MODE   = SKID_BUFFER;
    localparam AXIS_MEM_TG_PID = -1;
    localparam MEM_TG_CH = 0;
  `else
-  `ifdef INCLUDE_DDR4
+  `ifdef INCLUDE_LOCAL_MEM
    localparam MEM_TG_CH = (NUM_MEM_CH > HE_MEM_CH) ? NUM_MEM_CH - HE_MEM_CH : 0;
    // stub out the feature if there are no memory channels to connect to
    localparam AXIS_MEM_TG_PID = (MEM_TG_CH > 0) ? 2 : -1;
@@ -154,7 +154,7 @@ localparam AR_REG_MODE   = SKID_BUFFER;
 // *   Pipelining
 // *   Interface tie-offs
 //--------------------------------------------------------------------------------
-`ifdef INCLUDE_DDR4
+`ifdef INCLUDE_LOCAL_MEM
 (* noprune *) ofs_fim_emif_axi_mm_if #(
       .AWID_WIDTH   ($bits(ext_mem_if[0].awid)),
       .AWADDR_WIDTH ($bits(ext_mem_if[0].awaddr)),
@@ -255,7 +255,7 @@ generate
             .axi_tx_b_if (afu_axi_tx_b_if [i])
          );
       end : hlb_gen
-`ifdef INCLUDE_DDR4
+`ifdef INCLUDE_LOCAL_MEM
       else if(i == AXIS_HEM_PID) begin : hem_gen
          he_mem_top #(
             .PF_ID     (PORT_PF_VF_INFO[i].pf_num),

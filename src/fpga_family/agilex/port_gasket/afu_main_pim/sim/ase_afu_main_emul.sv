@@ -310,7 +310,7 @@ module ase_afu_main_emul
         .afu_axi_tx_b_if(link_tx_b_if),
         .afu_axi_rx_b_if(link_rx_b_if),
 
-        `ifdef INCLUDE_DDR4
+        `ifdef INCLUDE_LOCAL_MEM
             // Local memory
             .ext_mem_if,
         `endif

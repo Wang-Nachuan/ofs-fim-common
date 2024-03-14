@@ -40,7 +40,7 @@ module  pr_slot #(
    input                       pr_freeze,
    
    // Memory
-`ifdef INCLUDE_DDR4
+`ifdef INCLUDE_LOCAL_MEM
    ofs_fim_emif_axi_mm_if.user afu_mem_if  [NUM_MEM_CH-1:0],
 `endif
 
@@ -177,7 +177,7 @@ end //for
 // ----------------------------------------------------------------------------------------------------
 // 2. PR Freeze: AFU-MEM_IF to MEM SS
 // ----------------------------------------------------------------------------------------------------
-`ifdef INCLUDE_DDR4
+`ifdef INCLUDE_LOCAL_MEM
     
     `ifdef INCLUDE_PR 
         localparam W_REG_MODE     =MM_SKID_BUFFER; 
@@ -346,7 +346,7 @@ afu_main #(
    .rst_n              (!softreset),
    .port_rst_n         (port_rst_n_t1),
 
-   `ifdef INCLUDE_DDR4
+   `ifdef INCLUDE_LOCAL_MEM
       .ext_mem_if        (afu_main_emif),
    `endif
    

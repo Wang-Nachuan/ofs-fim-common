@@ -58,7 +58,7 @@ module  port_gasket #(
    pcie_ss_axis_if.source      axi_tx_b_if[PG_NUM_LINKS-1:0],
    pcie_ss_axis_if.sink        axi_rx_b_if[PG_NUM_LINKS-1:0],
 
-`ifdef INCLUDE_DDR4
+`ifdef INCLUDE_LOCAL_MEM
    ofs_fim_emif_axi_mm_if.user afu_mem_if  [NUM_MEM_CH-1:0],
 `endif
 
@@ -196,7 +196,7 @@ pr_slot #(
    .rst_n,
 
    // Memory interface   
-`ifdef INCLUDE_DDR4
+`ifdef INCLUDE_LOCAL_MEM
    .afu_mem_if    (afu_mem_if),
 `endif
 
