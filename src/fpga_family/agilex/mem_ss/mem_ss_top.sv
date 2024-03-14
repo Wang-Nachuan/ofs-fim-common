@@ -297,6 +297,7 @@ emif_csr_ic emif_csr_interconnect (
 );
 `endif   
 
+`ifdef OFS_FIM_IP_CFG_MEM_SS_ENTITY
 `OFS_FIM_IP_CFG_MEM_SS_ENTITY mem_ss_inst (
 `ifdef OFS_FIM_IP_CFG_MEM_SS_EN_CSR
    // Subsystem CSR AXI4-lite interface
@@ -575,6 +576,7 @@ emif_csr_ic emif_csr_interconnect (
    .ss_app_rst_rdy        (mem_ss_rst_rdy),
    .ss_app_cold_rst_ack_n (mem_ss_rst_ack_n)
 );
-   
+`endif //  `ifdef OFS_FIM_IP_CFG_MEM_SS_ENTITY
+
 endmodule // mem_ss_top
 
