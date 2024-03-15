@@ -220,42 +220,72 @@ generate
     end // PCIE_LINKS
 endgenerate
 
+// Is the host PCIe interface data mover?
+`ifdef OFS_FIM_IP_CFG_PCIE_SS_FUNC_MODE_IS_DM
+    localparam PCIE_MODE_IS_DM = 1;
+`else
+    localparam PCIE_MODE_IS_DM = 0;
+`endif
 
+// Is the SoC PCIe interface data mover (if present)?
+`ifdef OFS_FIM_IP_CFG_SOC_PCIE_SS_FUNC_MODE_IS_DM
+    localparam SOC_PCIE_MODE_IS_DM = 1;
+`else
+    localparam SOC_PCIE_MODE_IS_DM = 0;
+`endif
+
+// Is the target PCIe interface DM?
+localparam MODE_IS_DM = SOC_ATTACH ? SOC_PCIE_MODE_IS_DM : PCIE_MODE_IS_DM;
+
+// Expand common arguments to pcie_ss_axis_top and pcie_ss_dm_top from a macro
+// to avoid code duplication.
+`define PCIE_SS_TOP_PORTS \
+   .fim_clk                     (fim_clk), \
+   .fim_rst_n                   (fim_rst_n), \
+   .csr_clk                     (csr_clk), \
+   .csr_rst_n                   (csr_rst_n), \
+   .ninit_done                  (ninit_done), \
+   .subsystem_cold_rst_n        (subsystem_cold_rst_n), \
+   .subsystem_warm_rst_n        (subsystem_warm_rst_n), \
+   .subsystem_cold_rst_ack_n    (subsystem_cold_rst_ack_n), \
+   .subsystem_warm_rst_ack_n    (subsystem_warm_rst_ack_n), \
+   .pin_pcie_refclk0_p          (pin_pcie_refclk0_p), \
+   .pin_pcie_refclk1_p          (pin_pcie_refclk1_p), \
+   .pin_pcie_in_perst_n         (pin_pcie_in_perst_n), \
+   .pin_pcie_rx_p               (pin_pcie_rx_p), \
+   .pin_pcie_rx_n               (pin_pcie_rx_n), \
+   .axi_st_txreq_if             (axi_st_txreq_if), \
+   .axi_st_rxreq_if             (rxreq_in), \
+   .ss_app_st_ctrlshadow_tvalid (ss_app_st_ctrlshadow_tvalid), \
+   .ss_app_st_ctrlshadow_tdata  (ss_app_st_ctrlshadow_tdata), \
+   .axi_st_rx_if                (axi_st_rx_if), \
+   .axi_st_tx_if                (axi_st_tx_committed), \
+   .ss_csr_lite_if              (ss_csr_lite_if), \
+   .flr_req_if                  (axi_st_flr_req), \
+   .flr_rsp_if                  (axi_st_flr_rsp), \
+   .reset_status                (reset_status), \
+   .pin_pcie_tx_p               (pin_pcie_tx_p), \
+   .pin_pcie_tx_n               (pin_pcie_tx_n), \
+   .cpl_timeout_if              (axis_cpl_timeout), \
+   .pcie_p2c_sideband           (pcie_p2c_sideband) \
+
+if (MODE_IS_DM) begin : pcie_ss
    pcie_ss_dm_top #(
       .PCIE_LANES       (ofs_fim_cfg_pkg::PCIE_LANES),
       .PCIE_NUM_LINKS   (PCIE_NUM_LINKS),
       .SOC_ATTACH       (SOC_ATTACH)
-   ) pcie_ss_top (
-      .fim_clk                     (fim_clk),
-      .fim_rst_n                   (fim_rst_n),
-      .csr_clk                     (csr_clk),
-      .csr_rst_n                   (csr_rst_n),
-      .ninit_done                  (ninit_done),
-      .subsystem_cold_rst_n        (subsystem_cold_rst_n),
-      .subsystem_warm_rst_n        (subsystem_warm_rst_n),
-      .subsystem_cold_rst_ack_n    (subsystem_cold_rst_ack_n),
-      .subsystem_warm_rst_ack_n    (subsystem_warm_rst_ack_n),
-      .pin_pcie_refclk0_p          (pin_pcie_refclk0_p),
-      .pin_pcie_refclk1_p          (pin_pcie_refclk1_p),
-      .pin_pcie_in_perst_n         (pin_pcie_in_perst_n),
-      .pin_pcie_rx_p               (pin_pcie_rx_p),
-      .pin_pcie_rx_n               (pin_pcie_rx_n),
-      .axi_st_txreq_if             (axi_st_txreq_if),
-      .axi_st_rxreq_if             (rxreq_in),
-      .ss_app_st_ctrlshadow_tvalid (ss_app_st_ctrlshadow_tvalid),
-      .ss_app_st_ctrlshadow_tdata  (ss_app_st_ctrlshadow_tdata),
-      .axi_st_rx_if                (axi_st_rx_if),
-      .axi_st_tx_if                (axi_st_tx_committed),
-      .ss_csr_lite_if              (ss_csr_lite_if),
-      .flr_req_if                  (axi_st_flr_req),
-      .flr_rsp_if                  (axi_st_flr_rsp),
-      .reset_status                (reset_status),
-      .pin_pcie_tx_p               (pin_pcie_tx_p),
-      .pin_pcie_tx_n               (pin_pcie_tx_n),
-      .cpl_timeout_if              (axis_cpl_timeout),
-      
-      .pcie_p2c_sideband           (pcie_p2c_sideband)
-);
-
+   ) top (
+      `PCIE_SS_TOP_PORTS
+   );
+end
+else begin : pcie_ss
+   pcie_ss_axis_top #(
+      .PCIE_LANES       (ofs_fim_cfg_pkg::PCIE_LANES),
+      .PCIE_NUM_LINKS   (PCIE_NUM_LINKS),
+      .SOC_ATTACH       (SOC_ATTACH)
+   ) top (
+      `PCIE_SS_TOP_PORTS
+   );
+end
 
 endmodule : pcie_wrapper
