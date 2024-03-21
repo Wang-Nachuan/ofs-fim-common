@@ -23,11 +23,20 @@
 `timescale 1ps / 1ps 
 
 module fim_resync #(
-   parameter SYNC_CHAIN_LENGTH     = 2,  // Number of flip-flops for retiming. Must be >1
-   parameter WIDTH                 = 1,  // Number of bits to resync
-   parameter INIT_VALUE            = 0,
-   parameter NO_CUT                = 1,  // See description above
-   parameter TURN_OFF_ADD_PIPELINE = 1
+   parameter SYNC_CHAIN_LENGTH      = 2,  // Number of flip-flops for retiming. Must be >1
+   parameter WIDTH                  = 1,  // Number of bits to resync
+   parameter INIT_VALUE             = 0,
+   parameter NO_CUT                 = 1,  // See description above
+   parameter TURN_OFF_METASTABILITY = 1,  // Added metastability checker in simulation.  Disabled by default.
+
+   // Adding an extra pipeline stage was added to synchronizers to synchronizers
+   // in FTILE devices, specifically for HSSI.  Disable this by default, unless
+   // it's an FTILE device
+   `ifdef INCLUDE_FTILE
+      parameter TURN_OFF_ADD_PIPELINE = 0
+   `else
+      parameter TURN_OFF_ADD_PIPELINE = 1
+   `endif
 )(
    input  logic              clk,
    input  logic              reset,
@@ -75,6 +84,7 @@ generate
          // Synchronizer WITHOUT embedded set_false_path SDC
          ofs_std_synchronizer_nocut #(
             .depth(INT_LEN),
+            .turn_off_meta(TURN_OFF_METASTABILITY),
             .turn_off_add_pipeline(TURN_OFF_ADD_PIPELINE)
          ) synchronizer_nocut (
             .clk      (clk),
