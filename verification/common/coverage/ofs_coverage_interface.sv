@@ -186,11 +186,11 @@ logic [63:0] HSSI_RX_TDATA;
 logic [63:0] HE_HSSI_RX_TDATA;
 
 `ifdef ENABLE_AC_COVERAGE
-assign mx2ho_valid =`AFU_TOP.pf_vf_mux_a.mx2ho_tx_port.tvalid; 
-assign mx2ho_pfnum =`AFU_TOP.pf_vf_mux_a.mx2ho_tx_port.tdata[162:160];
-assign mx2ho_vfnum =`AFU_TOP.pf_vf_mux_a.mx2ho_tx_port.tdata[173:163]; 
-assign mx2ho_vfactive = `AFU_TOP.pf_vf_mux_a.mx2ho_tx_port.tdata[174];
-assign mx2ho_fmttype  = `AFU_TOP.pf_vf_mux_a.mx2ho_tx_port.tdata[31:24];
+assign mx2ho_valid =`AFU_TOP.mx2ho_tx_port[0].tvalid; 
+assign mx2ho_pfnum =`AFU_TOP.mx2ho_tx_port[0].tdata[162:160];
+assign mx2ho_vfnum =`AFU_TOP.mx2ho_tx_port[0].tdata[173:163]; 
+assign mx2ho_vfactive = `AFU_TOP.mx2ho_tx_port[0].tdata[174];
+assign mx2ho_fmttype  = `AFU_TOP.mx2ho_tx_port[0].tdata[31:24];
 //HE_HSSI -> HSSI PATH chek
 assign HSSI_RX_TVALID = `TOP_DUT.hssi_wrapper.hssi_ss_st_rx[0].rx.tvalid;
 assign HSSI_RX_TDATA  = `TOP_DUT.hssi_wrapper.hssi_ss_st_rx[0].rx.tdata[63:0];
