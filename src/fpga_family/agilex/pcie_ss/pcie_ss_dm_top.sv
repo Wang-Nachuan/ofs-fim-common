@@ -60,13 +60,13 @@ module pcie_ss_dm_top # (
    ofs_fim_axi_lite_if.slave        ss_csr_lite_if[PCIE_NUM_LINKS-1:0],
 
    // FLR interface
-   output t_axis_pcie_flr           flr_req_if[PCIE_NUM_LINKS-1:0],
-   input  t_axis_pcie_flr           flr_rsp_if[PCIE_NUM_LINKS-1:0],
+   output pcie_ss_axis_pkg::t_axis_pcie_flr     flr_req_if[PCIE_NUM_LINKS-1:0],
+   input  pcie_ss_axis_pkg::t_axis_pcie_flr     flr_rsp_if[PCIE_NUM_LINKS-1:0],
 
    // Completion Timeout interface
-   output t_axis_pcie_cplto         cpl_timeout_if[PCIE_NUM_LINKS-1:0],
+   output pcie_ss_axis_pkg::t_axis_pcie_cplto   cpl_timeout_if[PCIE_NUM_LINKS-1:0],
 
-   output t_sideband_from_pcie      pcie_p2c_sideband[PCIE_NUM_LINKS-1:0]
+   output ofs_fim_if_pkg::t_sideband_from_pcie  pcie_p2c_sideband[PCIE_NUM_LINKS-1:0]
 );
 
 import ofs_fim_pcie_pkg::*;
@@ -225,7 +225,7 @@ wire p1_initiate_warmrst_req;
 // They are the same. The argument to the macro is expanded recursively
 // by the preprocessor for either host or SoC configurations. (See
 // the ifdefs below that embed SS_NAME.)
-`define PCIE_SS_AXIS_PORTS(SS_NAME) \
+`define PCIE_SS_DM_PORTS(SS_NAME) \
     .refclk0                        (pin_pcie_refclk0_p             ), \
     .refclk1                        (pin_pcie_refclk1_p             ), \
     .pin_perst_n                    (pin_pcie_in_perst_n            ), \
@@ -502,12 +502,12 @@ wire p1_initiate_warmrst_req;
 
 generate if (SOC_ATTACH == 0) begin : host_pcie
     pcie_ss pcie_ss(
-        `PCIE_SS_AXIS_PORTS(PCIE_SS)
+        `PCIE_SS_DM_PORTS(PCIE_SS)
     );
 end
 else begin : soc_pcie
     soc_pcie_ss pcie_ss(
-        `PCIE_SS_AXIS_PORTS(SOC_PCIE_SS)
+        `PCIE_SS_DM_PORTS(SOC_PCIE_SS)
     );
 end
 endgenerate

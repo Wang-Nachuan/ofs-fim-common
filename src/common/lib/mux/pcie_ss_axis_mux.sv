@@ -43,7 +43,7 @@ assign ready = (~source.tvalid | source.tready);
 
 // Skid buffer in front of the arbiter both helps timing and avoids problems
 // with upstream logic inserting bubbles when tready goes low.
-pcie_ss_axis_if sink_in[NUM_CH](.clk(clk), .rst_n(rst_n));
+pcie_ss_axis_if #(.DATA_W(TDATA_WIDTH), .USER_W(TUSER_WIDTH)) sink_in[NUM_CH](.clk, .rst_n);
 
 logic [NUM_CH-1:0]                  in_tvalid;
 logic [NUM_CH-1:0][TDATA_WIDTH-1:0] in_tdata;

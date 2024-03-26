@@ -145,22 +145,35 @@ proc emit_ip_cfg {ofile_name ip_name} {
         set hdr [string map {- _} [string toupper $core(header_scheme_hwtcl)]]
         puts $of "`define OFS_FIM_IP_CFG_${ip_name}_HDR_SCHEME \"${hdr}\""
         puts $of "`define OFS_FIM_IP_CFG_${ip_name}_HDR_SCHEME_IS_${hdr} 1"
+    } else {
+        # Assume in-band if not defined
+        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_HDR_SCHEME \"IN_BAND\""
+        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_HDR_SCHEME_IS_IN_BAND 1"
     }
+
     if { [info exists core(dwidth_byte_hwtcl)] } {
         puts $of "`define OFS_FIM_IP_CFG_${ip_name}_DWIDTH_BYTE $core(dwidth_byte_hwtcl)"
     }
     if { [info exists core(num_seg_hwtcl)] } {
-        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_NUM_SEG $core(num_seg_hwtcl)"
+        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_NUM_SEG ${core(num_seg_hwtcl)}"
+        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_NUM_SEG_IS_${core(num_seg_hwtcl)} 1"
     } else {
         # Assume 1 if not set
         puts $of "`define OFS_FIM_IP_CFG_${ip_name}_NUM_SEG 1"
+        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_NUM_SEG_IS_1 1"
     }
 
-    # Is there an RX credit interface?
-    if { [lsearch -glob $interfaces "*_st_rxcrdt"] != -1 } {
-        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_HAS_RXCRDT 1"
-    } else {
-        puts $of "// No rxcrdt interface (OFS_FIM_IP_CFG_${ip_name}_HAS_RXCRDT not set)"
+    # Tiles have interface differences, such as tuser fields for side-band headers.
+    # Generate macros indicating ports that are present.
+    foreach p [lsort $interfaces] {
+        # All RX/TX TUSER ports, e.g. as OFS_FIM_IP_CFG_PCIE_SS_HAS_TX_TUSER_LAST_SEGMENT
+        if { [regexp {p0_.*_st_([rt]x_tuser.*)} $p key port] } {
+            puts $of "`define OFS_FIM_IP_CFG_${ip_name}_HAS_[string toupper ${port}] 1"
+        }
+        # RX/TX credit port, e.g. OFS_FIM_IP_CFG_PCIE_SS_HAS_RXCRDT
+        if { [regexp {p0_st_([rt]xcrdt)} $p key port] } {
+            puts $of "`define OFS_FIM_IP_CFG_${ip_name}_HAS_[string toupper ${port}] 1"
+        }
     }
 
     # Does the RX interface have tready?

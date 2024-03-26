@@ -147,7 +147,7 @@ module ofs_fim_pcie_ss_rx_dual_stream
         end
     end
 
-    assign stream_out_cpld.tvalid = |(cpld_seg_valid) && stream_in.tready;
+    assign stream_out_cpld.tvalid = |(cpld_seg_valid) && stream_in.tvalid && stream_in.tready;
     assign stream_out_cpld.tlast = (NUM_OF_SEG == 1) ? stream_in.tlast : |(cpld_seg_last);
     assign stream_out_cpld.tdata = tdata_out_cpld;
     assign stream_out_cpld.tkeep = tkeep_out_cpld;
@@ -211,7 +211,7 @@ module ofs_fim_pcie_ss_rx_dual_stream
         end
     end
 
-    assign stream_out_req.tvalid = |(req_seg_valid) && stream_in.tready;
+    assign stream_out_req.tvalid = |(req_seg_valid) && stream_in.tvalid && stream_in.tready;
     assign stream_out_req.tlast = (NUM_OF_SEG == 1) ? stream_in.tlast : |(req_seg_last);
     assign stream_out_req.tdata = tdata_out_req;
     assign stream_out_req.tkeep = tkeep_out_req;

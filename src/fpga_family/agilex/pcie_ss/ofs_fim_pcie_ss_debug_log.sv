@@ -9,6 +9,8 @@
 //
 //-----------------------------------------------------------------------------
 
+`include "ofs_ip_cfg_db.vh"
+
 module ofs_fim_pcie_ss_debug_log (
    input logic  fim_clk,
    input logic  fim_rst_n,
@@ -92,8 +94,11 @@ assign txreq_hdr = pcie_ss_hdr_pkg::PCIe_ReqHdr_t'(axi_st_txreq_if.tdata[$bits(t
 
 always_ff @(posedge fim_clk) begin
   if (fim_rst_n && axi_st_txreq_if.tvalid) begin
-    assert(pcie_ss_hdr_pkg::func_hdr_is_dm_mode(axi_st_txreq_if.tuser_vendor)) else
-      $fatal(2, " ** ERROR ** %m: txreq must be DM-encoded!");
+    if (`OFS_FIM_IP_CFG_PCIE_SS_FUNC_MODE == "DM") begin
+      assert(pcie_ss_hdr_pkg::func_hdr_is_dm_mode(axi_st_txreq_if.tuser_vendor)) else
+        $fatal(2, " ** ERROR ** %m: txreq must be DM-encoded!");
+    end
+
     assert(axi_st_txreq_if.tlast) else
       $fatal(2, " ** ERROR ** %m: txreq must be only headers!");
     assert(pcie_ss_hdr_pkg::func_is_mrd_req(txreq_hdr.fmt_type) || pcie_ss_hdr_pkg::func_is_interrupt_req(txreq_hdr.fmt_type)) else

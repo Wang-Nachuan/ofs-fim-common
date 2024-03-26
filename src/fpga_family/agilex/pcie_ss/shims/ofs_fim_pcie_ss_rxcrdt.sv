@@ -121,10 +121,19 @@ module ofs_fim_pcie_ss_rxcrdt
     // Wire together inputs and outputs. This module just monitors traffic.
     //
 
-    ofs_fim_axis_pipeline #(.PL_DEPTH(0), .TDATA_WIDTH(TDATA_WIDTH), .TUSER_WIDTH(TUSER_WIDTH))
-        conn_cpld (.clk, .rst_n, .axis_s(stream_in_cpld), .axis_m(stream_out_cpld));
-    ofs_fim_axis_pipeline #(.PL_DEPTH(0), .TDATA_WIDTH(TDATA_WIDTH), .TUSER_WIDTH(TUSER_WIDTH))
-        conn_req (.clk, .rst_n, .axis_s(stream_in_req), .axis_m(stream_out_req));
+    assign stream_out_cpld.tvalid = stream_in_cpld.tvalid;
+    assign stream_out_cpld.tlast = stream_in_cpld.tlast;
+    assign stream_out_cpld.tuser_vendor = { '0, stream_in_cpld.tuser_vendor };
+    assign stream_out_cpld.tdata = stream_in_cpld.tdata;
+    assign stream_out_cpld.tkeep = stream_in_cpld.tkeep;
+    assign stream_in_cpld.tready = stream_out_cpld.tready;
+
+    assign stream_out_req.tvalid = stream_in_req.tvalid;
+    assign stream_out_req.tlast = stream_in_req.tlast;
+    assign stream_out_req.tuser_vendor = { '0, stream_in_req.tuser_vendor };
+    assign stream_out_req.tdata = stream_in_req.tdata;
+    assign stream_out_req.tkeep = stream_in_req.tkeep;
+    assign stream_in_req.tready = stream_out_req.tready;
 
 
     // ====================================================================

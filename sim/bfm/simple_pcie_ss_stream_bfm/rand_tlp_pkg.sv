@@ -40,7 +40,8 @@ package rand_tlp_pkg;
         // Tags are allocated sequentially
         local static bit [9:0] next_tag = 1;
 
-        function new(bit random = 1);
+        function new(bit random = 1,
+                     bit set_tlp_type = 0, tlp_type_e forced_tlp_type = TLP_CPLD);
             req_hdr = 'x;
             cpl_hdr = 'x;
 
@@ -49,6 +50,9 @@ package rand_tlp_pkg;
                 return;
 
             randomize();
+
+            if (set_tlp_type)
+                tlp_type = forced_tlp_type;
 
             // Fill in header details. For the purposes of the test very few
             // fields are required. Tests are generally for packet routing
@@ -165,13 +169,28 @@ package rand_tlp_pkg;
         // Queue of DWORDs to pass on tdata for current packet
         local bit [31:0] dw_data_stream[$];
 
-        function new();
+        local bit set_fixed_tlp_type;
+        local rand_tlp::tlp_type_e fixed_tlp_type;
+
+        local bit force_tag_h;
+        local bit tag_h_val;
+
+        // set_tag_h is a way to flag a particular stream, forcing tag_h_val in all TLPs.
+        // set_tlp_type is a way to force a particular TLP type for all packets.
+        function new(bit set_tag_h = 0, bit tag_h = 0,
+                     bit set_tlp_type = 0, rand_tlp::tlp_type_e forced_tlp_type = rand_tlp::TLP_CPLD);
             tvalid = 1'b0;
             tlp = null;
             tuser_vendor = '0;
             tuser_last_segment = '0;
             tuser_hvalid = '0;
             tuser_hdr = '0;
+
+            force_tag_h = set_tag_h;
+            tag_h_val = tag_h;
+
+            set_fixed_tlp_type = set_tlp_type;
+            fixed_tlp_type = forced_tlp_type;
         endfunction // new
 
         // Fill tdata, starting at start segment. Set tlast as needed.
@@ -207,7 +226,15 @@ package rand_tlp_pkg;
             logic [HDR_WIDTH-1:0] hdr;
 
             // Starting a new packet
-            tlp = new();
+            tlp = new(1, set_fixed_tlp_type, fixed_tlp_type);
+
+            if (force_tag_h) begin
+                if (tlp.tlp_type == tlp.TLP_CPLD)
+                    tlp.cpl_hdr.tag_h = tag_h_val;
+                else
+                    tlp.req_hdr.tag_h = tag_h_val;
+            end
+
             // Queue of TLPs will be used for validation of the DUT's output
             tlp_queue.push_back(tlp);
 
