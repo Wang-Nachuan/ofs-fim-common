@@ -171,7 +171,7 @@ class PCIe(OFS):
 
             # If IOPLL OFSS is present to configuration the 'p_clk',
             # Update PCIe's IP file's `axi_st_clk_freq_user_hwtcl` parameter
-            if self.p_clk:
+            if self.p_clk and "axi_st_clk_freq_user_hwtcl" in self.ip_component_params:
                 self.ip_component_params["axi_st_clk_freq_user_hwtcl"] = f"{self.p_clk}MHz"
 
             if self.pcie_gen is not None and self.pcie_instances is not None:
