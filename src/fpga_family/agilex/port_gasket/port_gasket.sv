@@ -236,6 +236,7 @@ pr_slot #(
 // ----------------------------------------------------------------------------------------------------
 //  User Clock Inst
 // ----------------------------------------------------------------------------------------------------
+`ifdef INCLUDE_USER_CLK
 user_clock user_clock (
    .refclk              (refclk),
    .clk_csr,  //source-clk of user_clk_freq_cmd_? data; dest-clk of user_clk_freq_sts_? data.
@@ -252,7 +253,13 @@ user_clock user_clock (
    .uclk                (uclk),
    .uclk_div2           (uclk_div2)
 );
+`else
+   assign user_clk_freq_sts_0 = '0;
+   assign user_clk_freq_sts_1 = '0;
 
+   assign uclk = clk;
+   assign uclk_div2 = clk_div2;
+`endif
 
 // ----------------------------------------------------------------------------------------------------
 //  PG CSR Inst
