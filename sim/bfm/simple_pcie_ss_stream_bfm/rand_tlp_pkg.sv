@@ -68,7 +68,7 @@ package rand_tlp_pkg;
             end else begin
                 req_hdr = '0;
                 { req_hdr.tag_h, req_hdr.tag_m, req_hdr.tag_l } = next_tag++;
-                req_hdr.host_addr_h[31:10] = $urandom();
+                req_hdr.host_addr_h[31:2] = $urandom();
                 req_hdr.length = payload_dw.size();
                 req_hdr.last_dw_be = 4'hf;
                 req_hdr.first_dw_be = 4'hf;
@@ -312,8 +312,12 @@ package rand_tlp_pkg;
 
         // Incoming data stream for current packet
         local bit [31:0] dw_data_stream[$];
+        bit [NUM_OF_SEG-1:0] valid_sop_seg_mask;
 
-        function new();
+        function new(int max_sop_segs = NUM_OF_SEG);
+            valid_sop_seg_mask = 0;
+            for (int i = 0; i < NUM_OF_SEG; i += NUM_OF_SEG/max_sop_segs)
+                valid_sop_seg_mask[i] = 1'b1;
         endfunction // new
 
         // Calculate the number of DWORDs available on the bus for the region
@@ -422,6 +426,9 @@ package rand_tlp_pkg;
             for (int seg_num = 0; seg_num < NUM_OF_SEG; seg_num += 1) begin
                 if ((dw_data_stream.size() != 0) && tuser_hvalid[seg_num])
                     $fatal(1, "Unexpected TLP header!");
+
+                if (tuser_hvalid[seg_num] && !valid_sop_seg_mask[seg_num])
+                    $fatal(1, "TLP headers not allowed on segment %0d", seg_num);
 
                 if (SB_HEADERS) begin
                     if (tuser_hvalid[seg_num]) begin

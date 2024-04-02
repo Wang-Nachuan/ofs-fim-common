@@ -101,6 +101,7 @@ import ofs_fim_pcie_pkg::*;
 // Generate localparams from relevant ofs_ip_cfg_db macros using the macros
 // above. Each results in a localparam named CFG_<argument>. The value is either
 // the value of the cfg db macro or 0 if undefined.
+`SET_CFG_PARAM(TILE_NAME);
 `SET_CFG_PARAM(DWIDTH_BYTE);
 `SET_CFG_PARAM(NUM_LINKS);
 `SET_CFG_PARAM(NUM_SEG);
@@ -292,9 +293,35 @@ for (genvar j=0; j<PCIE_NUM_LINKS; j++) begin : PCIE_LINK_CONN
     end
 
 
+    logic axi_st_rx_if_sop;
+    pcie_ss_hdr_pkg::PCIe_PUReqHdr_t cpl_hdr;
+    pcie_ss_hdr_pkg::PCIe_PUReqHdr_t cpl_hdr_d;
+    logic cpl_hdr_d_valid;
+
+    assign cpl_hdr = axi_st_rx_if[j].tdata[$bits(cpl_hdr)-1:0];
+
+    always_ff @(posedge fim_clk) begin
+        cpl_hdr_d <= cpl_hdr;
+        cpl_hdr_d_valid <= axi_st_rx_if[j].tvalid && axi_st_rx_if[j].tready &&
+                           axi_st_rx_if_sop &&
+                           pcie_ss_hdr_pkg::func_is_completion(cpl_hdr.fmt_type);
+
+        if (axi_st_rx_if[j].tvalid && axi_st_rx_if[j].tready) begin
+            axi_st_rx_if_sop <= axi_st_rx_if[j].tlast;
+        end
+
+        if (!fim_rst_n[j]) begin
+            cpl_hdr_d_valid <= 1'b0;
+            axi_st_rx_if_sop <= 1'b1;
+        end
+    end
+
+
     // Connecting the TX ST Interface
     ofs_fim_pcie_ss_pipe_tx_sb
       #(
+        .TILE(CFG_TILE_NAME),
+        .PORT_ID(j),
         .TDATA_WIDTH(TDATA_WIDTH),
         .NUM_OF_SEG(CFG_NUM_SEG)
         )
@@ -305,6 +332,8 @@ for (genvar j=0; j<PCIE_NUM_LINKS; j++) begin : PCIE_LINK_CONN
 
         .hip_clk(coreclkout_hip),
         .hip_rst_n(reset_status_n),
+        .csr_clk,
+        .csr_rst_n,
 
         .app_ss_st_tx_tvalid(app_ss_st_tx_tvalid[j]),
         .app_ss_st_tx_tdata(app_ss_st_tx_tdata[j]),
@@ -314,7 +343,11 @@ for (genvar j=0; j<PCIE_NUM_LINKS; j++) begin : PCIE_LINK_CONN
         .app_ss_st_tx_tuser_last_segment(app_ss_st_tx_tuser_last_segment[j]),
         .app_ss_st_tx_tuser_hvalid(app_ss_st_tx_tuser_hvalid[j]),
         .app_ss_st_tx_tuser_hdr(app_ss_st_tx_tuser_hdr[j]),
-        .ss_app_st_tx_tready(ss_app_st_tx_tready[j])
+        .ss_app_st_tx_tready(ss_app_st_tx_tready[j]),
+
+        .cpl_hdr_valid(cpl_hdr_d_valid),
+        .cpl_hdr(cpl_hdr_d),
+        .cpl_timeout(cpl_timeout_if[j])
         );
 
 

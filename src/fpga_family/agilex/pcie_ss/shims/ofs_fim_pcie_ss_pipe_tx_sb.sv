@@ -10,6 +10,8 @@
 
 module ofs_fim_pcie_ss_pipe_tx_sb
   #(
+    parameter TILE = "P-TILE",
+    parameter PORT_ID = 0,
     parameter TDATA_WIDTH = 512,
     parameter TKEEP_WIDTH = TDATA_WIDTH / 8,
     parameter NUM_OF_SEG = 1
@@ -20,6 +22,8 @@ module ofs_fim_pcie_ss_pipe_tx_sb
 
     input  logic hip_clk,
     input  logic hip_rst_n,
+    input  logic csr_clk,
+    input  logic csr_rst_n,
 
     // st_tx clocked by hip_clk
     output logic app_ss_st_tx_tvalid,
@@ -30,13 +34,23 @@ module ofs_fim_pcie_ss_pipe_tx_sb
     output logic [NUM_OF_SEG-1:0] app_ss_st_tx_tuser_last_segment,
     output logic [NUM_OF_SEG-1:0] app_ss_st_tx_tuser_hvalid,
     output logic [NUM_OF_SEG-1:0][255:0] app_ss_st_tx_tuser_hdr,
-    input  logic ss_app_st_tx_tready
+    input  logic ss_app_st_tx_tready,
+
+    // Completion tracking for metering. Clocked by fim_clk.
+    input  logic cpl_hdr_valid,
+    input  pcie_ss_hdr_pkg::PCIe_PUReqHdr_t cpl_hdr,
+
+    // Completion timeout. Clocked by csr_clk.
+    input  pcie_ss_axis_pkg::t_axis_pcie_cplto cpl_timeout
     );
 
     localparam HDR_WIDTH = 256;
 
     wire fim_clk = axi_st_txreq_if.clk;
-    wire fim_rst_n = axi_st_txreq_if.rst_n;
+    bit fim_rst_n = 1'b0;
+    always @(fim_clk) begin
+        fim_rst_n <= axi_st_txreq_if.rst_n;
+    end
 
     typedef ofs_fim_pcie_ss_shims_pkg::t_tuser_seg [NUM_OF_SEG-1:0] t_tuser_seg_vec;
 
@@ -66,25 +80,6 @@ module ofs_fim_pcie_ss_pipe_tx_sb
     assign txreq_enc.tkeep = '0;
     assign txreq_enc.tlast = 1'b1;
     assign txreq_enc.tuser_vendor = txreq_enc_tuser;
-
-
-    //
-    // txreq: clock crossing FIM -> HIP
-    //
-    pcie_ss_axis_if
-      #(
-        .DATA_W($bits(txreq_enc.tdata)),
-        .USER_W($bits(txreq_enc.tuser_vendor))
-        )
-      txreq_hip(hip_clk, hip_rst_n);
-
-    ofs_fim_axis_cdc
-      #(
-        // Relatively shallow buffer. Extra buffering only makes managing
-        // QoS in an AFU harder and doesn't improve throughput.
-        .DEPTH_LOG2(4)
-        )
-      txreq_cdc(.axis_s(txreq_enc), .axis_m(txreq_hip));
 
 
     //
@@ -148,12 +143,73 @@ module ofs_fim_pcie_ss_pipe_tx_sb
 
 
     //
+    // tx+txreq: completion metering
+    //
+    pcie_ss_axis_if
+      #(
+        .DATA_W($bits(txreq_enc.tdata)),
+        .USER_W($bits(txreq_enc.tuser_vendor))
+        )
+      txreq_cpl_meter(fim_clk, fim_rst_n);
+
+    pcie_ss_axis_if
+      #(
+        .DATA_W($bits(tx_enc.tdata)),
+        .USER_W($bits(tx_enc.tuser_vendor))
+        )
+      tx_cpl_meter(fim_clk, fim_rst_n);
+
+    ofs_fim_pcie_ss_cpl_metering
+      #(
+        .TILE(TILE),
+        .PORT_ID(PORT_ID),
+        .SB_HEADERS(1),
+        .NUM_OF_SEG(NUM_OF_SEG)
+        )
+      cpl_metering
+       (
+        .axi_st_txreq_in(txreq_enc),
+        .axi_st_tx_in(tx_enc),
+        .axi_st_txreq_out(txreq_cpl_meter),
+        .axi_st_tx_out(tx_cpl_meter),
+
+        .csr_clk,
+        .csr_rst_n,
+
+        .ss_cplto_tvalid(cpl_timeout.tvalid),
+        .ss_cplto_tdata(cpl_timeout.tdata),
+
+        .cpl_hdr_valid,
+        .cpl_hdr
+        );
+
+
+    //
+    // txreq: clock crossing FIM -> HIP
+    //
+    pcie_ss_axis_if
+      #(
+        .DATA_W($bits(txreq_enc.tdata)),
+        .USER_W($bits(txreq_enc.tuser_vendor))
+        )
+      txreq_hip(hip_clk, hip_rst_n);
+
+    ofs_fim_axis_cdc
+      #(
+        // Relatively shallow buffer. Extra buffering only makes managing
+        // QoS in an AFU harder and doesn't improve throughput.
+        .DEPTH_LOG2(4)
+        )
+      txreq_cdc(.axis_s(txreq_cpl_meter), .axis_m(txreq_hip));
+
+
+    //
     // tx clock crossing FIM -> HIP
     //
     pcie_ss_axis_if
       #(
-        .DATA_W(TDATA_WIDTH),
-        .USER_W($bits(t_tuser_seg_vec))
+        .DATA_W($bits(tx_enc.tdata)),
+        .USER_W($bits(tx_enc.tuser_vendor))
         )
       tx_hip(hip_clk, hip_rst_n);
 
@@ -171,7 +227,7 @@ module ofs_fim_pcie_ss_pipe_tx_sb
         // Delay output until full packets are queued
         .DENSE_OUTPUT(1)
         )
-      tx_cdc(.axis_s(tx_enc), .axis_m(tx_hip));
+      tx_cdc(.axis_s(tx_cpl_meter), .axis_m(tx_hip));
 
 
     //
@@ -186,6 +242,8 @@ module ofs_fim_pcie_ss_pipe_tx_sb
 
     ofs_fim_pcie_ss_tx_merge
       #(
+        .TILE(TILE),
+        .PORT_ID(PORT_ID),
         .NUM_OF_SEG(NUM_OF_SEG)
         )
       tx_merge

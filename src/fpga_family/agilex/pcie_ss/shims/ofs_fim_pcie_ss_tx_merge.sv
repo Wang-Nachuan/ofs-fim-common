@@ -9,7 +9,119 @@
 
 module ofs_fim_pcie_ss_tx_merge
   #(
+    parameter TILE = "P-TILE",
+    parameter PORT_ID = 0,
     parameter NUM_OF_SEG = 1
+    )
+   (
+    // Data in axi_st_txreq_in is unused. txreq is header only (read requests).
+    pcie_ss_axis_if.sink axi_st_txreq_in,
+    pcie_ss_axis_if.sink axi_st_tx_in,
+
+    pcie_ss_axis_if.source axi_st_tx_out
+    );
+
+    // Pick an implementation from the two choices below
+    if (NUM_OF_SEG == 1) begin : arb
+        // One segment -- simple arbitration
+        ofs_fim_pcie_ss_tx_merge_arb merge
+           (
+            .axi_st_txreq_in,
+            .axi_st_tx_in,
+            .axi_st_tx_out
+            );
+    end else begin : seg
+        // Multi-segment -- multiple headers per output cycle
+        ofs_fim_pcie_ss_tx_merge_seg
+          #(
+            .TILE(TILE),
+            .PORT_ID(PORT_ID),
+            .NUM_OF_SEG(NUM_OF_SEG)
+            )
+          merge
+           (
+            .axi_st_txreq_in,
+            .axi_st_tx_in,
+            .axi_st_tx_out
+            );
+    end
+
+endmodule // ofs_fim_pcie_ss_tx_merge
+
+
+//
+// Simple arbitration variant, used when NUM_OF_SEG is 1. Selecting either
+// TX or TXREQ is sufficient.
+//
+module ofs_fim_pcie_ss_tx_merge_arb
+   (
+    // Data in axi_st_txreq_in is unused. txreq is header only (read requests).
+    pcie_ss_axis_if.sink axi_st_txreq_in,
+    pcie_ss_axis_if.sink axi_st_tx_in,
+
+    pcie_ss_axis_if.source axi_st_tx_out
+    );
+
+    localparam TDATA_WIDTH = $bits(axi_st_tx_in.tdata);
+    localparam TUSER_WIDTH = $bits(axi_st_tx_in.tuser_vendor);
+
+    wire clk = axi_st_tx_out.clk;
+    wire rst_n = axi_st_tx_out.rst_n;
+
+    // Merge tx and txreq streams.
+    pcie_ss_axis_if
+      #(
+        .DATA_W(TDATA_WIDTH),
+        .USER_W(TUSER_WIDTH)
+        )
+      arb_tx_in[2](clk, rst_n);
+
+    assign arb_tx_in[0].tvalid = axi_st_tx_in.tvalid;
+    assign axi_st_tx_in.tready = arb_tx_in[0].tready;
+    assign arb_tx_in[0].tdata = axi_st_tx_in.tdata;
+    assign arb_tx_in[0].tkeep = axi_st_tx_in.tkeep;
+    assign arb_tx_in[0].tlast = axi_st_tx_in.tlast;
+    assign arb_tx_in[0].tuser_vendor = axi_st_tx_in.tuser_vendor;
+
+    assign arb_tx_in[1].tvalid = axi_st_txreq_in.tvalid;
+    assign axi_st_txreq_in.tready = arb_tx_in[1].tready;
+    assign arb_tx_in[1].tdata = axi_st_txreq_in.tdata;
+    assign arb_tx_in[1].tkeep = axi_st_txreq_in.tkeep;
+    assign arb_tx_in[1].tlast = 1'b1;
+    assign arb_tx_in[1].tuser_vendor = axi_st_txreq_in.tuser_vendor;
+
+    pcie_ss_axis_mux
+      #(
+        .NUM_CH(2),
+        .TDATA_WIDTH(TDATA_WIDTH),
+        .TUSER_WIDTH(TUSER_WIDTH)
+        )
+      tx_txreq_arb
+       (
+        .clk(clk),
+        .rst_n(rst_n),
+        .sink(arb_tx_in),
+        .source(axi_st_tx_out)
+        );
+
+endmodule // ofs_fim_pcie_ss_tx_merge_arb
+
+
+//
+// Segment-based TX/TXREQ merge for systems that support more than one header
+// per cycle.
+//
+// The algorithm can generate up to 2 headers on the output stream, one in
+// segment 0 and the other at NUM_OF_SEG/2.
+//
+module ofs_fim_pcie_ss_tx_merge_seg
+  #(
+    parameter TILE = "P-TILE",
+    parameter PORT_ID = 0,
+    parameter NUM_OF_SEG = 1,
+
+    // Register output?
+    parameter REGISTER_OUTPUT = 0
     )
    (
     // Data in axi_st_txreq_in is unused. txreq is header only (read requests).
@@ -48,6 +160,10 @@ module ofs_fim_pcie_ss_tx_merge
     wire t_seg_tdata tx_in_tdata = axi_st_tx_in.tdata;
     wire t_seg_tkeep tx_in_tkeep = axi_st_tx_in.tkeep;
     wire t_seg_tuser tx_in_tuser = axi_st_tx_in.tuser_vendor;
+    // Dense encoding of tx tuser last segment
+    logic [NUM_OF_SEG-1:0] tx_in_tuser_last_segment;
+    for (genvar s = 0; s < NUM_OF_SEG-1; s += 1)
+        assign tx_in_tuser_last_segment[s] = tx_in_tuser[s].last_segment;
 
     wire t_seg_tdata txreq_in_tdata = axi_st_txreq_in.tdata;
     wire t_seg_tkeep txreq_in_tkeep = axi_st_txreq_in.tkeep;
@@ -57,14 +173,14 @@ module ofs_fim_pcie_ss_tx_merge
     // Registers holding the previous state from TX in case only part
     // of the request was transmitted. Segment 0 must already have been
     // forwarded, so start at 1.
-    logic [NUM_OF_SEG-1:1][TDATA_SEG_WIDTH-1:0] tx_prev_tdata;
-    logic [NUM_OF_SEG-1:1][TKEEP_SEG_WIDTH-1:0] tx_prev_tkeep;
-    ofs_fim_pcie_ss_shims_pkg::t_tuser_seg [NUM_OF_SEG-1:1] tx_prev_tuser;
+    logic [NUM_OF_SEG/2-1:0][TDATA_SEG_WIDTH-1:0] tx_prev_tdata;
+    logic [NUM_OF_SEG/2-1:0][TKEEP_SEG_WIDTH-1:0] tx_prev_tkeep;
+    ofs_fim_pcie_ss_shims_pkg::t_tuser_seg [NUM_OF_SEG/2-1:0] tx_prev_tuser;
     logic tx_prev_tlast;
     logic tx_prev_tvalid;
-    // Index of the first segment that still hasn't been forwarded
-    logic [$clog2(NUM_OF_SEG)-1:0] tx_prev_idx;
 
+    // Arbitration. Was previous request from txreq?
+    logic prev_was_txreq;
 
     // Incoming segments will be picked from 3 possible locations: txreq,
     // tx and the tx_prev register. Tx_prev holds the remainder of an
@@ -76,126 +192,103 @@ module ofs_fim_pcie_ss_tx_merge
         LOC_NONE = 3
     } e_input_loc;
 
-    // Input location and segment index
-    typedef struct packed {
-        e_input_loc loc;
-        logic [$clog2(NUM_OF_SEG)-1:0] idx;
-    } t_input_seg;
-
-    // Vector holding mapping of input sources to the merged output segments
-    t_input_seg input_seg[NUM_OF_SEG];
-
-    // Arbitration. Was previous request from txreq?
-    logic prev_was_txreq, txreq_was_last;
-    t_input_seg next_src;
+    // Scheduling choices this cycle
+    e_input_loc slot0_input_loc;
+    e_input_loc slot1_input_loc;
     logic picked_txreq;
     logic picked_tx;
 
-    // Construct this cycle's mapping of inputs to the merged output stream.
     always_comb begin
-        picked_txreq = 1'b0;
-        picked_tx = 1'b0;
-        txreq_was_last = 1'b0;
+        unique case ({ tx_prev_tvalid, axi_st_tx_in.tvalid, axi_st_txreq_in.tvalid })
+            // TXREQ only
+            3'b001: begin
+                picked_tx = 1'b0;
+                picked_txreq = 1'b1;
+                slot0_input_loc = LOC_TXREQ;
+                slot1_input_loc = LOC_NONE;
+            end
 
-        if (tx_prev_tvalid) begin
-            // Continue unfinished TX
-            next_src.loc = LOC_TX_PREV;
-            next_src.idx = tx_prev_idx;
-        end
-        else if (!tx_prev_tlast || (axi_st_tx_in.tvalid && (prev_was_txreq || !axi_st_txreq_in.tvalid))) begin
-            // Pick remainder of a TX or new TX if arbitration currently favors it
-            next_src.loc = LOC_TX;
-            next_src.idx = 0;
-        end
-        else if (axi_st_txreq_in.tvalid) begin
-            next_src.loc = LOC_TXREQ;
-            next_src.idx = 0;
-        end
-        else begin
-            next_src.loc = LOC_NONE;
-            next_src.idx = 0;
-        end
+            // TX only
+            3'b010: begin
+                picked_tx = 1'b1;
+                picked_txreq = 1'b0;
+                slot0_input_loc = LOC_TX;
+                slot1_input_loc = LOC_NONE;
+            end
 
-        for (int i = 0; i < NUM_OF_SEG; i += 1) begin
-            input_seg[i] = next_src;
-
-            unique case (input_seg[i].loc)
-                LOC_TX_PREV: begin
-                    if ((next_src.idx != NUM_OF_SEG-1) && !tx_prev_tuser[next_src.idx].last_segment) begin
-                        // There is more in the tx_prev register
-                        next_src.loc = LOC_TX_PREV;
-                        next_src.idx = next_src.idx + 1;
-                    end
-                    else if (tx_prev_tlast && axi_st_txreq_in.tvalid) begin
-                        // Done with TX packet. Switch to TXREQ.
-                        next_src.loc = LOC_TXREQ;
-                        next_src.idx = 0;
-                    end
-                    else if (axi_st_tx_in.tvalid) begin
-                        // Continue TX packet from input stream or start a new one
-                        next_src.loc = LOC_TX;
-                        next_src.idx = 0;
-                    end
-                    else begin
-                        next_src.loc = LOC_NONE;
-                        next_src.idx = 0;
-                    end
-                end
-
-                LOC_TX: begin
+            // TX + TXREQ
+            3'b011: begin
+                // Continuing previous TX or last packet was TXREQ?
+                if (!tx_in_tuser[0].hvalid || prev_was_txreq) begin
                     picked_tx = 1'b1;
-                    txreq_was_last = 1'b0;
-
-                    if (!tx_in_tuser[next_src.idx].last_segment) begin
-                        // There is more in the tx input
-                        next_src.loc = LOC_TX;
-                        next_src.idx = next_src.idx + 1;
-                    end
-                    else if (tx_prev_tlast && axi_st_txreq_in.tvalid && !picked_txreq) begin
-                        // Done with TX packet. Switch to TXREQ.
-                        next_src.loc = LOC_TXREQ;
-                        next_src.idx = 0;
-                    end
-                    else begin
-                        next_src.loc = LOC_NONE;
-                        next_src.idx = 0;
-                    end
-                end
-
-                LOC_TXREQ: begin
+                    // Also pick txreq if the TX request fits in the first half
+                    picked_txreq = |(tx_in_tuser_last_segment[(NUM_OF_SEG/2)-1 : 0]);
+                    slot0_input_loc = LOC_TX;
+                    slot1_input_loc = picked_txreq ? LOC_TXREQ : LOC_NONE;
+                end else begin
+                    picked_tx = 1'b1;
                     picked_txreq = 1'b1;
-                    txreq_was_last = 1'b1;
-
-                    // TXREQ is always one segment. If this is the first segment,
-                    // consider the TX input.
-                    if (axi_st_tx_in.tvalid && !picked_tx && (i != NUM_OF_SEG-1)) begin
-                        next_src.loc = LOC_TX;
-                        next_src.idx = 0;
-                    end
-                    else begin
-                        next_src.loc = LOC_NONE;
-                        next_src.idx = 0;
-                    end
+                    slot0_input_loc = LOC_TXREQ;
+                    slot1_input_loc = LOC_TX;
                 end
+            end
 
-                default: begin
-                    // No action
-                    next_src.loc = LOC_NONE;
-                    next_src.idx = 0;
-                end
-            endcase // unique case (input_seg[i].loc)
-        end
+            // TX_PREV only
+            3'b100: begin
+                picked_tx = 1'b0;
+                picked_txreq = 1'b0;
+                slot0_input_loc = LOC_TX_PREV;
+                slot1_input_loc = LOC_NONE;
+            end
+
+            // TX_PREV + TXREQ
+            3'b101: begin
+                // Since packets on TX are guaranteed to be delivered densely,
+                // with no empty cycles, we can infer that the TX_PREV ends
+                // a packet. There is room in the second slot for TXREQ.
+                picked_tx = 1'b0;
+                picked_txreq = 1'b1;
+                slot0_input_loc = LOC_TX_PREV;
+                slot1_input_loc = LOC_TXREQ;
+            end
+
+            // TX_PREV + TX
+            3'b110: begin
+                picked_tx = 1'b1;
+                picked_txreq = 1'b0;
+                slot0_input_loc = LOC_TX_PREV;
+                slot1_input_loc = LOC_TX;
+            end
+
+            // TX_PREV + TX + TXREQ
+            3'b111: begin
+                // Favor TXREQ unless TX continues a packet
+                picked_tx = ~tx_prev_tlast;
+                picked_txreq = tx_prev_tlast;
+                slot0_input_loc = LOC_TX_PREV;
+                slot1_input_loc = tx_prev_tlast ? LOC_TXREQ : LOC_TX;
+            end
+
+            default: begin
+                picked_tx = 1'b0;
+                picked_txreq = 1'b0;
+                slot0_input_loc = LOC_NONE;
+                slot1_input_loc = LOC_NONE;
+            end
+        endcase
     end
 
     assign axi_st_txreq_in.tready = tx_out.tready && picked_txreq;
     assign axi_st_tx_in.tready = tx_out.tready && picked_tx;
-    assign tx_out.tvalid = (input_seg[0].loc != LOC_NONE);
-    assign tx_out.tlast = picked_txreq ||
-                          (tx_prev_tvalid && tx_prev_tlast) ||
-                          (picked_tx && (next_src.loc != LOC_TX));
+    assign tx_out.tvalid = tx_prev_tvalid || axi_st_tx_in.tvalid || axi_st_txreq_in.tvalid;
+    assign tx_out.tlast =
+        picked_txreq ||
+        (tx_prev_tvalid && tx_prev_tlast) ||
+        ((slot0_input_loc == LOC_TX) && axi_st_tx_in.tlast) ||
+        ((slot1_input_loc == LOC_TX) && |(tx_in_tuser_last_segment[(NUM_OF_SEG/2)-1 : 0]));
 
     //
-    // Record TX in case it is needed next cycle
+    // Record the high half of TX in case it is needed next cycle
     //
     always_ff @(posedge clk) begin
         if (tx_out.tready) begin
@@ -204,8 +297,11 @@ module ofs_fim_pcie_ss_tx_merge
 
         if (axi_st_tx_in.tvalid && axi_st_tx_in.tready) begin
             tx_prev_tlast <= axi_st_tx_in.tlast;
-            tx_prev_tvalid <= picked_tx && (next_src.loc == LOC_TX) && (input_seg[0].loc != LOC_TX);
-            tx_prev_idx <= next_src.idx;
+            tx_prev_tdata <= tx_in_tdata[NUM_OF_SEG-1 : NUM_OF_SEG/2];
+            tx_prev_tkeep <= tx_in_tkeep[NUM_OF_SEG-1 : NUM_OF_SEG/2];
+            tx_prev_tuser <= tx_in_tuser[NUM_OF_SEG-1 : NUM_OF_SEG/2];
+            tx_prev_tvalid <= (slot1_input_loc == LOC_TX) &&
+                              ~|(tx_in_tuser_last_segment[(NUM_OF_SEG/2)-1 : 0]);
         end
 
         if (!rst_n) begin
@@ -214,19 +310,10 @@ module ofs_fim_pcie_ss_tx_merge
         end
     end
 
-    if (NUM_OF_SEG > 1) begin : reg_tx
-        always_ff @(posedge clk) begin
-            if (axi_st_tx_in.tvalid && axi_st_tx_in.tready) begin
-                tx_prev_tdata <= tx_in_tdata[NUM_OF_SEG-1:1];
-                tx_prev_tkeep <= tx_in_tkeep[NUM_OF_SEG-1:1];
-                tx_prev_tuser <= tx_in_tuser[NUM_OF_SEG-1:1];
-            end
-        end
-    end
-
     always_ff @(posedge clk) begin
         if (tx_out.tvalid && tx_out.tready) begin
-            prev_was_txreq <= txreq_was_last;
+            prev_was_txreq <= ((slot0_input_loc == LOC_TXREQ) && (slot0_input_loc == LOC_NONE)) ||
+                              (slot1_input_loc == LOC_TXREQ);
         end
 
         if (!rst_n) begin
@@ -234,60 +321,106 @@ module ofs_fim_pcie_ss_tx_merge
         end
     end
 
+
+    //
+    // Map inputs to output based on the scheduling choices above
+    //
     t_seg_tdata tx_out_tdata;
     t_seg_tkeep tx_out_tkeep;
     t_seg_tuser tx_out_tuser;
 
     always_comb begin
-        for (int i = 0; i < NUM_OF_SEG; i += 1) begin
-            unique case (input_seg[i].loc)
-              LOC_TX_PREV: begin
-                    tx_out_tdata[i] = tx_prev_tdata[input_seg[i].idx];
-                    tx_out_tkeep[i] = tx_prev_tkeep[input_seg[i].idx];
-                    tx_out_tuser[i] = tx_prev_tuser[input_seg[i].idx];
-                end
-              LOC_TX: begin
-                    tx_out_tdata[i] = tx_in_tdata[input_seg[i].idx];
-                    tx_out_tkeep[i] = tx_in_tkeep[input_seg[i].idx];
-                    tx_out_tuser[i] = tx_in_tuser[input_seg[i].idx];
-                end
-              LOC_TXREQ: begin
-                    // There is only one TXREQ input
-                    tx_out_tdata[i] = txreq_in_tdata[0];
-                    tx_out_tkeep[i] = txreq_in_tkeep[0];
-                    tx_out_tuser[i] = txreq_in_tuser[0];
-                end
-              default: begin
+        unique case (slot0_input_loc)
+            LOC_TXREQ: begin
+                // There is only one TXREQ input
+                tx_out_tdata[0] = txreq_in_tdata[0];
+                tx_out_tkeep[0] = txreq_in_tkeep[0];
+                tx_out_tuser[0] = txreq_in_tuser[0];
+                for (int i = 1; i < NUM_OF_SEG; i += 1) begin
                     tx_out_tdata[i] = '0;
                     tx_out_tkeep[i] = '0;
                     tx_out_tuser[i] = '0;
                 end
-            endcase
-        end
+            end
+            LOC_TX_PREV: begin
+                for (int i = 0; i < NUM_OF_SEG/2; i += 1) begin
+                    tx_out_tdata[i] = tx_prev_tdata[i];
+                    tx_out_tkeep[i] = tx_prev_tkeep[i];
+                    tx_out_tuser[i] = tx_prev_tuser[i];
+                end
+                for (int i = NUM_OF_SEG/2; i < NUM_OF_SEG; i += 1) begin
+                    tx_out_tdata[i] = '0;
+                    tx_out_tkeep[i] = '0;
+                    tx_out_tuser[i] = '0;
+                end
+            end
+            default: begin
+                // This is LOC_TX, used instead of setting the fields to zero to
+                // simplify the MUX. The valid bit will be off if the location
+                // is LOC_NONE.
+                for (int i = 0; i < NUM_OF_SEG; i += 1) begin
+                    tx_out_tdata[i] = tx_in_tdata[i];
+                    tx_out_tkeep[i] = tx_in_tkeep[i];
+                    tx_out_tuser[i] = tx_in_tuser[i];
+                end
+            end
+        endcase // unique case (slot0_input_loc)
+
+        unique case (slot1_input_loc)
+            LOC_TXREQ: begin
+                // There is only one TXREQ input
+                tx_out_tdata[NUM_OF_SEG/2] = txreq_in_tdata[0];
+                tx_out_tkeep[NUM_OF_SEG/2] = txreq_in_tkeep[0];
+                tx_out_tuser[NUM_OF_SEG/2] = txreq_in_tuser[0];
+                // Any segments beyond NUM_OF_SEG/2 have already been cleared
+                // by the slot0_input_loc case.
+            end
+            LOC_TX: begin
+                for (int i = 0; i < NUM_OF_SEG/2; i += 1) begin
+                    tx_out_tdata[i + NUM_OF_SEG/2] = tx_in_tdata[i];
+                    tx_out_tkeep[i + NUM_OF_SEG/2] = tx_in_tkeep[i];
+                    tx_out_tuser[i + NUM_OF_SEG/2] = tx_in_tuser[i];
+                end
+            end
+            default: begin
+                // No action. slot1_input_loc will never by LOC_TX_PREV and
+                // unused segments in tx_out have already been cleared
+                // by the slot0_input_loc case.
+            end
+        endcase // unique case (slot1_input_loc)
     end
 
     assign tx_out.tdata = tx_out_tdata;
     assign tx_out.tkeep = tx_out_tkeep;
     assign tx_out.tuser_vendor = tx_out_tuser;
 
-    assign tx_out.tready = axi_st_tx_out.tready || !axi_st_tx_out.tvalid;
+    if (REGISTER_OUTPUT) begin : out
+        assign tx_out.tready = axi_st_tx_out.tready || !axi_st_tx_out.tvalid;
 
-    always_ff @(posedge clk) begin
-        if (axi_st_tx_out.tready) begin
-            axi_st_tx_out.tvalid <= 1'b0;
-        end
+        always_ff @(posedge clk) begin
+            if (axi_st_tx_out.tready) begin
+                axi_st_tx_out.tvalid <= 1'b0;
+            end
 
-        if (tx_out.tvalid && tx_out.tready) begin
-            axi_st_tx_out.tvalid <= 1'b1;
-            axi_st_tx_out.tdata <= tx_out.tdata;
-            axi_st_tx_out.tkeep <= tx_out.tkeep;
-            axi_st_tx_out.tuser_vendor <= tx_out.tuser_vendor;
-            axi_st_tx_out.tlast <= tx_out.tlast;
-        end
+            if (tx_out.tvalid && tx_out.tready) begin
+                axi_st_tx_out.tvalid <= 1'b1;
+                axi_st_tx_out.tdata <= tx_out.tdata;
+                axi_st_tx_out.tkeep <= tx_out.tkeep;
+                axi_st_tx_out.tuser_vendor <= tx_out.tuser_vendor;
+                axi_st_tx_out.tlast <= tx_out.tlast;
+            end
 
-        if (!rst_n) begin
-            axi_st_tx_out.tvalid <= 1'b0;
+            if (!rst_n) begin
+                axi_st_tx_out.tvalid <= 1'b0;
+            end
         end
+    end else begin : out
+        assign tx_out.tready = axi_st_tx_out.tready;
+        assign axi_st_tx_out.tvalid = tx_out.tvalid;
+        assign axi_st_tx_out.tdata = tx_out.tdata;
+        assign axi_st_tx_out.tkeep = tx_out.tkeep;
+        assign axi_st_tx_out.tuser_vendor = tx_out.tuser_vendor;
+        assign axi_st_tx_out.tlast = tx_out.tlast;
     end
 
 endmodule // ofs_fim_pcie_ss_tx_merge

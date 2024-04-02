@@ -50,7 +50,10 @@ module ofs_fim_pcie_ss_pipe_rx_sb
     localparam BUFFER_DEPTH = 512;
 
     wire fim_clk = axi_st_rxreq_if.clk;
-    wire fim_rst_n = axi_st_rxreq_if.rst_n;
+    bit fim_rst_n = 1'b0;
+    always @(fim_clk) begin
+        fim_rst_n <= axi_st_rxreq_if.rst_n;
+    end
 
     // Map the incoming tuser ports to a single data structure and store it
     // in the tuser_vendor field of the standard OFS pcie_ss_axis_if. This

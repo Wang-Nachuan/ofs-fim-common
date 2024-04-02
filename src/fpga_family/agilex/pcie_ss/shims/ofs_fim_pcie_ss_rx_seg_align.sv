@@ -34,7 +34,10 @@ module ofs_fim_pcie_ss_rx_seg_align
     );
 
     wire clk = stream_in.clk;
-    wire rst_n = stream_in.rst_n;
+    bit rst_n = 1'b0;
+    always @(clk) begin
+        rst_n <= stream_in.rst_n;
+    end
 
     localparam TDATA_WIDTH = $bits(stream_out.tdata);
     localparam TKEEP_WIDTH = TDATA_WIDTH/8;
@@ -180,8 +183,8 @@ module ofs_fim_pcie_ss_rx_seg_align
     typedef logic [$clog2(NUM_WORK_SEG) : 0] t_work_ch_idx;
 
     struct packed {
-        logic [SEG_TDATA_WIDTH-1:0] tdata;
-        logic [SEG_TKEEP_WIDTH-1:0] tkeep;
+        bit [SEG_TDATA_WIDTH-1:0] tdata;
+        bit [SEG_TKEEP_WIDTH-1:0] tkeep;
         ofs_fim_pcie_ss_shims_pkg::t_tuser_seg tuser;
     } work_reg[NUM_WORK_SEG];
 
@@ -297,7 +300,9 @@ module ofs_fim_pcie_ss_rx_seg_align
                 // Clear entries with values shifted out
                 if (i >= (NUM_WORK_SEG - work_out_num_valid))
                 begin
-                    work_reg[i] <= '0;
+                    work_reg[i].tkeep <= '0;
+                    work_reg[i].tuser.hvalid <= 1'b0;
+                    work_reg[i].tuser.last_segment <= 1'b0;
                 end
             end
         end
@@ -317,7 +322,9 @@ module ofs_fim_pcie_ss_rx_seg_align
         begin
             for (int i = 0; i < NUM_WORK_SEG; i = i + 1)
             begin
-                work_reg[i] <= '0;
+                work_reg[i].tkeep <= '0;
+                work_reg[i].tuser.hvalid <= 1'b0;
+                work_reg[i].tuser.last_segment <= 1'b0;
             end
         end
     end
