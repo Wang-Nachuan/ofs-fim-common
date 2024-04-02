@@ -242,10 +242,12 @@ module ofs_fim_pcie_ss_cpl_metering_impl
     logic [$clog2(CPL_DATA_ENTRY)-1:0] data_entry_count_decr_req[2];
     logic [$clog2(CPL_HDR_ENTRY)-1:0]  hdr_entry_count_decr_req[2];
 
-    logic [$clog2(MAX_DATA_ENTRY)-1:0] data_entry_count_incr0; 
-    logic [$clog2(MAX_DATA_ENTRY)-1:0] data_entry_count_incr1; 
-    logic [$clog2(MAX_HDR_ENTRY)-1:0]  hdr_entry_count_incr0;  
-    logic [$clog2(MAX_HDR_ENTRY)-1:0]  hdr_entry_count_incr1;  
+    logic [$clog2(MAX_DATA_ENTRY)-1:0] data_entry_count_incr;
+    logic [$clog2(MAX_DATA_ENTRY)-1:0] data_entry_count_incr0;
+    logic [$clog2(MAX_DATA_ENTRY)-1:0] data_entry_count_incr1;
+    logic [$clog2(MAX_HDR_ENTRY)-1:0]  hdr_entry_count_incr;
+    logic [$clog2(MAX_HDR_ENTRY)-1:0]  hdr_entry_count_incr0;
+    logic [$clog2(MAX_HDR_ENTRY)-1:0]  hdr_entry_count_incr1;
 
     logic wren_a;
     logic wren_b;
@@ -471,15 +473,20 @@ module ofs_fim_pcie_ss_cpl_metering_impl
         end
     end
 
+    always_ff @(posedge clk) begin
+        data_entry_count_incr <= data_entry_count_incr0 + data_entry_count_incr1;
+        hdr_entry_count_incr <= hdr_entry_count_incr0 + hdr_entry_count_incr1;
+    end
+
     always_comb begin
-        data_entry_count_no_decr = data_entry_count + data_entry_count_incr0 + data_entry_count_incr1;
-        hdr_entry_count_no_decr  = hdr_entry_count + hdr_entry_count_incr0  + hdr_entry_count_incr1;
+        data_entry_count_no_decr = data_entry_count + data_entry_count_incr;
+        hdr_entry_count_no_decr  = hdr_entry_count + hdr_entry_count_incr;
 
-        data_entry_count_decr_req[0] = data_entry_count - c2h_req_data_entries[0] + data_entry_count_incr0 + data_entry_count_incr1;
-        hdr_entry_count_decr_req[0]  = hdr_entry_count - c2h_req_hdr_entries[0] + hdr_entry_count_incr0  + hdr_entry_count_incr1;
+        data_entry_count_decr_req[0] = data_entry_count - c2h_req_data_entries[0] + data_entry_count_incr;
+        hdr_entry_count_decr_req[0]  = hdr_entry_count - c2h_req_hdr_entries[0] + hdr_entry_count_incr;
 
-        data_entry_count_decr_req[1] = data_entry_count - c2h_req_data_entries[1] + data_entry_count_incr0 + data_entry_count_incr1;
-        hdr_entry_count_decr_req[1]  = hdr_entry_count - c2h_req_hdr_entries[1] + hdr_entry_count_incr0  + hdr_entry_count_incr1;
+        data_entry_count_decr_req[1] = data_entry_count - c2h_req_data_entries[1] + data_entry_count_incr;
+        hdr_entry_count_decr_req[1]  = hdr_entry_count - c2h_req_hdr_entries[1] + hdr_entry_count_incr;
     end 
 
     always_ff @(posedge clk) begin

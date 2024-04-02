@@ -80,7 +80,7 @@ module  pr_slot #(
         localparam PR_FREEZE_DIS = 1;
     `endif
 
-   logic pr_freeze_emif_q0, pr_freeze_emif_q1;
+   (* altera_attribute = {"-name ADV_NETLIST_OPT_ALLOWED NEVER_ALLOW; -name DONT_MERGE_REGISTER ON; -name PRESERVE_REGISTER ON"} *) reg pr_freeze_emif_q0, pr_freeze_emif_q1;
    logic [MAX_NUM_ETH_CHANNELS-1:0] pr_freeze_hssi;
    logic [MAX_NUM_ETH_CHANNELS-1:0] softreset_hssi;
    logic pr_freeze_emif[NUM_MEM_CH-1: 0];
@@ -103,7 +103,7 @@ module  pr_slot #(
     localparam PCIE_TX_REG_MODE    =ST_BYPASS; 
 `endif //INCLUDE_PR
 
-logic               pr_freeze_fnmx_q0, pr_freeze_fnmx_q1;
+(* altera_attribute = {"-name ADV_NETLIST_OPT_ALLOWED NEVER_ALLOW; -name DONT_MERGE_REGISTER ON; -name PRESERVE_REGISTER ON"} *) reg pr_freeze_fnmx_q0, pr_freeze_fnmx_q1;
 pcie_ss_axis_if     axi_tx_a_if_t1[PG_NUM_LINKS-1:0]();
 pcie_ss_axis_if     axi_rx_a_if_t1[PG_NUM_LINKS-1:0]();
 pcie_ss_axis_if     axi_tx_b_if_t1[PG_NUM_LINKS-1:0]();

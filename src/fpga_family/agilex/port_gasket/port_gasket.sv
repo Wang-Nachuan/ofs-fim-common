@@ -143,7 +143,7 @@ endgenerate
 // If VF is not active, return a constant: not in reset.
 `define GET_FUNC_VF_RST_N(LINK, PF, VF, VF_ACTIVE) ((VF_ACTIVE != 0) ? vf_flr_rst_n[LINK][PF][VF] : 1'b1)
 
-logic [PG_NUM_PORTS-1:0] port_rst_n[PG_NUM_LINKS-1:0] = '{PG_NUM_LINKS{'0}};
+(* altera_attribute = {"-name ADV_NETLIST_OPT_ALLOWED NEVER_ALLOW; -name DONT_MERGE_REGISTER ON; -name PRESERVE_REGISTER ON"} *) reg [PG_NUM_PORTS-1:0] port_rst_n[PG_NUM_LINKS-1:0] = '{PG_NUM_LINKS{'0}};
 
 // ----------------------------------------------------------------------------------------------------
 //  PCIe port_rst_n generation
