@@ -230,7 +230,7 @@ proc emit_ip_cfg {ofile_name ip_name} {
 
     # Define the AXI-MM interface widths
     # Filter AXI ports for the ones that are user configurable
-    set axi_ports {rdata wdata awlen awuser awid awaddr buser}
+    set axi_ports {awaddr awid awuser wdata wuser buser bid araddr aruser arid rdata ruser rid}
     if { [info exists axi_width] } {
         puts $of ""
         puts $of "//"
@@ -239,16 +239,13 @@ proc emit_ip_cfg {ofile_name ip_name} {
         puts $of "`define OFS_FIM_IP_CFG_${ip_name}_DEFINES_USER_AXI"
         puts $of "`define OFS_FIM_IP_CFG_${ip_name}_NUM_AXI_CHANNELS ${num_axi_channels}"
         foreach port $axi_ports {
-            if { [string first "data" $port] != -1 } {
-                # Memory supports assymetric read/write data widths
-                set PORT [string toupper $port]
-            } elseif { [string first "buser" $port] != -1 } {
-                set PORT [string toupper $port]
-            } else {
-                # Otherwise clean the channel specific prefix from the AXI port
-                set PORT [string toupper [string trimleft [string trimleft $port "a"] "w"]]
+            set PORT [string toupper $port]
+            # Fallback value if port doesn't exist in IP.
+            set width 1
+            if { [info exists axi_width($port)] } {
+                set width $axi_width($port)
             }
-            puts $of "`define OFS_FIM_IP_CFG_${ip_name}_AXI_${PORT}_WIDTH $axi_width($port)"
+            puts $of "`define OFS_FIM_IP_CFG_${ip_name}_AXI_${PORT}_WIDTH ${width}"
         }
     }
 

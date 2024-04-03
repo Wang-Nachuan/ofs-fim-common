@@ -11,19 +11,21 @@
 //-----------------------------------------------------------------------------
 
 interface ofs_fim_emif_axi_mm_if #(
-   parameter AWID_WIDTH   = ofs_fim_mem_if_pkg::AXI_MEM_ID_WIDTH  ,
-   parameter AWADDR_WIDTH = ofs_fim_mem_if_pkg::AXI_MEM_ADDR_WIDTH,
-   parameter AWUSER_WIDTH = ofs_fim_mem_if_pkg::AXI_MEM_USER_WIDTH,
+   parameter AWID_WIDTH   = ofs_fim_mem_if_pkg::AXI_MEM_AWID_WIDTH,
+   parameter AWADDR_WIDTH = ofs_fim_mem_if_pkg::AXI_MEM_AWADDR_WIDTH,
+   parameter AWUSER_WIDTH = ofs_fim_mem_if_pkg::AXI_MEM_AWUSER_WIDTH,
    parameter AWLEN_WIDTH  = ofs_fim_mem_if_pkg::AXI_MEM_BURST_LEN_WIDTH,
-   parameter WDATA_WIDTH  = ofs_fim_mem_if_pkg::AXI_MEM_WDATA_WIDTH ,
-   parameter WUSER_WIDTH  = ofs_fim_mem_if_pkg::AXI_MEM_USER_WIDTH ,
-   parameter BUSER_WIDTH  = ofs_fim_mem_if_pkg::AXI_MEM_BUSER_WIDTH ,
-   parameter ARID_WIDTH   = ofs_fim_mem_if_pkg::AXI_MEM_ID_WIDTH  ,
-   parameter ARADDR_WIDTH = ofs_fim_mem_if_pkg::AXI_MEM_ADDR_WIDTH,
-   parameter ARUSER_WIDTH = ofs_fim_mem_if_pkg::AXI_MEM_USER_WIDTH,
+   parameter WDATA_WIDTH  = ofs_fim_mem_if_pkg::AXI_MEM_WDATA_WIDTH,
+   parameter WUSER_WIDTH  = ofs_fim_mem_if_pkg::AXI_MEM_WUSER_WIDTH,
+   parameter BID_WIDTH    = ofs_fim_mem_if_pkg::AXI_MEM_BID_WIDTH,
+   parameter BUSER_WIDTH  = ofs_fim_mem_if_pkg::AXI_MEM_BUSER_WIDTH,
+   parameter ARID_WIDTH   = ofs_fim_mem_if_pkg::AXI_MEM_ARID_WIDTH,
+   parameter ARADDR_WIDTH = ofs_fim_mem_if_pkg::AXI_MEM_ARADDR_WIDTH,
+   parameter ARUSER_WIDTH = ofs_fim_mem_if_pkg::AXI_MEM_ARUSER_WIDTH,
    parameter ARLEN_WIDTH  = ofs_fim_mem_if_pkg::AXI_MEM_BURST_LEN_WIDTH,
-   parameter RDATA_WIDTH  = ofs_fim_mem_if_pkg::AXI_MEM_RDATA_WIDTH ,
-   parameter RUSER_WIDTH  = ofs_fim_mem_if_pkg::AXI_MEM_USER_WIDTH 
+   parameter RDATA_WIDTH  = ofs_fim_mem_if_pkg::AXI_MEM_RDATA_WIDTH,
+   parameter RID_WIDTH    = ofs_fim_mem_if_pkg::AXI_MEM_RID_WIDTH,
+   parameter RUSER_WIDTH  = ofs_fim_mem_if_pkg::AXI_MEM_RUSER_WIDTH 
 );
    logic                       clk;
    logic                       rst_n;
@@ -53,7 +55,7 @@ interface ofs_fim_emif_axi_mm_if #(
    // Write response channel
    logic                       bready;
    logic                       bvalid;
-   logic [AWID_WIDTH-1:0]      bid;
+   logic [BID_WIDTH-1:0]       bid;
    logic [1:0]                 bresp;
    logic [BUSER_WIDTH-1:0]     buser;
 
@@ -74,7 +76,7 @@ interface ofs_fim_emif_axi_mm_if #(
    // Read response channel
    logic                       rready;
    logic                       rvalid;
-   logic [ARID_WIDTH-1:0]      rid;
+   logic [RID_WIDTH-1:0]       rid;
    logic [RDATA_WIDTH-1:0]     rdata;
    logic [1:0]                 rresp;
    logic                       rlast;

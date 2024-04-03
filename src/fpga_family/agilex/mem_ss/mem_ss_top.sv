@@ -43,7 +43,7 @@ module mem_ss_top
    ofs_fim_axi_lite_if.slave    csr_lite_if
 );
 
-`ifndef __OFS_FIM_IP_CFG_MEM_SS__
+`ifndef __OFS_FIM_IP_CFG_LOCAL_MEM__
    $error("OFS Memory Subsystem configuration is undefined, but the subsystem has been instantiated in the design!");
 `endif
 
@@ -52,62 +52,62 @@ module mem_ss_top
    // and which user interfaces are enabled in the memory crossbar.
    // (OFS defaults to 1-to-1 AXI-MEM interface mapping)
    enum {
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_0
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_0
       MEM_0,
 `endif
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_1
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_1
       MEM_1,
 `endif
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_2
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_2
       MEM_2,
 `endif
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_3
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_3
       MEM_3,
 `endif
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_4
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_4
       MEM_4,
 `endif
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_5
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_5
       MEM_5,
 `endif
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_6
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_6
       MEM_6,
 `endif
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_7
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_7
       MEM_7,
 `endif
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_8
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_8
       MEM_8,
 `endif
       MEM_XXX
    } mem_idx;
    
    enum {
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_0
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_0
       AXI_0,
 `endif
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_1
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_1
       AXI_1,
 `endif
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_2
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_2
       AXI_2,
 `endif
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_3
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_3
       AXI_3,
 `endif
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_4
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_4
       AXI_4,
 `endif
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_5
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_5
       AXI_5,
 `endif
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_6
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_6
       AXI_6,
 `endif
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_7
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_7
       AXI_7,
 `endif
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_8
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_8
       AXI_8,
 `endif
       AXI_XXX
@@ -181,7 +181,7 @@ mem_ss_csr #(
 ) mem_ss_csr_inst (
    .clk              (clk_csr),
    .rst_n            (rst_n_csr),
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_CSR
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_CSR
    .csr_lite_if      (emif_dfh_if),
 `else
    .csr_lite_if      (csr_lite_if),
@@ -193,41 +193,41 @@ mem_ss_csr #(
 // ruser and wuser are unused when the databus is a power of 2, so 
 // it gets optimized away by the SS in this case.  We need to assign 
 // these buses to 0 to prevent Xpropagation in simulation. 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_0
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_0
    assign afu_mem_if[AXI_0].ruser = 'h0;
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_1
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_1
    assign afu_mem_if[AXI_1].ruser = 'h0;
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_2
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_2
    assign afu_mem_if[AXI_2].ruser = 'h0;
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_3
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_3
    assign afu_mem_if[AXI_3].ruser = 'h0;
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_4
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_4
    assign afu_mem_if[AXI_4].ruser = 'h0;
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_5
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_5
    assign afu_mem_if[AXI_5].ruser = 'h0;
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_6
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_6
    assign afu_mem_if[AXI_6].ruser = 'h0;
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_7
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_7
    assign afu_mem_if[AXI_7].ruser = 'h0;
 `endif
 
 
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_CSR
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_CSR
 emif_csr_ic emif_csr_interconnect (
    .clk_clk     (clk_csr),
    .reset_reset (!rst_n_csr),
@@ -297,9 +297,9 @@ emif_csr_ic emif_csr_interconnect (
 );
 `endif   
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_ENTITY
-`OFS_FIM_IP_CFG_MEM_SS_ENTITY mem_ss_inst (
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_CSR
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_ENTITY
+`OFS_FIM_IP_CFG_LOCAL_MEM_ENTITY mem_ss_inst (
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_CSR
    // Subsystem CSR AXI4-lite interface
    .csr_app_ss_lite_aclk     (clk_csr),
    .csr_app_ss_lite_areset_n (rst_n_csr),
@@ -325,7 +325,7 @@ emif_csr_ic emif_csr_interconnect (
 `endif
 
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_0
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_0
    // AXI-MM clk/rst from EMIF
    .mem0_ss_app_usr_reset_n(afu_mem_if[AXI_0].rst_n),
    .mem0_ss_app_usr_clk    (afu_mem_if[AXI_0].clk),
@@ -334,7 +334,7 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_AXI_MM_PORT(i0_app_ss_mm, i0_ss_app_mm, afu_mem_if[AXI_0]),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_1
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_1
    // AXI-MM clk/rst from EMIF
    .mem1_ss_app_usr_reset_n(afu_mem_if[AXI_1].rst_n),
    .mem1_ss_app_usr_clk    (afu_mem_if[AXI_1].clk),
@@ -342,7 +342,7 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_AXI_MM_PORT(i1_app_ss_mm, i1_ss_app_mm, afu_mem_if[AXI_1]),
 `endif
                           
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_2
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_2
    // AXI-MM clk/rst from EMIF
    .mem2_ss_app_usr_reset_n(afu_mem_if[AXI_2].rst_n),
    .mem2_ss_app_usr_clk    (afu_mem_if[AXI_2].clk),
@@ -350,7 +350,7 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_AXI_MM_PORT(i2_app_ss_mm, i2_ss_app_mm, afu_mem_if[AXI_2]),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_3
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_3
    // AXI-MM clk/rst from EMIF
    .mem3_ss_app_usr_reset_n(afu_mem_if[AXI_3].rst_n),
    .mem3_ss_app_usr_clk    (afu_mem_if[AXI_3].clk),
@@ -358,7 +358,7 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_AXI_MM_PORT(i3_app_ss_mm, i3_ss_app_mm, afu_mem_if[AXI_3]),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_4
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_4
    // AXI-MM clk/rst from EMIF
    .mem4_ss_app_usr_reset_n(afu_mem_if[AXI_4].rst_n),
    .mem4_ss_app_usr_clk    (afu_mem_if[AXI_4].clk),
@@ -366,7 +366,7 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_AXI_MM_PORT(i4_app_ss_mm, i4_ss_app_mm, afu_mem_if[AXI_4]),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_5
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_5
    // AXI-MM clk/rst from EMIF
    .mem5_ss_app_usr_reset_n(afu_mem_if[AXI_5].rst_n),
    .mem5_ss_app_usr_clk    (afu_mem_if[AXI_5].clk),
@@ -374,7 +374,7 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_AXI_MM_PORT(i5_app_ss_mm, i5_ss_app_mm, afu_mem_if[AXI_5]),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_6
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_6
    // AXI-MM clk/rst from EMIF
    .mem6_ss_app_usr_reset_n(afu_mem_if[AXI_6].rst_n),
    .mem6_ss_app_usr_clk    (afu_mem_if[AXI_6].clk),
@@ -382,7 +382,7 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_AXI_MM_PORT(i6_app_ss_mm, i6_ss_app_mm, afu_mem_if[AXI_6]),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_7
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_7
    // AXI-MM clk/rst from EMIF
    .mem7_ss_app_usr_reset_n(afu_mem_if[AXI_7].rst_n),
    .mem7_ss_app_usr_clk    (afu_mem_if[AXI_7].clk),
@@ -390,7 +390,7 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_AXI_MM_PORT(i7_app_ss_mm, i7_ss_app_mm, afu_mem_if[AXI_7]),
 `endif
                           
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_AXI_MM_8
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_AXI_MM_8
    // AXI-MM clk/rst from EMIF
    .mem8_ss_app_usr_reset_n(afu_mem_if[AXI_8].rst_n),
    .mem8_ss_app_usr_clk    (afu_mem_if[AXI_8].clk),
@@ -398,7 +398,7 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_AXI_MM_PORT(i8_app_ss_mm, i8_ss_app_mm, afu_mem_if[AXI_8]),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_0
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_0
    // EMIF Calibration status
    .mem0_local_cal_success (mem_ss_cal_success[MEM_0]),
    .mem0_local_cal_fail    (mem_ss_cal_fail[MEM_0]),
@@ -407,56 +407,56 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_DDR4_PORT(mem0, mem0_ddr4, ddr4_mem_if[MEM_0]),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_1
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_1
    .mem1_local_cal_success (mem_ss_cal_success [MEM_1]),
    .mem1_local_cal_fail    (mem_ss_cal_fail    [MEM_1]),
    // Macro args: input (to IP) port ID, output port ID, interface ID
    `CONNECT_OFS_FIM_DDR4_PORT(mem1, mem1_ddr4, ddr4_mem_if[MEM_1]),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_2
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_2
    .mem2_local_cal_success (mem_ss_cal_success [MEM_2]),
    .mem2_local_cal_fail    (mem_ss_cal_fail    [MEM_2]),
    // Macro args: input (to IP) port ID, output port ID, interface ID
    `CONNECT_OFS_FIM_DDR4_PORT(mem2, mem2_ddr4, ddr4_mem_if[MEM_2]),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_3
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_3
    .mem3_local_cal_success (mem_ss_cal_success [MEM_3]),
    .mem3_local_cal_fail    (mem_ss_cal_fail    [MEM_3]),
    // Macro args: input (to IP) port ID, output port ID, interface ID
    `CONNECT_OFS_FIM_DDR4_PORT(mem3, mem3_ddr4, ddr4_mem_if[MEM_3]),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_4
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_4
    .mem4_local_cal_success (mem_ss_cal_success [MEM_4]),
    .mem4_local_cal_fail    (mem_ss_cal_fail    [MEM_4]),
    // Macro args: input (to IP) port ID, output port ID, interface ID
    `CONNECT_OFS_FIM_DDR4_PORT(mem4, mem4_ddr4, ddr4_mem_if[MEM_4]),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_5
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_5
    .mem5_local_cal_success (mem_ss_cal_success [MEM_5]),
    .mem5_local_cal_fail    (mem_ss_cal_fail    [MEM_5]),
    // Macro args: input (to IP) port ID, output port ID, interface ID
    `CONNECT_OFS_FIM_DDR4_PORT(mem5, mem5_ddr4, ddr4_mem_if[MEM_5]),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_6
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_6
    .mem6_local_cal_success (mem_ss_cal_success [MEM_6]),
    .mem6_local_cal_fail    (mem_ss_cal_fail    [MEM_6]),
    // Macro args: input (to IP) port ID, output port ID, interface ID
    `CONNECT_OFS_FIM_DDR4_PORT(mem6, mem6_ddr4, ddr4_mem_if[MEM_6]),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_7
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_7
    .mem7_local_cal_success (mem_ss_cal_success [MEM_7]),
    .mem7_local_cal_fail    (mem_ss_cal_fail    [MEM_7]),
    // Macro args: input (to IP) port ID, output port ID, interface ID
    `CONNECT_OFS_FIM_DDR4_PORT(mem7, mem7_ddr4, ddr4_mem_if[MEM_7]),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_EN_MEM_8
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_EN_MEM_8
    .mem8_local_cal_success (mem_ss_cal_success [MEM_8]),
    .mem8_local_cal_fail    (mem_ss_cal_fail    [MEM_8]),
    // Macro args: input (to IP) port ID, output port ID, interface ID
@@ -464,7 +464,7 @@ emif_csr_ic emif_csr_interconnect (
 `endif
 
 `ifdef INCLUDE_HPS
-`ifdef OFS_FIM_IP_CFG_MEM_SS_HPS_EMIF_IS_MEM_0
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_HPS_EMIF_IS_MEM_0
    // CH0 EMIF HPS conduit
    .mem0_hps_to_emif     (hps2emif),
    .mem0_emif_to_hps     (emif2hps),
@@ -475,7 +475,7 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_DDR4_PORT(mem0, mem0_ddr4, ddr4_hps_if),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_HPS_EMIF_IS_MEM_1
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_HPS_EMIF_IS_MEM_1
    // CH0 EMIF HPS conduit
    .mem1_hps_to_emif     (hps2emif),
    .mem1_emif_to_hps     (emif2hps),
@@ -486,7 +486,7 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_DDR4_PORT(mem1, mem1_ddr4, ddr4_hps_if),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_HPS_EMIF_IS_MEM_2
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_HPS_EMIF_IS_MEM_2
    // CH2 EMIF HPS conduit
    .mem2_hps_to_emif     (hps2emif),
    .mem2_emif_to_hps     (emif2hps),
@@ -497,7 +497,7 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_DDR4_PORT(mem2, mem2_ddr4, ddr4_hps_if),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_HPS_EMIF_IS_MEM_3
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_HPS_EMIF_IS_MEM_3
    // CH3 EMIF HPS conduit
    .mem3_hps_to_emif     (hps2emif),
    .mem3_emif_to_hps     (emif2hps),
@@ -508,7 +508,7 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_DDR4_PORT(mem3, mem3_ddr4, ddr4_hps_if),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_HPS_EMIF_IS_MEM_4
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_HPS_EMIF_IS_MEM_4
    // CH4 EMIF HPS conduit
    .mem4_hps_to_emif     (hps2emif),
    .mem4_emif_to_hps     (emif2hps),
@@ -519,7 +519,7 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_DDR4_PORT(mem4, mem4_ddr4, ddr4_hps_if),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_HPS_EMIF_IS_MEM_5
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_HPS_EMIF_IS_MEM_5
    // CH5 EMIF HPS conduit
    .mem5_hps_to_emif     (hps2emif),
    .mem5_emif_to_hps     (emif2hps),
@@ -530,7 +530,7 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_DDR4_PORT(mem5, mem5_ddr4, ddr4_hps_if),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_HPS_EMIF_IS_MEM_6
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_HPS_EMIF_IS_MEM_6
    // CH6 EMIF HPS conduit
    .mem6_hps_to_emif     (hps2emif),
    .mem6_emif_to_hps     (emif2hps),
@@ -541,7 +541,7 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_DDR4_PORT(mem6, mem6_ddr4, ddr4_hps_if),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_HPS_EMIF_IS_MEM_7
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_HPS_EMIF_IS_MEM_7
    // CH7 EMIF HPS conduit
    .mem7_hps_to_emif     (hps2emif),
    .mem7_emif_to_hps     (emif2hps),
@@ -552,7 +552,7 @@ emif_csr_ic emif_csr_interconnect (
    `CONNECT_OFS_FIM_DDR4_PORT(mem7, mem7_ddr4, ddr4_hps_if),
 `endif
 
-`ifdef OFS_FIM_IP_CFG_MEM_SS_HPS_EMIF_IS_MEM_8
+`ifdef OFS_FIM_IP_CFG_LOCAL_MEM_HPS_EMIF_IS_MEM_8
    // CH8 EMIF HPS conduit
    .mem8_hps_to_emif     (hps2emif),
    .mem8_emif_to_hps     (emif2hps),
@@ -576,7 +576,7 @@ emif_csr_ic emif_csr_interconnect (
    .ss_app_rst_rdy        (mem_ss_rst_rdy),
    .ss_app_cold_rst_ack_n (mem_ss_rst_ack_n)
 );
-`endif //  `ifdef OFS_FIM_IP_CFG_MEM_SS_ENTITY
+`endif //  `ifdef OFS_FIM_IP_CFG_LOCAL_MEM_ENTITY
 
 endmodule // mem_ss_top
 

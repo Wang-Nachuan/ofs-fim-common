@@ -26,10 +26,6 @@ module tg2_axi_mem (
    ofs_fim_emif_axi_mm_if.user ext_mem_if
 );
 
-localparam USER_WIDTH = ofs_fim_mem_if_pkg::AXI_MEM_USER_WIDTH;
-localparam BUSER_WIDTH = ofs_fim_mem_if_pkg::AXI_MEM_BUSER_WIDTH;
-localparam UNUSED_BITS = USER_WIDTH - BUSER_WIDTH; 
-   
 ofs_avmm_if #(
    .ADDR_W($bits(csr_cfg.address)),
    .DATA_W($bits(csr_cfg.writedata))
@@ -71,7 +67,7 @@ mem_ss_tg tg_inst (
    .axi_bvalid  (ext_mem_if.bvalid),
    .axi_bid     (ext_mem_if.bid),
    .axi_bresp   (ext_mem_if.bresp),
-   .axi_buser   ({ {{UNUSED_BITS}{1'b0}}, ext_mem_if.buser[BUSER_WIDTH-1:0]}), //buser width is set independently from the other user buses in mem_ss.ip. Need to assign it seperately.
+   .axi_buser   ({'0, ext_mem_if.buser}),
    
    // Read address channel
    .axi_arready (ext_mem_if.arready),

@@ -76,3 +76,105 @@
    .``OPORT``_dqs_n        (``IFC``.dqs_n), \
    .``OPORT``_dq           (``IFC``.dq), \
    .``OPORT``_dbi_n        (``IFC``.dbi_n)
+
+// Declares A bundle of AXI wires with `WIRE` prefix and attaches `PARAM` prefixed parameters
+// Useful when using .* for implicit connectsions to PD hierarchies since unimplemented ports will 
+// leave dangling nets instead of needing special handling
+`define DECLARE_OFS_FIM_AXI_MM_WIRES(WIRE,PARAM) \
+// Write address channel \
+logic ``WIRE``_awready; \
+logic ``WIRE``_awvalid; \
+logic [``PARAM``_ID_WIDTH-1:0] ``WIRE``_awid; \
+logic [``PARAM``_AWADDR_WIDTH-1:0]``WIRE``_awaddr; \
+logic [``PARAM``_AWLEN_WIDTH-1:0] ``WIRE``_awlen; \
+logic [2:0] ``WIRE``_awsize; \
+logic [1:0] ``WIRE``_awburst; \
+logic ``WIRE``_awlock; \
+logic [3:0] ``WIRE``_awcache; \
+logic [2:0] ``WIRE``_awprot; \
+logic [3:0] ``WIRE``_awqos; \
+logic [``PARAM``_USER_WIDTH-1:0] ``WIRE``_awuser; \
+// Write data channel \
+logic ``WIRE``_wready; \
+logic ``WIRE``_wvalid; \
+logic [``PARAM``_WDATA_WIDTH-1:0] ``WIRE``_wdata; \
+logic [(``PARAM``_WDATA_WIDTH/8)-1:0] ``WIRE``_wstrb; \
+logic ``WIRE``_wlast; \
+// Write response channel \
+logic ``WIRE``_bready; \
+logic ``WIRE``_bvalid; \
+logic [``PARAM``_ID_WIDTH-1:0] ``WIRE``_bid; \
+logic [1:0] ``WIRE``_bresp; \
+logic [``PARAM``_USER_WIDTH-1:0] ``WIRE``_buser; \
+// Read address channel \
+logic ``WIRE``_arready (``IFC``.arready), \
+logic ``WIRE``_arvalid (``IFC``.arvalid), \
+logic [``PARAM``_ID_WIDTH-1:0] ``WIRE``_arid; \
+logic [``PARAM``_ARADDR_WIDTH-1:0] ``WIRE``_araddr; \
+logic [``PARAM``_LEN_WIDTH-1:0] ``WIRE``_arlen; \
+logic [2:0] ``WIRE``_arsize; \
+logic [1:0] ``WIRE``_arburst; \
+logic ``WIRE``_arlock; \
+logic [3:0] ``WIRE``_arcache; \
+logic [2:0] ``WIRE``_arprot; \
+logic [2:0] ``WIRE``_arqos; \
+logic [``PARAM``_USER_WIDTH-1:0] ``WIRE``_aruser \
+//Read response channel \
+logic ``WIRE``_rready; \
+logic ``WIRE``_rvalid; \
+logic [``PARAM``_ID_WIDTH] ``WIRE``_rid; \
+logic [``PARAM``_RDATA_WIDTH-1:0] ``WIRE``_rdata; \
+logic [1:0] ``WIRE``_rresp; \
+logic ``WIRE``_rlast; 
+
+// Connect AXI interface `IFC` signals to wires with `WIRE` prefix
+`define ASSIGN_OFS_FIM_AXI_MM_WIRES(WIRE, IFC) \
+always_comb begin \
+   // Write address channel \
+   ``WIRE``_awready = ``IFC``.awready; \
+   ``WIRE``_awvalid = ``IFC``.awvalid; \
+   ``WIRE``_awid    = ``IFC``.awid; \
+   ``WIRE``_awaddr  = ``IFC``.awaddr; \
+   ``WIRE``_awlen   = ``IFC``.awlen; \
+   ``WIRE``_awsize  = ``IFC``.awsize; \
+   ``WIRE``_awburst = ``IFC``.awburst; \
+   ``WIRE``_awlock  = ``IFC``.awlock; \
+   ``WIRE``_awcache = ``IFC``.awcache; \
+   ``WIRE``_awprot  = ``IFC``.awprot; \
+   ``WIRE``_awqos   = ``IFC``.awqos; \
+   ``WIRE``_awuser  = ``IFC``.awuser; \
+   // Write data channel \
+   ``WIRE``_wready  = ``IFC``.wready; \
+   ``WIRE``_wvalid  = ``IFC``.wvalid; \
+   ``WIRE``_wdata   = ``IFC``.wdata; \
+   ``WIRE``_wstrb   = ``IFC``.wstrb; \
+   ``WIRE``_wlast   = ``IFC``.wlast; \
+   ``WIRE``_wuser   = ``IFC``.wuser; \
+   // Write response channel \
+   ``WIRE``_bready  = ``IFC``.bready; \
+   ``WIRE``_bvalid  = ``IFC``.bvalid; \
+   ``WIRE``_bid     = ``IFC``.bid; \
+   ``WIRE``_bresp   = ``IFC``.bresp; \
+   ``WIRE``_buser   = ``IFC``.buser; \
+   // Read address channel \
+   ``WIRE``_arready = ``IFC``.arready; \
+   ``WIRE``_arvalid = ``IFC``.arvalid; \
+   ``WIRE``_arid    = ``IFC``.arid; \
+   ``WIRE``_araddr  = ``IFC``.araddr; \
+   ``WIRE``_arlen   = ``IFC``.arlen; \
+   ``WIRE``_arsize  = ``IFC``.arsize; \
+   ``WIRE``_arburst = ``IFC``.arburst; \
+   ``WIRE``_arlock  = ``IFC``.arlock; \
+   ``WIRE``_arcache = ``IFC``.arcache; \
+   ``WIRE``_arprot  = ``IFC``.arprot; \
+   ``WIRE``_arqos   = ``IFC``.arqos; \
+   ``WIRE``_aruser  = ``IFC``.aruser; \
+   // Read response channel \
+   ``WIRE``_rready  = ``IFC``.rready; \
+   ``WIRE``_rvalid  = ``IFC``.rvalid; \
+   ``WIRE``_rid     = ``IFC``.rid; \
+   ``WIRE``_rdata   = ``IFC``.rdata; \
+   ``WIRE``_rresp   = ``IFC``.rresp; \
+   ``WIRE``_rlast   = ``IFC``.rlast; \
+   ``WIRE``_ruser   = ``IFC``.ruser; \
+end
