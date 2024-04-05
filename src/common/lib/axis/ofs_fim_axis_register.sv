@@ -89,17 +89,6 @@ if (MODE == 0 && PRESERVE_REG == 0) begin
     logic [TDEST_WIDTH-1:0]        m_tdest_reg;  
     logic [TUSER_WIDTH-1:0]        m_tuser_reg;
 
-    // --------------------------------------
-    // Pipeline stage
-    //
-    // s_tready is delayed by one cycle, master will see tready assertions one cycle later.
-    // Buffer the data when tready transitions from high->low
-    //
-    // This implementation buffers idle cycles should tready transition on such cycles. 
-    //     i.e. It doesn't take in new data from s_* even though m_tvalid=0 or when m_tready=0
-    // This is a potential cause for throughput loss.
-    // Not buffering idle cycles costs logic on the tready path.
-    // --------------------------------------
     assign s_tready_pre = (m_tready || ~m_tvalid);
  
     always_ff @(posedge clk) begin
@@ -107,8 +96,8 @@ if (MODE == 0 && PRESERVE_REG == 0) begin
         s_tready_reg     <= (TREADY_RST_VAL == 0) ? 1'b0 : 1'b1;
         s_tready_reg_dup <= (TREADY_RST_VAL == 0) ? 1'b0 : 1'b1;
       end else begin
-        s_tready_reg     <= s_tready_pre;
-        s_tready_reg_dup <= s_tready_pre;
+        s_tready_reg     <= s_tready_pre || (~use_reg && ~s_tvalid);
+        s_tready_reg_dup <= s_tready_pre || (~use_reg && ~s_tvalid);
       end
     end
     
@@ -124,8 +113,8 @@ if (MODE == 0 && PRESERVE_REG == 0) begin
        end else if (s_tready_pre) begin
           // stop using the buffer when s_tready_pre is high (m_tready=1 or m_tvalid=0)
           use_reg <= 1'b0;
-       end else if (~s_tready_pre && s_tready_reg) begin
-          use_reg <= 1'b1;
+       end else if (s_tready_reg) begin
+          use_reg <= ~s_tready_pre && s_tvalid;
        end
     end
     
@@ -235,17 +224,6 @@ end else if (MODE == 0 && PRESERVE_REG == 1) begin
     logic [TDEST_WIDTH-1:0]        m_tdest_reg  /* synthesis preserve noprune */;  
     logic [TUSER_WIDTH-1:0]        m_tuser_reg  /* synthesis preserve noprune */;
 
-    // --------------------------------------
-    // Pipeline stage
-    //
-    // s_tready is delayed by one cycle, master will see tready assertions one cycle later.
-    // Buffer the data when tready transitions from high->low
-    //
-    // This implementation buffers idle cycles should tready transition on such cycles. 
-    //     i.e. It doesn't take in new data from s_* even though m_tvalid=0 or when m_tready=0
-    // This is a potential cause for throughput loss.
-    // Not buffering idle cycles costs logic on the tready path.
-    // --------------------------------------
     assign s_tready_pre = (m_tready || ~m_tvalid);
  
     always_ff @(posedge clk) begin
@@ -253,8 +231,8 @@ end else if (MODE == 0 && PRESERVE_REG == 1) begin
         s_tready_reg     <= (TREADY_RST_VAL == 0) ? 1'b0 : 1'b1;
         s_tready_reg_dup <= (TREADY_RST_VAL == 0) ? 1'b0 : 1'b1;
       end else begin
-        s_tready_reg     <= s_tready_pre;
-        s_tready_reg_dup <= s_tready_pre;
+        s_tready_reg     <= s_tready_pre || (~use_reg && ~s_tvalid);
+        s_tready_reg_dup <= s_tready_pre || (~use_reg && ~s_tvalid);
       end
     end
     
@@ -270,8 +248,8 @@ end else if (MODE == 0 && PRESERVE_REG == 1) begin
        end else if (s_tready_pre) begin
           // stop using the buffer when s_tready_pre is high (m_tready=1 or m_tvalid=0)
           use_reg <= 1'b0;
-       end else if (~s_tready_pre && s_tready_reg) begin
-          use_reg <= 1'b1;
+       end else if (s_tready_reg) begin
+          use_reg <= ~s_tready_pre && s_tvalid;
        end
     end
     
