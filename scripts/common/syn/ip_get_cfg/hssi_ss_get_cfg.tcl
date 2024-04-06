@@ -18,7 +18,7 @@
 package require qsys
 
 proc emit_ip_cfg {ofile_name ip_name} {
-    set asp_file_name [string map {".vh" "_asp.qprs"} $ofile_name]"
+    set asp_file_name [string map {".vh" "_asp.qprs"} $ofile_name]
     set of [open $ofile_name w]
 
     puts $of "//"

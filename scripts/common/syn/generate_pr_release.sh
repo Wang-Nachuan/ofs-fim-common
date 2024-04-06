@@ -258,6 +258,7 @@ mv "${TGT_QUARTUS_BUILD_ROOT}"/fme-ifc-id.txt "${TGT}"/hw/lib/
 mkdir -p "${TGT_QUARTUS_BUILD_ROOT}"/output_files
 cp -L output_files/${Q_PROJECT}*.*msf  output_files/${Q_PROJECT}*.sof "${TGT_QUARTUS_BUILD_ROOT}"/output_files
 cp -Lr ofs_partial_reconfig/ "${TGT_QUARTUS_BUILD_ROOT}"/
+cp -L ofs_ip_cfg_db/*.qprs "${TGT_QUARTUS_BUILD_ROOT}"/
 
 mkdir -p "${TGT}"/hw/blue_bits
 (cd "${TGT}"/hw/blue_bits; ln -s ../lib/build/"${QUARTUS_BUILD_ROOT}"/output_files/${Q_PROJECT}*.sof .)
