@@ -131,12 +131,26 @@ mem_ss_tg tg_inst (
       end
    end
 
+   // Register dcfifo in for timing
+   localparam CFG_CCB_WIDTH = $bits({csr_cfg.read,
+			             csr_cfg.write,
+			             csr_cfg.address,
+			             csr_cfg.writedata});
+
+   logic cfg_ccb_in_valid;
+   logic [CFG_CCB_WIDTH-1:0] cfg_ccb_in_data;
+
+   always_ff @(posedge csr_cfg.clk) begin
+      cfg_ccb_in_valid <= cfg_ccb_enq;
+      cfg_ccb_in_data <= {csr_cfg.read,
+		          csr_cfg.write,
+		          csr_cfg.address,
+		          csr_cfg.writedata};
+   end
+
 fim_dcfifo
 #(
-   .DATA_WIDTH      ($bits({csr_cfg.read,
-			    csr_cfg.write,
-			    csr_cfg.address,
-			    csr_cfg.writedata})),
+   .DATA_WIDTH      (CFG_CCB_WIDTH),
    .DEPTH_RADIX     (4),
    .WRITE_ACLR_SYNC ("ON"),
    .READ_ACLR_SYNC  ("ON")
@@ -144,11 +158,8 @@ fim_dcfifo
    .aclr      (!rst_n),
    // tx side
    .wrclk     (csr_cfg.clk),
-   .wrreq     (cfg_ccb_enq),
-   .data      ({csr_cfg.read,
-		csr_cfg.write,
-		csr_cfg.address,
-		csr_cfg.writedata}),
+   .wrreq     (cfg_ccb_in_valid),
+   .data      (cfg_ccb_in_data),
    // rx side
    .rdclk     (tg_cfg.clk),
    .rdreq     (cfg_ccb_deq),
@@ -169,10 +180,14 @@ fim_dcfifo
    // dangerous: we don't have flow control for read responses
    // it shouldn't matter for our use case, but if we add
    // cfg csr polling it will be problematic
-   logic cfg_rd_ccb_empty;
+   logic cfg_rd_ccb_empty, cfg_rd_ccb_empty_q;
+   logic [$bits(csr_cfg.readdata)-1:0] cfg_rd_ccb_data;
 
    always_ff @(posedge csr_cfg.clk) begin
-      csr_cfg.readdatavalid <= !cfg_rd_ccb_empty;
+      cfg_rd_ccb_empty_q <= cfg_rd_ccb_empty;
+      csr_cfg.readdatavalid <= !cfg_rd_ccb_empty_q;
+
+      csr_cfg.readdata <= cfg_rd_ccb_data;
    end
 
 fim_dcfifo
@@ -190,7 +205,7 @@ fim_dcfifo
    // rx side
    .rdclk     (csr_cfg.clk),
    .rdreq     (!cfg_rd_ccb_empty),
-   .q         (csr_cfg.readdata),
+   .q         (cfg_rd_ccb_data),
 
    .rdempty   (cfg_rd_ccb_empty),
    .rdfull    (),

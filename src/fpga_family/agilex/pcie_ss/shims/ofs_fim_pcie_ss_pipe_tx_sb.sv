@@ -48,7 +48,7 @@ module ofs_fim_pcie_ss_pipe_tx_sb
 
     wire fim_clk = axi_st_txreq_if.clk;
     bit fim_rst_n = 1'b0;
-    always @(fim_clk) begin
+    always @(posedge fim_clk) begin
         fim_rst_n <= axi_st_txreq_if.rst_n;
     end
 
