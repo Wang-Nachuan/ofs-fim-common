@@ -226,8 +226,14 @@ module ofs_fim_pcie_ss_cpl_metering_impl
 
     localparam CPL_HDR_ENTRY_P_F  = PORT_ID==0 ? 1144 : (PORT_ID==1 ? 572 : 286);
     localparam CPL_HDR_ENTRY_R    = PORT_ID==0 ? 1444 : (PORT_ID==1 ? 1144 : 572);
-    localparam CPL_HDR_ENTRY      = (TILE=="R-TILE") ? CPL_HDR_ENTRY_R : CPL_HDR_ENTRY_P_F;
-    localparam CPL_DATA_ENTRY     = PORT_ID==0 ? (TILE=="R-TILE" ? 2016*2 : 1444*2) : (TILE=="R-TILE" ? 2016 : 1444);
+    localparam CPL_HDR_ENTRY_HIP  = (TILE=="R-TILE") ? CPL_HDR_ENTRY_R : CPL_HDR_ENTRY_P_F;
+    localparam CPL_DATA_ENTRY_HIP = PORT_ID==0 ? (TILE=="R-TILE" ? 2016*2 : 1444*2) : (TILE=="R-TILE" ? 2016 : 1444);
+
+    // CPL_HDR_ENTRY and CPL_DATA_ENTRY would normally just be equal
+    // to the HIP values. A simplifcation is made for timing. See
+    // the comment below that begins "For timing, the grant calculation".
+    localparam CPL_HDR_ENTRY      = CPL_HDR_ENTRY_HIP + MAX_HDR_ENTRY;
+    localparam CPL_DATA_ENTRY     = CPL_DATA_ENTRY_HIP + MAX_DATA_ENTRY;
 
     logic [29:0] st_cplto_tdata_sync;
     logic        st_cplto_tvalid_sync;
@@ -288,10 +294,29 @@ module ofs_fim_pcie_ss_cpl_metering_impl
     assign c2h_req_arb_valid[0] = c2h_req_valid[0] && (arb_prev_winner || !c2h_req_valid[1]);
     assign c2h_req_arb_valid[1] = c2h_req_valid[1] && (!arb_prev_winner || !c2h_req_valid[0]);
 
-    assign c2h_grant[0] = c2h_req_arb_valid[0] & ((|data_entry_count[$clog2(CPL_DATA_ENTRY)-1:$clog2(MAX_DATA_ENTRY)]) | data_entry_count[$clog2(MAX_DATA_ENTRY)-1:0]>=c2h_req_data_entries[0]) &
-                          ((|hdr_entry_count[$clog2(CPL_HDR_ENTRY)-1:$clog2(MAX_HDR_ENTRY)]) | hdr_entry_count[$clog2(MAX_HDR_ENTRY)-1:0]>=c2h_req_hdr_entries[0]);
-    assign c2h_grant[1] = c2h_req_arb_valid[1] & ((|data_entry_count[$clog2(CPL_DATA_ENTRY)-1:$clog2(MAX_DATA_ENTRY)]) | data_entry_count[$clog2(MAX_DATA_ENTRY)-1:0]>=c2h_req_data_entries[1]) &
-                          ((|hdr_entry_count[$clog2(CPL_HDR_ENTRY)-1:$clog2(MAX_HDR_ENTRY)]) | hdr_entry_count[$clog2(MAX_HDR_ENTRY)-1:0]>=c2h_req_hdr_entries[1]);
+    //
+    // For timing, the grant calculation simplifies the counters. A normal calculation
+    // would check that either the entry count is larger than the max. request size or that
+    // the actual request size is smaller than the number of available slots. For example:
+    //
+    //   assign c2h_grant[1] = c2h_req_arb_valid[1] & ((|data_entry_count[$clog2(CPL_DATA_ENTRY)-1:$clog2(MAX_DATA_ENTRY)]) | data_entry_count[$clog2(MAX_DATA_ENTRY)-1:0]>=c2h_req_data_entries[1]) &
+    //                         ((|hdr_entry_count[$clog2(CPL_HDR_ENTRY)-1:$clog2(MAX_HDR_ENTRY)]) | hdr_entry_count[$clog2(MAX_HDR_ENTRY)-1:0]>=c2h_req_hdr_entries[1]);
+    //
+    // Instead we add MAX_HDR_ENTRY and MAX_DATA_ENTRY to CPL_HDR_ENTRY and CPL_DATA_ENTRY,
+    // which oversubscribes the buffers. The check comparing against the actual request size,
+    // which requires addition, becomes unnecessary. With the max. request size added, we
+    // no longer need to check the low bits for buffer space.
+    //
+    // The FIM provides at least as much receive buffering as this oversubscription.
+    // In addition, the FIM instantiates this metering on the FIM side of clock
+    // crossing buffers. Fewer requests are in flight inside the HIP than the metering
+    // calculation computes.
+    //
+
+    wire hip_cpl_buffer_avail = |data_entry_count[$clog2(CPL_DATA_ENTRY)-1:$clog2(MAX_DATA_ENTRY)] &
+                                |hdr_entry_count[$clog2(CPL_HDR_ENTRY)-1:$clog2(MAX_HDR_ENTRY)];
+    assign c2h_grant[0] = c2h_req_arb_valid[0] & hip_cpl_buffer_avail;
+    assign c2h_grant[1] = c2h_req_arb_valid[1] & hip_cpl_buffer_avail;
 
     always_ff @(posedge clk) begin
         if (c2h_grant[0])
