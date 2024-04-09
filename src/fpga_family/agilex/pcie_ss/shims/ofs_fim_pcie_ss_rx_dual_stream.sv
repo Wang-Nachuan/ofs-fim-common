@@ -69,10 +69,13 @@ module ofs_fim_pcie_ss_rx_dual_stream
     end
     // synthesis translate_on
 
-    // Simple ready/enable. Connections to the outbound ports must assert tready
-    // independent of tvalid. Attempting to set tready based on actual traffic would
-    // be more complicated and have tighter timing.
-    assign stream_in.tready = stream_out_cpld.tready && stream_out_req.tready;
+    // Wait for both cpld and req ports to receive each message
+    logic sent_out_cpld;
+    logic [NUM_OF_SEG-1:0] cpld_seg_valid;
+    logic sent_out_req;
+    logic [NUM_OF_SEG-1:0] req_seg_valid;
+    assign stream_in.tready = (stream_out_cpld.tready || sent_out_cpld || ~|(cpld_seg_valid)) &&
+                              (stream_out_req.tready || sent_out_req || ~|(req_seg_valid));
 
     t_seg_tdata tdata_in;
     assign tdata_in = stream_in.tdata;
@@ -97,7 +100,6 @@ module ofs_fim_pcie_ss_rx_dual_stream
     // ====================================================================
 
     logic cpld_cont;
-    logic [NUM_OF_SEG-1:0] cpld_seg_valid;
     logic [NUM_OF_SEG-1:0] cpld_seg_last;
 
     // Build a mask of segments that are completions with data
@@ -147,11 +149,21 @@ module ofs_fim_pcie_ss_rx_dual_stream
         end
     end
 
-    assign stream_out_cpld.tvalid = |(cpld_seg_valid) && stream_in.tvalid && stream_in.tready;
+    assign stream_out_cpld.tvalid = |(cpld_seg_valid) && stream_in.tvalid && !sent_out_cpld;
     assign stream_out_cpld.tlast = (NUM_OF_SEG == 1) ? stream_in.tlast : |(cpld_seg_last);
     assign stream_out_cpld.tdata = tdata_out_cpld;
     assign stream_out_cpld.tkeep = tkeep_out_cpld;
     assign stream_out_cpld.tuser_vendor = tuser_out_cpld;
+
+    always_ff @(posedge clk) begin
+        if (stream_out_cpld.tvalid && stream_out_cpld.tready)
+            sent_out_cpld <= 1'b1;
+        if (stream_in.tready)
+            sent_out_cpld <= 1'b0;
+
+        if (!rst_n)
+            sent_out_cpld <= 1'b0;
+    end
 
 
     // ====================================================================
@@ -161,7 +173,6 @@ module ofs_fim_pcie_ss_rx_dual_stream
     // ====================================================================
 
     logic req_cont;
-    logic [NUM_OF_SEG-1:0] req_seg_valid;
     logic [NUM_OF_SEG-1:0] req_seg_last;
 
     // Build a mask of segments that are completions with data
@@ -211,10 +222,20 @@ module ofs_fim_pcie_ss_rx_dual_stream
         end
     end
 
-    assign stream_out_req.tvalid = |(req_seg_valid) && stream_in.tvalid && stream_in.tready;
+    assign stream_out_req.tvalid = |(req_seg_valid) && stream_in.tvalid && !sent_out_req;
     assign stream_out_req.tlast = (NUM_OF_SEG == 1) ? stream_in.tlast : |(req_seg_last);
     assign stream_out_req.tdata = tdata_out_req;
     assign stream_out_req.tkeep = tkeep_out_req;
     assign stream_out_req.tuser_vendor = tuser_out_req;
+
+    always_ff @(posedge clk) begin
+        if (stream_out_req.tvalid && stream_out_req.tready)
+            sent_out_req <= 1'b1;
+        if (stream_in.tready)
+            sent_out_req <= 1'b0;
+
+        if (!rst_n)
+            sent_out_req <= 1'b0;
+    end
 
 endmodule // ofs_fim_pcie_ss_rx_dual_stream
