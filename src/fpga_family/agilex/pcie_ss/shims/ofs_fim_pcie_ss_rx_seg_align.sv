@@ -152,7 +152,7 @@ module ofs_fim_pcie_ss_rx_seg_align
     // Work bus will shift high half to low half if the low half is empty or
     // complete.
     wire shift_work_bus = ~|work_valid[0 +: NUM_OF_SEG] ||
-                          (work_out_ready && work_out_seg_mask[NUM_OF_SEG-1]);
+                          (work_out_valid && work_out_ready && work_out_seg_mask[NUM_OF_SEG-1]);
 
     assign source.tready = shift_work_bus || ~|work_valid[NUM_OF_SEG +: NUM_OF_SEG];
 
@@ -162,7 +162,7 @@ module ofs_fim_pcie_ss_rx_seg_align
         // low half of the work bus. These will be overwritten if the high half
         // is shifted into the low half.
         for (int i = 0; i < NUM_OF_SEG; i += 1) begin
-            if (work_out_ready && work_out_seg_mask[i]) begin
+            if (work_out_valid && work_out_ready && work_out_seg_mask[i]) begin
                 work_bus.tkeep[i][0] <= '0;
                 work_bus.tuser[i].hvalid <= 1'b0;
                 work_bus.tuser[i].last_segment <= 1'b0;

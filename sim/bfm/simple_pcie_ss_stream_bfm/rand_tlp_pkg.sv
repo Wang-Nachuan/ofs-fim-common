@@ -174,6 +174,7 @@ package rand_tlp_pkg;
 
         local bit force_tag_h;
         local bit tag_h_val;
+        local bit allow_empty_cycles;
 
         // set_tag_h is a way to flag a particular stream, forcing tag_h_val in all TLPs.
         // set_tlp_type is a way to force a particular TLP type for all packets.
@@ -191,7 +192,13 @@ package rand_tlp_pkg;
 
             set_fixed_tlp_type = set_tlp_type;
             fixed_tlp_type = forced_tlp_type;
+
+            allow_empty_cycles = 1'b1;
         endfunction // new
+
+        function disable_empty_cycles();
+            allow_empty_cycles = 1'b0;
+        endfunction // disable_empty_cycles
 
         // Fill tdata, starting at start segment. Set tlast as needed.
         // Returns the index of the next available segment.
@@ -267,6 +274,8 @@ package rand_tlp_pkg;
             tuser_last_segment = '0;
 
             if (done && (dw_data_stream.size() == 0)) return;
+            // Random empty cycles
+            if (allow_empty_cycles && ($urandom() & 4'hf) == 4'hf) return;
 
             while ((next_seg < NUM_OF_SEG) && (num_sop < MAX_SOP_PER_CYCLE)) begin
                 if (dw_data_stream.size() == 0) begin
