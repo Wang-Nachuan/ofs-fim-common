@@ -117,12 +117,12 @@ module ase_afu_main_emul
     // PIM version of each local memory bank
     ofs_plat_axi_mem_if
       #(
-        .ADDR_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_ADDR_WIDTH),
+        .ADDR_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_AWADDR_WIDTH),
         .DATA_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_WDATA_WIDTH),
         .BURST_CNT_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_BURST_LEN_WIDTH),
-        .USER_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_USER_WIDTH),
-        .RID_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_ID_WIDTH),
-        .WID_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_ID_WIDTH)
+        .USER_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_AWUSER_WIDTH),
+        .RID_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_ARID_WIDTH),
+        .WID_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_AWID_WIDTH)
         )
         local_mem[NUM_LOCAL_MEM_BANKS]();
 
@@ -131,12 +131,12 @@ module ase_afu_main_emul
       #(
         .NUM_BANKS(NUM_LOCAL_MEM_BANKS),
         // The emulator expects ADDR_WIDTH in Avalon terms (line index, not byte)
-        .ADDR_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_ADDR_WIDTH - $clog2(ofs_fim_mem_if_pkg::AXI_MEM_WDATA_WIDTH/8)),
+        .ADDR_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_AWADDR_WIDTH - $clog2(ofs_fim_mem_if_pkg::AXI_MEM_WDATA_WIDTH/8)),
         .DATA_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_WDATA_WIDTH),
         .BURST_CNT_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_BURST_LEN_WIDTH),
-        .USER_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_USER_WIDTH),
-        .RID_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_ID_WIDTH),
-        .WID_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_ID_WIDTH)
+        .USER_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_AWUSER_WIDTH),
+        .RID_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_ARID_WIDTH),
+        .WID_WIDTH(ofs_fim_mem_if_pkg::AXI_MEM_AWID_WIDTH)
         )
       local_mem_model
        (
