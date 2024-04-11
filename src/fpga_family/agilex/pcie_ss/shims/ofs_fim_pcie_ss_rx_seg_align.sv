@@ -63,22 +63,6 @@ module ofs_fim_pcie_ss_rx_seg_align
 
     // ====================================================================
     //
-    //  Add a skid buffer on input for timing
-    //
-    // ====================================================================
-
-    pcie_ss_axis_if #(.DATA_W(TDATA_WIDTH), .USER_W(IN_TUSER_WIDTH)) source(clk, rst_n);
-
-    ofs_fim_axis_pipeline
-      #(
-        .TDATA_WIDTH(TDATA_WIDTH),
-        .TUSER_WIDTH(IN_TUSER_WIDTH)
-        )
-      in_skid (.clk, .rst_n, .axis_s(stream_in), .axis_m(source));
-
-
-    // ====================================================================
-    //
     //  Transform the source stream to the sink stream, enforcing the
     //  guarantees listed at the top of the module.
     //
@@ -154,7 +138,7 @@ module ofs_fim_pcie_ss_rx_seg_align
     wire shift_work_bus = ~|work_valid[0 +: NUM_OF_SEG] ||
                           (work_out_valid && work_out_ready && work_out_seg_mask[NUM_OF_SEG-1]);
 
-    assign source.tready = shift_work_bus || ~|work_valid[NUM_OF_SEG +: NUM_OF_SEG];
+    assign stream_in.tready = shift_work_bus || ~|work_valid[NUM_OF_SEG +: NUM_OF_SEG];
 
     always_ff @(posedge clk)
     begin
@@ -196,10 +180,10 @@ module ofs_fim_pcie_ss_rx_seg_align
         end
 
         // Add new data if the high half of the work bus is available.
-        if (source.tready && source.tvalid) begin
-            work_bus.tdata[NUM_OF_SEG +: NUM_OF_SEG] <= source.tdata;
-            work_bus.tkeep[NUM_OF_SEG +: NUM_OF_SEG] <= source.tkeep;
-            work_bus.tuser[NUM_OF_SEG +: NUM_OF_SEG] <= source.tuser_vendor;
+        if (stream_in.tready && stream_in.tvalid) begin
+            work_bus.tdata[NUM_OF_SEG +: NUM_OF_SEG] <= stream_in.tdata;
+            work_bus.tkeep[NUM_OF_SEG +: NUM_OF_SEG] <= stream_in.tkeep;
+            work_bus.tuser[NUM_OF_SEG +: NUM_OF_SEG] <= stream_in.tuser_vendor;
         end
 
         if (!rst_n)

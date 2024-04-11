@@ -51,7 +51,7 @@ module ofs_fim_pcie_ss_pipe_rx_sb
 
     wire fim_clk = axi_st_rxreq_if.clk;
     bit fim_rst_n = 1'b0;
-    always @(fim_clk) begin
+    always @(posedge fim_clk) begin
         fim_rst_n <= axi_st_rxreq_if.rst_n;
     end
 
@@ -80,6 +80,7 @@ module ofs_fim_pcie_ss_pipe_rx_sb
     // buffer for which RX credits are managed. Credits are only between the HIP's
     // RX buffers and the FIM so doesn't have to be too large.
     pcie_ss_axis_if#(.DATA_W(TDATA_WIDTH), .USER_W($bits(rx_in_tuser))) rx_buf(fim_clk, fim_rst_n);
+    pcie_ss_axis_if#(.DATA_W(TDATA_WIDTH), .USER_W($bits(rx_in_tuser))) rx_buf_skid(fim_clk, fim_rst_n);
 
     ofs_fim_axis_cdc
       #(
@@ -87,6 +88,12 @@ module ofs_fim_pcie_ss_pipe_rx_sb
         )
       rx_cdc(.axis_s(rx_in), .axis_m(rx_buf));
 
+    ofs_fim_axis_pipeline
+      #(
+        .TDATA_WIDTH(TDATA_WIDTH),
+        .TUSER_WIDTH($bits(rx_in_tuser))
+        )
+      pipe_rx_buf(.clk(fim_clk), .rst_n(fim_rst_n), .axis_s(rx_buf), .axis_m(rx_buf_skid));
 
     // Split the RX stream into two: completions (rx) and everything else (rxreq).
     // The streams still have side-band headers.
@@ -100,7 +107,7 @@ module ofs_fim_pcie_ss_pipe_rx_sb
         )
       rx_dual_stream
        (
-        .stream_in(rx_buf),
+        .stream_in(rx_buf_skid),
         .stream_out_cpld(rx_sb),
         .stream_out_req(rxreq_sb)
         );
