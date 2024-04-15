@@ -80,58 +80,65 @@
 // Declares A bundle of AXI wires with `WIRE` prefix and attaches `PARAM` prefixed parameters
 // Useful when using .* for implicit connectsions to PD hierarchies since unimplemented ports will 
 // leave dangling nets instead of needing special handling
-`define DECLARE_OFS_FIM_AXI_MM_WIRES(WIRE,PARAM) \
+`define DECLARE_OFS_FIM_AXI_MM_WIRES(WIRE, PARAM) \
+logic ``WIRE``_clk_clk; \
+logic ``WIRE``_rst_n_reset_n; \
 // Write address channel \
 logic ``WIRE``_awready; \
 logic ``WIRE``_awvalid; \
-logic [``PARAM``_ID_WIDTH-1:0] ``WIRE``_awid; \
+logic [``PARAM``_AWID_WIDTH-1:0] ``WIRE``_awid; \
 logic [``PARAM``_AWADDR_WIDTH-1:0]``WIRE``_awaddr; \
-logic [``PARAM``_AWLEN_WIDTH-1:0] ``WIRE``_awlen; \
+logic [``PARAM``_BURST_LEN_WIDTH-1:0] ``WIRE``_awlen; \
 logic [2:0] ``WIRE``_awsize; \
 logic [1:0] ``WIRE``_awburst; \
 logic ``WIRE``_awlock; \
 logic [3:0] ``WIRE``_awcache; \
 logic [2:0] ``WIRE``_awprot; \
 logic [3:0] ``WIRE``_awqos; \
-logic [``PARAM``_USER_WIDTH-1:0] ``WIRE``_awuser; \
+logic [``PARAM``_AWUSER_WIDTH-1:0] ``WIRE``_awuser; \
 // Write data channel \
 logic ``WIRE``_wready; \
 logic ``WIRE``_wvalid; \
 logic [``PARAM``_WDATA_WIDTH-1:0] ``WIRE``_wdata; \
 logic [(``PARAM``_WDATA_WIDTH/8)-1:0] ``WIRE``_wstrb; \
 logic ``WIRE``_wlast; \
+logic [``PARAM``_WUSER_WIDTH-1:0] ``WIRE``_wuser; \
 // Write response channel \
 logic ``WIRE``_bready; \
 logic ``WIRE``_bvalid; \
-logic [``PARAM``_ID_WIDTH-1:0] ``WIRE``_bid; \
+logic [``PARAM``_BID_WIDTH-1:0] ``WIRE``_bid; \
 logic [1:0] ``WIRE``_bresp; \
-logic [``PARAM``_USER_WIDTH-1:0] ``WIRE``_buser; \
+logic [``PARAM``_BUSER_WIDTH-1:0] ``WIRE``_buser; \
 // Read address channel \
-logic ``WIRE``_arready (``IFC``.arready), \
-logic ``WIRE``_arvalid (``IFC``.arvalid), \
-logic [``PARAM``_ID_WIDTH-1:0] ``WIRE``_arid; \
+logic ``WIRE``_arready; \
+logic ``WIRE``_arvalid; \
+logic [``PARAM``_ARID_WIDTH-1:0] ``WIRE``_arid; \
 logic [``PARAM``_ARADDR_WIDTH-1:0] ``WIRE``_araddr; \
-logic [``PARAM``_LEN_WIDTH-1:0] ``WIRE``_arlen; \
+logic [``PARAM``_BURST_LEN_WIDTH-1:0] ``WIRE``_arlen; \
 logic [2:0] ``WIRE``_arsize; \
 logic [1:0] ``WIRE``_arburst; \
 logic ``WIRE``_arlock; \
 logic [3:0] ``WIRE``_arcache; \
 logic [2:0] ``WIRE``_arprot; \
-logic [2:0] ``WIRE``_arqos; \
-logic [``PARAM``_USER_WIDTH-1:0] ``WIRE``_aruser \
+logic [3:0] ``WIRE``_arqos; \
+logic [``PARAM``_ARUSER_WIDTH-1:0] ``WIRE``_aruser; \
 //Read response channel \
 logic ``WIRE``_rready; \
 logic ``WIRE``_rvalid; \
-logic [``PARAM``_ID_WIDTH] ``WIRE``_rid; \
+logic [``PARAM``_RID_WIDTH-1:0] ``WIRE``_rid; \
 logic [``PARAM``_RDATA_WIDTH-1:0] ``WIRE``_rdata; \
+logic [``PARAM``_RUSER_WIDTH-1:0] ``WIRE``_ruser; \
 logic [1:0] ``WIRE``_rresp; \
 logic ``WIRE``_rlast; 
 
 // Connect AXI interface `IFC` signals to wires with `WIRE` prefix
-`define ASSIGN_OFS_FIM_AXI_MM_WIRES(WIRE, IFC) \
+`define CONNECT_OFS_FIM_AXI_MM_WIRES(WIRE, IFC) \
 always_comb begin \
+   // clock/reset \
+   ``WIRE``_clk_clk = ``IFC``.clk; \
+   ``WIRE``_rst_n_reset_n = ``IFC``.rst_n; \
    // Write address channel \
-   ``WIRE``_awready = ``IFC``.awready; \
+   ``IFC``.awready  = ``WIRE``_awready; \
    ``WIRE``_awvalid = ``IFC``.awvalid; \
    ``WIRE``_awid    = ``IFC``.awid; \
    ``WIRE``_awaddr  = ``IFC``.awaddr; \
@@ -144,7 +151,7 @@ always_comb begin \
    ``WIRE``_awqos   = ``IFC``.awqos; \
    ``WIRE``_awuser  = ``IFC``.awuser; \
    // Write data channel \
-   ``WIRE``_wready  = ``IFC``.wready; \
+   ``IFC``.wready   = ``WIRE``_wready; \
    ``WIRE``_wvalid  = ``IFC``.wvalid; \
    ``WIRE``_wdata   = ``IFC``.wdata; \
    ``WIRE``_wstrb   = ``IFC``.wstrb; \
@@ -152,12 +159,12 @@ always_comb begin \
    ``WIRE``_wuser   = ``IFC``.wuser; \
    // Write response channel \
    ``WIRE``_bready  = ``IFC``.bready; \
-   ``WIRE``_bvalid  = ``IFC``.bvalid; \
-   ``WIRE``_bid     = ``IFC``.bid; \
-   ``WIRE``_bresp   = ``IFC``.bresp; \
-   ``WIRE``_buser   = ``IFC``.buser; \
+   ``IFC``.bvalid   = ``WIRE``_bvalid; \
+   ``IFC``.bid      = ``WIRE``_bid; \
+   ``IFC``.bresp    = ``WIRE``_bresp; \
+   ``IFC``.buser    = ``WIRE``_buser; \
    // Read address channel \
-   ``WIRE``_arready = ``IFC``.arready; \
+   ``IFC``.arready  = ``WIRE``_arready; \
    ``WIRE``_arvalid = ``IFC``.arvalid; \
    ``WIRE``_arid    = ``IFC``.arid; \
    ``WIRE``_araddr  = ``IFC``.araddr; \
@@ -171,10 +178,10 @@ always_comb begin \
    ``WIRE``_aruser  = ``IFC``.aruser; \
    // Read response channel \
    ``WIRE``_rready  = ``IFC``.rready; \
-   ``WIRE``_rvalid  = ``IFC``.rvalid; \
-   ``WIRE``_rid     = ``IFC``.rid; \
-   ``WIRE``_rdata   = ``IFC``.rdata; \
-   ``WIRE``_rresp   = ``IFC``.rresp; \
-   ``WIRE``_rlast   = ``IFC``.rlast; \
-   ``WIRE``_ruser   = ``IFC``.ruser; \
+   ``IFC``.rvalid   = ``WIRE``_rvalid; \
+   ``IFC``.rid      = ``WIRE``_rid; \
+   ``IFC``.rdata    = ``WIRE``_rdata; \
+   ``IFC``.rresp    = ``WIRE``_rresp; \
+   ``IFC``.rlast    = ``WIRE``_rlast; \
+   ``IFC``.ruser    = ``WIRE``_ruser; \
 end

@@ -21,4 +21,5 @@ set_global_assignment -name QSYS_FILE $::env(BUILD_ROOT_REL)/ofs-common/src/fpga
 
 # Subsystem wrapper file
 set_global_assignment -name SYSTEMVERILOG_FILE $::env(BUILD_ROOT_REL)/ofs-common/src/fpga_family/agilex/mem_ss/mem_ss_top.sv
+set_global_assignment -name SYSTEMVERILOG_FILE $::env(BUILD_ROOT_REL)/ofs-common/src/fpga_family/agilex/mem_ss/hbm_ss_top.sv
 set_global_assignment -name SYSTEMVERILOG_FILE $::env(BUILD_ROOT_REL)/ofs-common/src/fpga_family/agilex/mem_ss/local_mem_wrapper.sv

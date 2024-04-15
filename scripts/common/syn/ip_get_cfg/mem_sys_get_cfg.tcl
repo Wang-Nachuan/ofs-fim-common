@@ -103,7 +103,7 @@ proc emit_ip_cfg {ofile_name ip_name} {
         puts $of "//"
         puts $of "// AXI-MM user interface configuration "
         puts $of "//"
-        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_DEFINES_AXI_APP"
+        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_DEFINES_USER_AXI"
         puts $of "`define OFS_FIM_IP_CFG_${ip_name}_NUM_AXI_CHANNELS ${num_axi_channels}"
         foreach port $axi_ports {
             set PORT [string toupper $port]

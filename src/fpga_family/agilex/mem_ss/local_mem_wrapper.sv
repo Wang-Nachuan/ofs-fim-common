@@ -29,6 +29,15 @@ module local_mem_wrapper
    ofs_fim_emif_ddr4_if.emif    ddr4_mem_if [NUM_DDR4_CHANNELS-1:0],
 `endif
 
+`ifdef INCLUDE_HBM
+   input       uib_refclk      [NUM_HBM_DEVICES-1:0],
+   input       fab_clk         [NUM_HBM_DEVICES-1:0],
+   input       noc_ctrl_refclk [NUM_HBM_DEVICES-1:0],
+
+   input       hbm_cattrip     [NUM_HBM_DEVICES-1:0],
+   input [2:0] hbm_temp        [NUM_HBM_DEVICES-1:0],
+`endif
+
 `ifdef INCLUDE_HPS
    // HPS interfaces
    input  logic [4095:0]        hps2emif,
@@ -59,5 +68,17 @@ module local_mem_wrapper
    );
 `endif
                 
+`ifdef INCLUDE_HBM
+   // FM Subsystem
+   hbm_ss_top #(
+      .FEAT_ID         (FEAT_ID),
+      .FEAT_VER        (FEAT_VER),
+      .NEXT_DFH_OFFSET (NEXT_DFH_OFFSET),
+      .END_OF_LIST     (END_OF_LIST)
+   ) hbm_ss_top (
+      .*
+   );
+`endif
+
 endmodule // mem_ss_top
 

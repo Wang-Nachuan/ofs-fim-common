@@ -90,11 +90,11 @@ interface ofs_fim_emif_axi_mm_if #(
                arready,
                rvalid, rid, rdata, rresp, rlast, ruser,
         output awvalid, awid, awaddr, awlen, awsize, awburst, awlock,
-               awcache, awprot, awuser,
+               awcache, awprot, awuser, awqos,
                wvalid, wdata, wstrb, wlast, wuser,
                bready, 
                arvalid, arid, araddr, arlen, arsize, arburst, 
-               arcache, arprot, aruser, arlock,
+               arcache, arprot, aruser, arlock, arqos,
                rready
    );
 
@@ -105,11 +105,11 @@ interface ofs_fim_emif_axi_mm_if #(
                arready, 
                rvalid, rid, rdata, rresp, rlast, ruser,
         input  awvalid, awid, awaddr, awlen, awsize, awburst, awlock,
-               awcache, awprot, awuser,
+               awcache, awprot, awuser, awqos,
                wvalid, wdata, wstrb, wlast, wuser,
                bready, 
                arvalid, arid, araddr, arlen, arsize, arburst,
-               arcache, arprot, aruser, arlock,
+               arcache, arprot, aruser, arlock, arqos,
                rready
    );
 

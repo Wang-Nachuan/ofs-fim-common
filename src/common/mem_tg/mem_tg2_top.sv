@@ -28,15 +28,15 @@ module mem_tg2_top #(
    pcie_ss_axis_if.source  axis_tx_if,
 
    // External Memory I/F
-   output logic [NUM_TG-1:0] mem_tg_active
-`ifdef INCLUDE_DDR4  
-  ,ofs_fim_emif_axi_mm_if.user ext_mem_if [NUM_TG-1:0]
-`endif
+   output logic [NUM_TG-1:0] mem_tg_active,
+
+   ofs_fim_emif_axi_mm_if.user ext_mem_if [NUM_TG-1:0]
+
 );
 //----------------------------------------------
 // Parameters 
 //----------------------------------------------
-localparam CSR_ADDR_W = 14;
+localparam CSR_ADDR_W = tg2_csr_pkg::CSR_ADDR_W;
 localparam CSR_DATA_W = 64;
 
 //----------------------------------------------
@@ -49,7 +49,7 @@ pcie_ss_axis_if tx_pl_if (clk, rst_n);
 // CSR Host channel
 //----------------------------------------------
 ofs_avmm_if #(
-   .ADDR_W(tg2_csr_pkg::CSR_ADDR_W),
+   .ADDR_W(CSR_ADDR_W),
    .DATA_W(CSR_DATA_W)
 ) csr_if ();
 
@@ -61,7 +61,6 @@ ofs_avmm_if #(
    .DATA_W(32)
 ) tg2_cfg_if[NUM_TG] ();
 
-`ifdef INCLUDE_DDR4  
 ofs_fim_emif_axi_mm_if #(
    .AWID_WIDTH   ($bits(ext_mem_if[0].awid)),
    .AWADDR_WIDTH ($bits(ext_mem_if[0].awaddr)),
@@ -74,7 +73,6 @@ ofs_fim_emif_axi_mm_if #(
    .RDATA_WIDTH  ($bits(ext_mem_if[0].rdata)),
    .RUSER_WIDTH  ($bits(ext_mem_if[0].ruser)) 
 ) tg2_mem_if[NUM_TG] (); 
-`endif //  `ifdef INCLUDE_DDR4
    
 //----------------------------------------------
 // Pipeln instances
@@ -193,7 +191,6 @@ logic [NUM_TG-1:0] tg2_cfg_if_read_q;
 genvar ch;
 generate
 for(ch=0; ch < NUM_TG; ch = ch+1) begin : tg_ch
-`ifdef INCLUDE_DDR4
    tg2_axi_mem tg2_inst (
       .clk        (tg2_mem_if[ch].clk),
       .rst_n      (tg2_mem_if[ch].rst_n),
@@ -305,16 +302,6 @@ for(ch=0; ch < NUM_TG; ch = ch+1) begin : tg_ch
       .q     (mem_tg_active[ch])
    );
 
-`else // !`ifdef INCLUDE_DDR4
-   assign mem_tg_active[ch] = mem_tg_active_csr[ch];
-   
-   always_ff @(posedge tg2_cfg_if[ch].clk) begin
-      tg2_cfg_if_read_q[ch] <= tg2_cfg_if[ch].read;
-   end
-   assign tg2_cfg_if[ch].readdatavalid = tg2_cfg_if_read_q[ch];
-   assign tg2_cfg_if[ch].readdata      = 0;
-   assign tg2_cfg_if[ch].waitrequest   = 0;
-`endif
 end // block: tg_ch
 endgenerate
 

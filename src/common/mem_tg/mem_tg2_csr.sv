@@ -204,7 +204,7 @@ assign csr_write_re = csr_if.write & ~csr_write_q;
 
 // Choose a TG2 channel or the local CSRs
 assign csr_select = csr_if.address[ADDR_W-1:12] == 0;
-assign ch_select = csr_if.address[ADDR_W-2:12] - 1'd1;
+assign ch_select = csr_if.address[ADDR_W-1:12] - 1'd1;
 
 
 //----------------------------------------------------------------------------

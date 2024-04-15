@@ -18,14 +18,15 @@ module mem_ss_csr
    parameter bit [11:0] FEAT_ID = 12'h0,
    parameter bit [3:0]  FEAT_VER = 4'h1,
    parameter bit [23:0] NEXT_DFH_OFFSET = 24'h1000,
-   parameter bit END_OF_LIST = 1'b0
+   parameter bit END_OF_LIST = 1'b0,
+   parameter NUM_MEM_DEVICES = 1
 )(
    input                       clk,
    input                       rst_n,
    ofs_fim_axi_lite_if.slave   csr_lite_if,
 
-   input   [NUM_MEM_CHANNELS-1:0]    cal_success,
-   input   [NUM_MEM_CHANNELS-1:0]    cal_fail
+   input   [NUM_MEM_DEVICES-1:0]    cal_success,
+   input   [NUM_MEM_DEVICES-1:0]    cal_fail
 );
 
 localparam DATA_WIDTH   = ofs_fim_cfg_pkg::MMIO_DATA_WIDTH;
@@ -206,7 +207,7 @@ always_ff @(posedge clk) begin
    def_reg (CSR_OFFSET[EMIF_STATUS],
                {64{RO}},
                64'h0,
-               {{64-2*NUM_MEM_CHANNELS{1'b0}},
+               {{64-2*NUM_MEM_DEVICES{1'b0}},
                 cal_fail,
                 cal_success
                 }
@@ -216,7 +217,7 @@ always_ff @(posedge clk) begin
                {64{RO}},
                64'h0,
                {'0,
-                {NUM_MEM_CHANNELS{1'b1}}
+                {NUM_MEM_DEVICES{1'b1}}
                }
    );
 end

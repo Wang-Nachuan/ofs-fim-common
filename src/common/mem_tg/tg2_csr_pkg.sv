@@ -16,11 +16,10 @@ package tg2_csr_pkg;
 import ofs_csr_pkg::*;
 // FUTURE_IMPROVEMENT_kroberso: some strange behavior can happen if M_CHANNEL is not = to the
 // correct # of channels
-`ifndef __MEM_SS_PKG_SV__
-localparam M_CHANNEL = 4;
+`ifndef __OFS_FIM_MEM_IF_PKG__
+   localparam M_CHANNEL = 4;
 `else
-import mem_ss_pkg::*;
-localparam M_CHANNEL = mem_ss_pkg::MC_CHANNEL;
+   localparam M_CHANNEL = ofs_fim_mem_if_pkg::NUM_MEM_CHANNELS;
 `endif
    
 // AFU ID
@@ -35,7 +34,7 @@ localparam MEM_TG2_ID_H = 64'h4DADEA342C7848CB;
 //-------------------
 // CSR address
 //-------------------
-localparam CSR_ADDR_W      = 15;
+localparam CSR_ADDR_W      = 20;
 localparam CSR_ADDR_SHIFT  = 3;
 
 //-------------------

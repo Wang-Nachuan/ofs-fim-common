@@ -66,6 +66,8 @@ package ofs_fim_mem_if_pkg;
 `endif
    // This is defined by the AXI standard
    localparam AXI_MEM_BURST_LEN_WIDTH = 8;
+   // TODO: Temporary
+   localparam NUM_HBM_DEVICES = 1;
 
    // DDR4 PARAMS
 `ifdef OFS_FIM_IP_CFG_LOCAL_MEM_DEFINES_EMIF_DDR4

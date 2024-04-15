@@ -256,6 +256,10 @@ fi
  echo '## choses OFS features. Updated by gen_sim_files.sh.' >> "${SIM_SETUP_DIR}"/generated_rtl_flist_macros.f
  echo '' >> "${SIM_SETUP_DIR}"/generated_rtl_flist_macros.f
  sed -e 's/^\([A-Za-z]\)/+define+\1/' -e 's/\(+define+INCLUDE_\)/# \1/' project_macros_for_sim.f >> "${SIM_SETUP_DIR}"/generated_rtl_flist_macros.f
+ # Uncomment the memory technology macro. It is still controlled by INCLUDE_LOCAL_MEM
+ # so enabling the technology macro allows the project to autoconfigure the testbench for tests that enable local mem.
+ sed -i '/DDR[0-9]\+$/s/^#//g' "${SIM_SETUP_DIR}"/generated_rtl_flist_macros.f
+ sed -i '/HBM$/s/^#//g' "${SIM_SETUP_DIR}"/generated_rtl_flist_macros.f
 
  # Include paths. Strip +incdir+, change the path, then put +incdir+ back.
  grep '^+incdir+' project_sources_rtl_for_sim.f > project_sources_rtl_incdirs.f

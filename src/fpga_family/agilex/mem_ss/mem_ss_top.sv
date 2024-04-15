@@ -177,7 +177,8 @@ mem_ss_csr #(
    .FEAT_ID          (FEAT_ID),
    .FEAT_VER         (FEAT_VER),
    .NEXT_DFH_OFFSET  (NEXT_DFH_OFFSET),
-   .END_OF_LIST      (END_OF_LIST)
+   .END_OF_LIST      (END_OF_LIST),
+   .NUM_MEM_DEVICES  (NUM_DDR4_CHANNELS)
 ) mem_ss_csr_inst (
    .clk              (clk_csr),
    .rst_n            (rst_n_csr),

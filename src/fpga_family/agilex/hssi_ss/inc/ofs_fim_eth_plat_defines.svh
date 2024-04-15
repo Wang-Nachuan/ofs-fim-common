@@ -24,7 +24,9 @@
    // shell have index-0 mapped to port 0 and index-1 mapped to port 4
    `define INST_FULL_ENUM_PORT_INDEX \
       enum {  \
+`ifdef ENUM_PORT_INDEX \
          `ENUM_PORT_INDEX   \
+`endif \
           PORT_MAX \
       } port_index; 
 
