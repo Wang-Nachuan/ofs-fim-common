@@ -76,7 +76,6 @@ multi_vfs_func_params = {
     "core16_exvf_subsysid_{func_num}": ["0x00001771", "exvf_subsysid"],
     "core16_{func_num}_sriov_vf_device_id": ["0x0000bccf", "sriov_vf_device_id"],
     "core16_{func_num}_vf_acs_cap_enable_hwtcl": 1,
-    "core16_virtual_{func_num}_msix_enable_user_hwtcl": 1,
     "core16_virtual_{func_num}_exvf_msix_cap_enable_hwtcl": 1,
     "core16_exvf_msixpba_bir_{func_num}": 4,
     "core16_{func_num}_sriov_vf_bar0_type_hwtcl": "64-bit prefetchable memory",
@@ -94,6 +93,6 @@ multi_vfs_func_params = {
     "core16_exvf_msix_tablesize_{func_num}": 6,
     "core16_exvf_msixtable_offset_{func_num}": 1536,
     "core16_exvf_msixtable_bir_{func_num}": 4,
-    "core16_exvf_msixpba_bir_{func_num}": 4,
     "core16_exvf_msixpba_offset_{func_num}": 1550,
+    "core16_exvf_msixpba_bir_{func_num}": 4,
 }
