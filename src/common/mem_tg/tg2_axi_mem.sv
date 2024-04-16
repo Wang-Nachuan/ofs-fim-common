@@ -148,10 +148,13 @@ mem_ss_tg tg_inst (
 		          csr_cfg.writedata};
    end
 
+   logic csr_cfg_waitrequest;
+
 fim_dcfifo
 #(
    .DATA_WIDTH      (CFG_CCB_WIDTH),
    .DEPTH_RADIX     (4),
+   .ALMOST_FULL_THRESHOLD(4),
    .WRITE_ACLR_SYNC ("ON"),
    .READ_ACLR_SYNC  ("ON")
 ) cfg_ccb (
@@ -173,9 +176,13 @@ fim_dcfifo
    .rdusedw   (),
    .wrempty   (),
    .wrfull    (),
-   .wralmfull (csr_cfg.waitrequest),
+   .wralmfull (csr_cfg_waitrequest),
    .wrusedw   ()
 );
+
+   always_ff @(posedge csr_cfg.clk) begin
+      csr_cfg.waitrequest <= csr_cfg_waitrequest;
+   end
 
    // dangerous: we don't have flow control for read responses
    // it shouldn't matter for our use case, but if we add

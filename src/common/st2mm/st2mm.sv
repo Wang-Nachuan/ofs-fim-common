@@ -119,28 +119,29 @@ end
 //---------------------------------
 // Clock crossing to CSR clock domain 
 //---------------------------------
-pcie_axis_cdc_fifo #(
-   .DEPTH_LOG2        (6),
+ofs_fim_axis_cdc #(
+   .DEPTH_LOG2        (4),
    .ALMFULL_THRESHOLD (4)
 ) rx_cdc_fifo (
-   .snk_clk     (clk),
-   .snk_rst_n   (rst_n),
-   .src_clk     (clk_csr),
-   .src_rst_n   (rst_n_csr),
-   .snk_if      (axis_rx_if),
-   .src_if      (st2mm_rx_if)
+   .axis_s      (axis_rx_if),
+   .axis_m      (st2mm_rx_if)
 );
 
-pcie_axis_cdc_fifo #(
-   .DEPTH_LOG2        (6),
+pcie_ss_axis_if axis_tx_cdc_if(.clk (clk), .rst_n(rst_n));
+
+ofs_fim_axis_cdc #(
+   .DEPTH_LOG2        (4),
    .ALMFULL_THRESHOLD (4)
 ) tx_cdc_fifo (
-   .snk_clk     (clk_csr       ),
-   .snk_rst_n   (rst_n_csr     ),
-   .src_clk     (clk           ),
-   .src_rst_n   (rst_n         ),
-   .snk_if      (st2mm_tx_if   ),
-   .src_if      (axis_tx_if    )
+   .axis_s      (st2mm_tx_if   ),
+   .axis_m      (axis_tx_cdc_if)
+);
+
+ofs_fim_axis_pipeline axis_tx_skid (
+   .clk,
+   .rst_n,
+   .axis_s      (axis_tx_cdc_if),
+   .axis_m      (axis_tx_if    )
 );
 
 //---------------------------------
@@ -281,7 +282,7 @@ mctp_tx_bridge #(
 // umsg & mmio arb
 //---------------------------------
 
-pcie_axis_mux #(
+pcie_ss_axis_mux #(
    .NUM_CH          (2),
    .TDATA_WIDTH     (axis_rx_if.DATA_W),
    .TUSER_WIDTH     (axis_rx_if.USER_W)

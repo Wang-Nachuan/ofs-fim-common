@@ -80,7 +80,8 @@ module  pr_slot #(
         localparam PR_FREEZE_DIS = 1;
     `endif
 
-   (* altera_attribute = {"-name ADV_NETLIST_OPT_ALLOWED NEVER_ALLOW; -name DONT_MERGE_REGISTER ON; -name PRESERVE_REGISTER ON"} *) reg pr_freeze_emif_q0, pr_freeze_emif_q1;
+   (* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg [2:0] pr_freeze_emif_reg;
+   wire pr_freeze_emif_out = pr_freeze_emif_reg[2];
    logic [MAX_NUM_ETH_CHANNELS-1:0] pr_freeze_hssi;
    logic [MAX_NUM_ETH_CHANNELS-1:0] softreset_hssi;
    logic pr_freeze_emif[NUM_MEM_CH-1: 0];
@@ -103,7 +104,8 @@ module  pr_slot #(
     localparam PCIE_TX_REG_MODE    =ST_BYPASS; 
 `endif //INCLUDE_PR
 
-(* altera_attribute = {"-name ADV_NETLIST_OPT_ALLOWED NEVER_ALLOW; -name DONT_MERGE_REGISTER ON; -name PRESERVE_REGISTER ON"} *) reg pr_freeze_fnmx_q0, pr_freeze_fnmx_q1;
+(* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg [3:0] pr_freeze_fnmx_reg;
+wire pr_freeze_fnmx_out = pr_freeze_fnmx_reg[3];
 pcie_ss_axis_if     axi_tx_a_if_t1[PG_NUM_LINKS-1:0]();
 pcie_ss_axis_if     axi_rx_a_if_t1[PG_NUM_LINKS-1:0]();
 pcie_ss_axis_if     axi_tx_b_if_t1[PG_NUM_LINKS-1:0]();
@@ -113,8 +115,7 @@ logic [PG_NUM_PORTS-1:0] port_rst_n_t1[PG_NUM_LINKS-1:0];
 
 // Flop freeze signal
 always_ff @ (posedge clk) begin
-   pr_freeze_fnmx_q1   <= pr_freeze_fnmx_q0;
-   pr_freeze_fnmx_q0   <= pr_freeze;
+   pr_freeze_fnmx_reg <= { pr_freeze_fnmx_reg[2:0], pr_freeze };
 end
 
 
@@ -136,7 +137,7 @@ for (genvar j=0; j<PG_NUM_LINKS; j++) begin : PCIE_FREEZE_BRIDGE
       .TX_REG_MODE (PCIE_TX_REG_MODE)
    ) pr_frz_afu_pcie_a_port (
       .port_rst_n  (~softreset),
-      .pr_freeze   (pr_freeze_fnmx_q1),
+      .pr_freeze   (pr_freeze_fnmx_out),
       .axi_rx_if_s (axi_rx_a_if[j]),    // <--- PCIe SS
       .axi_tx_if_m (axi_tx_a_if[j]),    // ---> PCIe SS
       .axi_rx_if_m (axi_rx_a_if_t1[j]), // ---> PR slot AFU
@@ -153,7 +154,7 @@ for (genvar j=0; j<PG_NUM_LINKS; j++) begin : PCIE_FREEZE_BRIDGE
       .TX_REG_MODE (PCIE_TX_REG_MODE)
    ) pr_frz_afu_pcie_b_port (
       .port_rst_n  (~softreset),
-      .pr_freeze   (pr_freeze_fnmx_q1),
+      .pr_freeze   (pr_freeze_fnmx_out),
       .axi_rx_if_s (axi_rx_b_if[j]),    // <--- PCIe SS
       .axi_tx_if_m (axi_tx_b_if[j]),    // ---> PCIe SS
       .axi_rx_if_m (axi_rx_b_if_t1[j]), // ---> PR slot AFU
@@ -208,8 +209,7 @@ end //for
 
    // Flop freeze signal
    always_ff @ (posedge clk) begin
-      pr_freeze_emif_q1   <= pr_freeze_emif_q0;
-      pr_freeze_emif_q0   <= pr_freeze;
+      pr_freeze_emif_reg <= { pr_freeze_emif_reg[1:0], pr_freeze };
    end
 
    for (genvar j=0; j<NUM_MEM_CH; j++) begin : afu_mem
@@ -221,7 +221,7 @@ end //for
       ) ddr4_pr_freeze_sync (
          .clk   (afu_mem_if[j].clk),
          .reset (1'b0),
-         .d     (pr_freeze_emif_q1),
+         .d     (pr_freeze_emif_out),
          .q     (pr_freeze_emif[j])
       );
 

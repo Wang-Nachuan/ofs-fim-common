@@ -76,17 +76,30 @@ logic   [2:0]   ctt_fifo_error_pipe;
 //--------------------------------------------------------
 // AXIS Tx Source Interface
 //--------------------------------------------------------
+
+pcie_ss_axis_if #(.DATA_W(axis_tx_if.DATA_W), .USER_W(axis_tx_if.USER_W)) tx_if(.clk, .rst_n);
+
 always_comb
 begin
-    axis_tx_if.tlast        = rsp_fifo_valid;
-    axis_tx_if.tvalid       = rsp_fifo_valid;
+    tx_if.tlast        = rsp_fifo_valid;
+    tx_if.tvalid       = rsp_fifo_valid;
     
-    axis_tx_if.tdata        = rsp_fifo_dout;
-    axis_tx_if.tkeep        = {$bits(axis_tx_if.tkeep){1'b1}};
-    axis_tx_if.tuser_vendor = {$bits(axis_tx_if.tuser_vendor){1'b0}};
+    tx_if.tdata        = rsp_fifo_dout;
+    tx_if.tkeep        = {$bits(tx_if.tkeep){1'b1}};
+    tx_if.tuser_vendor = {$bits(tx_if.tuser_vendor){1'b0}};
     
-    axis_tx_error           = ctt_fifo_error_pipe[2] || rsp_fifo_eccstatus[0];
+    axis_tx_error      = ctt_fifo_error_pipe[2] || rsp_fifo_eccstatus[0];
 end
+
+ofs_fim_axis_pipeline #(
+    .TDATA_WIDTH(axis_tx_if.DATA_W),
+    .TUSER_WIDTH(axis_tx_if.USER_W))
+tx_skid (
+    .clk,
+    .rst_n,
+    .axis_s(tx_if),
+    .axis_m(axis_tx_if)
+);
 
 //--------------------------------------------------------
 // AVMM Slave to Master Interface + FIFO
@@ -124,8 +137,7 @@ end
 // Hold DOUT until sink capture on AVST 'ready' and 'valid'
 always_comb
 begin
-    rsp_fifo_rdack      = axis_tx_if.tready
-                            && axis_tx_if.tvalid;
+    rsp_fifo_rdack = tx_if.tready && tx_if.tvalid;
 end
 
 // If almost empty, deassert next valid on 'rdack', to allow empty status flag to update
