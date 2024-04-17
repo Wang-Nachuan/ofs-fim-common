@@ -14,7 +14,7 @@ import ofs_fim_eth_if_pkg::*;
 
 module axis_tx_hssi_pipeline #( 
     parameter MODE                 = 0, // 0: skid buffer 1: simple buffer 2: simple buffer (bubble) 3: bypass
-    parameter PRESERVE_REG         = 0, //adds syn_keeps to all the pipeline registers when set
+    parameter PRESERVE_REG         = "OFF", //adds syn_keeps to all the pipeline registers when set
     parameter TREADY_RST_VAL       = 0, // 0: tready deasserted during reset 
                                         // 1: tready asserted during reset
     parameter ENABLE_TKEEP         = 1,

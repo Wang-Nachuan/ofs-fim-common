@@ -202,7 +202,7 @@ localparam AR_REG_MODE   = SKID_BUFFER;
 `endif
 
 `ifdef INCLUDE_HSSI
-(* noprune *) ofs_fim_hssi_ss_tx_axis_if hssi_ss_st_tx_t1 [MAX_ETH_CH-1:0] ();
+ofs_fim_hssi_ss_tx_axis_if hssi_ss_st_tx_t1 [MAX_ETH_CH-1:0] ();
 (* noprune *) ofs_fim_hssi_ss_rx_axis_if hssi_ss_st_rx_t1 [MAX_ETH_CH-1:0] ();
 generate 
    for (genvar j=0; j<MAX_ETH_CH; j++) begin : hssi_st_pipe_gen
@@ -215,7 +215,7 @@ generate
       axis_tx_hssi_pipeline #(
          .TDATA_WIDTH ($bits(hssi_ss_st_tx[j].tx.tdata)),
          .TUSER_WIDTH ($bits(hssi_ss_st_tx[j].tx.tuser)),
-	 .PRESERVE_REG (1) // adds syn_keep on all registers when set        
+	 .PRESERVE_REG ("TX") // Preserve for PR
       ) axis_tx_hssi_pipeline_inst (
          .axis_m (hssi_ss_st_tx[j]),   //client
          .axis_s (hssi_ss_st_tx_t1[j]) //mac

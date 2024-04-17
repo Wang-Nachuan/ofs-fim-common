@@ -24,7 +24,7 @@ module ofs_fim_axis_register
     parameter TID_WIDTH            = 8,
     parameter TDEST_WIDTH          = 8,
     parameter TUSER_WIDTH          = 1,
-    parameter PRESERVE_REG         = 0,
+    parameter PRESERVE_REG         = "OFF",
 
     // --------------------------------------
     // Derived parameters
@@ -53,143 +53,43 @@ module ofs_fim_axis_register
     output logic [TUSER_WIDTH-1:0]     m_tuser 
 );
 
-generate 
-if (MODE == 0 && PRESERVE_REG == 0) begin 
-    // --------------------------------------
-    // skid buffer
-    // --------------------------------------
-    
-    // Registers & signals
-    logic                          s_tvalid_reg; 
-    logic [TDATA_WIDTH-1:0]        s_tdata_reg;
-    logic [TKEEP_WIDTH-1:0]        s_tkeep_reg;
-    logic                          s_tlast_reg; 
-    logic [TID_WIDTH-1:0]          s_tid_reg;  
-    logic [TDEST_WIDTH-1:0]        s_tdest_reg;  
-    logic [TUSER_WIDTH-1:0]        s_tuser_reg;
+    //
+    // Flags for preserving registers that cross a PR boundary. They are
+    // off by default. When PRESERVE_REG is set to either "RX" or "TX",
+    // flags are set to ensure that the full registers are available in
+    // subsequent PR builds.
+    //
 
-    logic                          s_tready_pre;
+    // Preservation parameters depend on a signal's direction across the
+    // PR boundary. Apply PRESERVE_FANOUT_FREE_NODE to PR input registers
+    // and PRESERVE_REGISTER_SYN_ONLY to PR output registers.
+    localparam PRESERVE_ATTR_M = (PRESERVE_REG == "RX") ? "PRESERVE_FANOUT_FREE_NODE " :
+                                                          "PRESERVE_REGISTER_SYN_ONLY ";
+    localparam PRESERVE_ATTR_S = (PRESERVE_REG == "RX") ? "PRESERVE_REGISTER_SYN_ONLY " :
+                                                          "PRESERVE_FANOUT_FREE_NODE ";
+
+    localparam PRESERVE_ON_OFF = (PRESERVE_REG == "OFF") ? "OFF" : "ON";
+
+    (* altera_attribute = {"-name ", PRESERVE_ATTR_S, PRESERVE_ON_OFF} *)
     logic                          s_tready_reg;
-    logic                          s_tready_reg_dup;
-    logic                          use_reg;
 
-    logic                          m_tvalid_pre; 
-    logic [TDATA_WIDTH-1:0]        m_tdata_pre;
-    logic [TKEEP_WIDTH-1:0]        m_tkeep_pre;
-    logic                          m_tlast_pre; 
-    logic [TID_WIDTH-1:0]          m_tid_pre;  
-    logic [TDEST_WIDTH-1:0]        m_tdest_pre;  
-    logic [TUSER_WIDTH-1:0]        m_tuser_pre;
-
+    (* altera_attribute = {"-name ", PRESERVE_ATTR_M, PRESERVE_ON_OFF} *)
     logic                          m_tvalid_reg;
+    (* altera_attribute = {"-name ", PRESERVE_ATTR_M, PRESERVE_ON_OFF} *)
     logic [TDATA_WIDTH-1:0]        m_tdata_reg;
+    (* altera_attribute = {"-name ", PRESERVE_ATTR_M, PRESERVE_ON_OFF} *)
     logic [TKEEP_WIDTH-1:0]        m_tkeep_reg;
+    (* altera_attribute = {"-name ", PRESERVE_ATTR_M, PRESERVE_ON_OFF} *)
     logic                          m_tlast_reg; 
+    (* altera_attribute = {"-name ", PRESERVE_ATTR_M, PRESERVE_ON_OFF} *)
     logic [TID_WIDTH-1:0]          m_tid_reg;  
+    (* altera_attribute = {"-name ", PRESERVE_ATTR_M, PRESERVE_ON_OFF} *)
     logic [TDEST_WIDTH-1:0]        m_tdest_reg;  
+    (* altera_attribute = {"-name ", PRESERVE_ATTR_M, PRESERVE_ON_OFF} *)
     logic [TUSER_WIDTH-1:0]        m_tuser_reg;
 
-    assign s_tready_pre = (m_tready || ~m_tvalid);
- 
-    always_ff @(posedge clk) begin
-      if (~rst_n) begin
-        s_tready_reg     <= (TREADY_RST_VAL == 0) ? 1'b0 : 1'b1;
-        s_tready_reg_dup <= (TREADY_RST_VAL == 0) ? 1'b0 : 1'b1;
-      end else begin
-        s_tready_reg     <= s_tready_pre || (~use_reg && ~s_tvalid);
-        s_tready_reg_dup <= s_tready_pre || (~use_reg && ~s_tvalid);
-      end
-    end
-    
-    // --------------------------------------
-    // On the first cycle after reset, the pass-through
-    // must not be used or downstream logic may sample
-    // the same command twice because of the delay in
-    // transmitting a rising tready.
-    // --------------------------------------			    
-    always_ff @(posedge clk) begin
-       if (~rst_n) begin
-          use_reg <= 1'b1;
-       end else if (s_tready_pre) begin
-          // stop using the buffer when s_tready_pre is high (m_tready=1 or m_tvalid=0)
-          use_reg <= 1'b0;
-       end else if (s_tready_reg) begin
-          use_reg <= ~s_tready_pre && s_tvalid;
-       end
-    end
-    
-    always_ff @(posedge clk) begin
-       if (~rst_n) begin
-          s_tvalid_reg <= 1'b0;
-       end else if (s_tready_reg_dup) begin
-          s_tvalid_reg <= s_tvalid;
-       end
-    end
-
-    always_ff @(posedge clk) begin
-       if (s_tready_reg_dup) begin
-          s_tdata_reg  <= s_tdata;
-          s_tkeep_reg  <= s_tkeep;
-          s_tlast_reg  <= s_tlast;
-          s_tid_reg    <= s_tid;
-          s_tdest_reg  <= s_tdest;
-          s_tuser_reg  <= s_tuser;
-       end
-    end
-     
-    always_comb begin
-       if (use_reg) begin
-          m_tvalid_pre = s_tvalid_reg;
-          m_tdata_pre  = s_tdata_reg;
-          m_tkeep_pre  = s_tkeep_reg;
-          m_tlast_pre  = s_tlast_reg;
-          m_tid_pre    = s_tid_reg; 
-          m_tdest_pre  = s_tdest_reg;
-          m_tuser_pre  = s_tuser_reg;
-       end else begin
-          m_tvalid_pre = s_tvalid;
-          m_tdata_pre  = s_tdata;
-          m_tkeep_pre  = s_tkeep;
-          m_tlast_pre  = s_tlast;
-          m_tid_pre    = s_tid;
-          m_tdest_pre  = s_tdest;
-          m_tuser_pre  = s_tuser;
-       end
-    end
-     
-    // --------------------------------------
-    // Master-Slave Signal Pipeline Stage 
-    // --------------------------------------
-    always_ff @(posedge clk) begin
-       if (~rst_n) begin
-          m_tvalid_reg <= 1'b0;
-       end else if (s_tready_pre) begin
-          m_tvalid_reg <= m_tvalid_pre;
-       end
-    end
-    
-    always_ff @(posedge clk) begin
-       if (s_tready_pre) begin
-          m_tdata_reg  <= m_tdata_pre;
-          m_tkeep_reg  <= m_tkeep_pre;
-          m_tlast_reg  <= m_tlast_pre;
-          m_tid_reg    <= m_tid_pre;
-          m_tdest_reg  <= m_tdest_pre;
-          m_tuser_reg  <= m_tuser_pre;
-       end
-    end
-
-    // Output assignment
-    assign m_tvalid = m_tvalid_reg;
-    assign m_tdata  = m_tdata_reg;
-    assign m_tkeep  = ENABLE_TKEEP ? m_tkeep_reg : '0;
-    assign m_tlast  = ENABLE_TLAST ? m_tlast_reg : 1'b0;
-    assign m_tid    = ENABLE_TID   ? m_tid_reg   : '0;
-    assign m_tdest  = ENABLE_TDEST ? m_tdest_reg : '0;
-    assign m_tuser  = ENABLE_TUSER ? m_tuser_reg : '0;
-    assign s_tready = s_tready_reg;
-
-end else if (MODE == 0 && PRESERVE_REG == 1) begin 
+generate
+if (MODE == 0) begin
     // --------------------------------------
     // skid buffer
     // --------------------------------------
@@ -204,7 +104,6 @@ end else if (MODE == 0 && PRESERVE_REG == 1) begin
     logic [TUSER_WIDTH-1:0]        s_tuser_reg;
 
     logic                          s_tready_pre;
-    logic                          s_tready_reg /* synthesis preserve noprune */;
     logic                          s_tready_reg_dup;
     logic                          use_reg;
 
@@ -215,14 +114,6 @@ end else if (MODE == 0 && PRESERVE_REG == 1) begin
     logic [TID_WIDTH-1:0]          m_tid_pre;  
     logic [TDEST_WIDTH-1:0]        m_tdest_pre;  
     logic [TUSER_WIDTH-1:0]        m_tuser_pre;
-
-    logic                          m_tvalid_reg /* synthesis preserve noprune */;
-    logic [TDATA_WIDTH-1:0]        m_tdata_reg  /* synthesis preserve noprune */;
-    logic [TKEEP_WIDTH-1:0]        m_tkeep_reg  /* synthesis preserve noprune */;
-    logic                          m_tlast_reg  /* synthesis preserve noprune */; 
-    logic [TID_WIDTH-1:0]          m_tid_reg    /* synthesis preserve noprune */;  
-    logic [TDEST_WIDTH-1:0]        m_tdest_reg  /* synthesis preserve noprune */;  
-    logic [TUSER_WIDTH-1:0]        m_tuser_reg  /* synthesis preserve noprune */;
 
     assign s_tready_pre = (m_tready || ~m_tvalid);
  
@@ -323,20 +214,12 @@ end else if (MODE == 0 && PRESERVE_REG == 1) begin
     assign m_tdest  = ENABLE_TDEST ? m_tdest_reg : '0;
     assign m_tuser  = ENABLE_TUSER ? m_tuser_reg : '0;
     assign s_tready = s_tready_reg;
-
 
 end else if (MODE == 1) begin 
    // --------------------------------------
    // Simple pipeline register 
    // --------------------------------------
    logic                          s_tready_pre;
-   logic                          m_tvalid_reg;
-   logic [TDATA_WIDTH-1:0]        m_tdata_reg;
-   logic [TKEEP_WIDTH-1:0]        m_tkeep_reg;
-   logic                          m_tlast_reg; 
-   logic [TID_WIDTH-1:0]          m_tid_reg;  
-   logic [TDEST_WIDTH-1:0]        m_tdest_reg;  
-   logic [TUSER_WIDTH-1:0]        m_tuser_reg;
 
    assign s_tready_pre = (~m_tvalid || m_tready);
 
@@ -370,15 +253,6 @@ end else if (MODE == 2) begin
    // --------------------------------------
    // Simple pipeline register with bubble cycle
    // --------------------------------------
-   logic                          s_tready_reg;
-   logic                          m_tvalid_reg;
-   logic [TDATA_WIDTH-1:0]        m_tdata_reg;
-   logic [TKEEP_WIDTH-1:0]        m_tkeep_reg;
-   logic                          m_tlast_reg; 
-   logic [TID_WIDTH-1:0]          m_tid_reg;  
-   logic [TDEST_WIDTH-1:0]        m_tdest_reg;  
-   logic [TUSER_WIDTH-1:0]        m_tuser_reg;
-
 
    always_ff @(posedge clk) begin
       if (~rst_n) begin

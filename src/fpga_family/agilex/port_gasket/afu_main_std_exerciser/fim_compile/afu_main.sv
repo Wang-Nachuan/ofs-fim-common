@@ -83,14 +83,19 @@ localparam TDATA_WIDTH    = pcie_ss_axis_pkg::TDATA_WIDTH;
 localparam TUSER_WIDTH    = pcie_ss_axis_pkg::TUSER_WIDTH;
 localparam TOTAL_PORTS    = PG_NUM_LINKS * PG_NUM_PORTS;
 
-logic [TOTAL_PORTS-1:0] port_rst_n_q1 = {TOTAL_PORTS{1'b0}};
-logic [TOTAL_PORTS-1:0] port_rst_n_q2 = {TOTAL_PORTS{1'b0}};
+(* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg [TOTAL_PORTS-1:0] port_rst_n_q1 = {TOTAL_PORTS{1'b0}};
+(* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg [TOTAL_PORTS-1:0] port_rst_n_q2 = {TOTAL_PORTS{1'b0}};
+
+(* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg rst_n_q = 1'b0;
+always @(posedge clk) begin
+   rst_n_q <= rst_n;
+end
 
 // Registered streams, still on the FIM side of the PF/VF MUX.
-(* noprune *) pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_tx_a_if_t1 [PG_NUM_LINKS-1:0](.clk(clk), .rst_n(rst_n));
-(* noprune *) pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_rx_a_if_t1 [PG_NUM_LINKS-1:0](.clk(clk), .rst_n(rst_n));
-(* noprune *) pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_tx_b_if_t1 [PG_NUM_LINKS-1:0](.clk(clk), .rst_n(rst_n));
-(* noprune *) pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_rx_b_if_t1 [PG_NUM_LINKS-1:0](.clk(clk), .rst_n(rst_n));
+pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_tx_a_if_t1 [PG_NUM_LINKS-1:0](.clk(clk), .rst_n(rst_n_q));
+pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_rx_a_if_t1 [PG_NUM_LINKS-1:0](.clk(clk), .rst_n(rst_n_q));
+pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_tx_b_if_t1 [PG_NUM_LINKS-1:0](.clk(clk), .rst_n(rst_n_q));
+pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_rx_b_if_t1 [PG_NUM_LINKS-1:0](.clk(clk), .rst_n(rst_n_q));
 
 // Demultiplexed streams on the AFU side of the PF/VF MUX.
 // The port_afu_instances() module receives a flattened array
@@ -147,7 +152,7 @@ for (genvar j=0; j<PG_NUM_LINKS; j++) begin : PCIE_FREEZE_BRIDGE
    ofs_fim_axis_pipeline #(
       .TDATA_WIDTH (TDATA_WIDTH),
       .TUSER_WIDTH (TUSER_WIDTH),
-      .PRESERVE_REG(1),
+      .PRESERVE_REG("RX"),
       .PL_DEPTH    (PL_DEPTH)
    ) pcie_pipeline_rx_a (
       .clk     (afu_axi_rx_a_if[j].clk),
@@ -159,7 +164,7 @@ for (genvar j=0; j<PG_NUM_LINKS; j++) begin : PCIE_FREEZE_BRIDGE
    ofs_fim_axis_pipeline #(
       .TDATA_WIDTH (TDATA_WIDTH),
       .TUSER_WIDTH (TUSER_WIDTH),
-      .PRESERVE_REG(1),
+      .PRESERVE_REG("TX"),
       .PL_DEPTH    (PL_DEPTH)
    ) pcie_pipeline_tx_a (
       .clk     (afu_axi_tx_a_if[j].clk),
@@ -172,7 +177,7 @@ for (genvar j=0; j<PG_NUM_LINKS; j++) begin : PCIE_FREEZE_BRIDGE
    ofs_fim_axis_pipeline #(
       .TDATA_WIDTH (TDATA_WIDTH),
       .TUSER_WIDTH (TUSER_WIDTH),
-      .PRESERVE_REG(1),
+      .PRESERVE_REG("RX"),
       .PL_DEPTH    (PL_DEPTH)
    ) pcie_pipeline_rx_b (
       .clk     (afu_axi_rx_b_if[j].clk),
@@ -184,7 +189,7 @@ for (genvar j=0; j<PG_NUM_LINKS; j++) begin : PCIE_FREEZE_BRIDGE
    ofs_fim_axis_pipeline #(
       .TDATA_WIDTH (TDATA_WIDTH),
       .TUSER_WIDTH (TUSER_WIDTH),
-      .PRESERVE_REG(1),
+      .PRESERVE_REG("TX"),
       .PL_DEPTH    (PL_DEPTH)
    ) pcie_pipeline_tx_b (
       .clk     (afu_axi_tx_b_if[j].clk),
@@ -214,7 +219,7 @@ generate
          .PFVF_ROUTING_TABLE(PG_PFVF_ROUTING_TABLE)
       ) pg_pf_vf_mux_a (
          .clk             (clk               ),
-         .rst_n           (rst_n             ),
+         .rst_n           (rst_n_q           ),
          .ho2mx_rx_port   (afu_axi_rx_a_if_t1[link]),
          .mx2ho_tx_port   (afu_axi_tx_a_if_t1[link]),
          .mx2fn_rx_port   (rx_a_if),
@@ -234,7 +239,7 @@ generate
          .PFVF_ROUTING_TABLE(PG_PFVF_ROUTING_TABLE)
       ) pg_pf_vf_mux_b (
          .clk             (clk               ),
-         .rst_n           (rst_n             ),
+         .rst_n           (rst_n_q           ),
          .ho2mx_rx_port   (afu_axi_rx_b_if_t1[link]),
          .mx2ho_tx_port   (afu_axi_tx_b_if_t1[link]),
          .mx2fn_rx_port   (rx_b_if),
@@ -271,7 +276,7 @@ port_afu_instances #(
    .clk_div4      (clk_div4),
    .uclk_usr      (uclk_usr),
    .uclk_usr_div2 (uclk_usr_div2),
-   .rst_n         (rst_n),
+   .rst_n         (rst_n_q),
    .port_rst_n    (port_rst_n_q2),
 
 `ifdef INCLUDE_HSSI
@@ -292,7 +297,7 @@ port_afu_instances #(
 );
 
 
-logic rst_n_q1;
+(* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg rst_n_q1;
 always_ff @(posedge clk) begin
    rst_n_q1        <= rst_n;
 end

@@ -24,7 +24,7 @@ module ofs_fim_axis_pipeline
     parameter TID_WIDTH            = 8,
     parameter TDEST_WIDTH          = 8,
     parameter TUSER_WIDTH          = ofs_pcie_ss_cfg_pkg::TUSER_WIDTH,
-    parameter PRESERVE_REG         = 0,
+    parameter PRESERVE_REG         = "OFF",
 
     parameter PL_DEPTH = 1
 )(
