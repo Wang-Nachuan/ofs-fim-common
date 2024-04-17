@@ -28,15 +28,7 @@ module fim_resync #(
    parameter INIT_VALUE             = 0,
    parameter NO_CUT                 = 1,  // See description above
    parameter TURN_OFF_METASTABILITY = 1,  // Added metastability checker in simulation.  Disabled by default.
-
-   // Adding an extra pipeline stage was added to synchronizers to synchronizers
-   // in FTILE devices, specifically for HSSI.  Disable this by default, unless
-   // it's an FTILE device
-   `ifdef INCLUDE_FTILE
-      parameter TURN_OFF_ADD_PIPELINE = 0
-   `else
-      parameter TURN_OFF_ADD_PIPELINE = 1
-   `endif
+   parameter TURN_OFF_ADD_PIPELINE = 1
 )(
    input  logic              clk,
    input  logic              reset,
