@@ -36,6 +36,7 @@ class PCIe(OFS):
 
         self.PCIE_SS_PARAM = None
         self.set_ip_params()
+        self.preprocess_pcie_ofss_params()
 
     def set_ip_params(self):
         param_default_path = os.path.join(
@@ -46,6 +47,21 @@ class PCIe(OFS):
         self.PCIE_SS_PARAM = SourceFileLoader(
             f"{self.ip_component}_parameters", param_default_path
         ).load_module()
+
+    def preprocess_pcie_ofss_params(self):
+        '''
+        Take additional pcie ofss params that are platform specific and apply to all pfs 
+        Platform specific pcie params should be designated under the <platform>_base.ofss 'pcie' section.
+        '''
+        if "pcie" not in self.ofs_config:
+            logging.info("Did not find additional pcie params from ofs_config to add to pcie_config")
+            return
+
+        pfs_to_update = [section for section in self.pcie_config if section.startswith("pf")]
+        for pf in pfs_to_update:
+            for k, v in self.ofs_config['pcie'].items():
+                if k not in self.pcie_config[pf]:
+                    self.pcie_config[pf][k] = v
 
     def check_configuration(self):
         """
