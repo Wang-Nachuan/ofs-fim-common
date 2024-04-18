@@ -48,11 +48,6 @@ logic           rsp_fifo_rdack;
 logic   [511:0] rsp_fifo_dout;
 
 logic           rsp_fifo_valid;
-logic           rsp_fifo_valid_next;
-
-logic           rsp_fifo_empty;
-logic           rsp_fifo_almostempty;
-logic           rsp_fifo_almostfull;
 
 logic   [1:0]   rsp_fifo_eccstatus;
 
@@ -140,67 +135,31 @@ begin
     rsp_fifo_rdack = tx_if.tready && tx_if.tvalid;
 end
 
-// If almost empty, deassert next valid on 'rdack', to allow empty status flag to update
-always_comb
-begin   
-    rsp_fifo_valid_next = rsp_fifo_rdack        ?   !rsp_fifo_almostempty :
-                                                    !rsp_fifo_empty;
-end
-
-// +1 delay to 'valid' to allow for 'rdack' -> DOUT latency
-always_ff @ ( posedge clk )
-begin
-    if ( !rst_n )
-    begin
-        rsp_fifo_valid          <= 1'b0;
-    end
-    else
-    begin
-        rsp_fifo_valid          <= rsp_fifo_valid_next;
-    end
-end
-
 // RSP FIFO
-scfifo
+fim_rdack_scfifo #(
+    .DATA_WIDTH($bits(rsp_fifo_din)),
+    .DEPTH_LOG2(8))
 rsp_fifo (
-    .clock          (clk),
+    .clk            (clk),
     .sclr           (!rst_n),
-    .aclr           (1'b0),
     
-    .wrreq          (rsp_fifo_wrreq),
-    .data           (rsp_fifo_din),
+    .wreq           (rsp_fifo_wrreq),
+    .wdata          (rsp_fifo_din),
     
-    .rdreq          (rsp_fifo_rdack),
-    .q              (rsp_fifo_dout),
+    .rdack          (rsp_fifo_rdack),
+    .rdata          (rsp_fifo_dout),
+    .rvalid         (rsp_fifo_valid),
     
-    .empty          (rsp_fifo_empty),
-    .almost_empty   (rsp_fifo_almostempty),
+    .rusedw         ( ),
+    .rempty         ( ),
 
-    .full           ( ),
-    .almost_full    (rsp_fifo_almostfull),      // No overflow backpressure
-    .usedw          ( ),
-    
-    .eccstatus      (rsp_fifo_eccstatus)
+    .wfull          ( ),
+    .almfull        (rsp_fifo_almostfull),      // No overflow backpressure
+    .wusedw         ( )
 );
-defparam
-    rsp_fifo.add_ram_output_register  = "ON",
-    rsp_fifo.almost_empty_value  = 3,
-    rsp_fifo.almost_full_value  = 240,
-    rsp_fifo.enable_ecc  = "TRUE",
-`ifdef DEVICE_FAMILY
-    rsp_fifo.intended_device_family  = `DEVICE_FAMILY,
-`else
-    rsp_fifo.intended_device_family  = "Stratix 10",
-`endif
-    rsp_fifo.lpm_hint  = "RAM_BLOCK_TYPE=M20K",
-    rsp_fifo.lpm_numwords  = 256,
-    rsp_fifo.lpm_showahead  = "ON",
-    rsp_fifo.lpm_type  = "scfifo",
-    rsp_fifo.lpm_width  = 512,
-    rsp_fifo.lpm_widthu  = 8,
-    rsp_fifo.overflow_checking  = "ON",
-    rsp_fifo.underflow_checking  = "ON",
-    rsp_fifo.use_eab  = "ON";
+
+assign rsp_fifo_eccstatus = '0;
+
 
 //--------------------------------------------------------
 // Cache Tag Tracker FIFO
@@ -225,46 +184,29 @@ begin
 end
 
 // CTT FIFO
-scfifo
+fim_rdack_scfifo #(
+    .DATA_WIDTH($bits(ctt_t)),
+    .DEPTH_LOG2(8))
 ctt_fifo (
-    .clock          (clk),
+    .clk            (clk),
     .sclr           (!rst_n),
-    .aclr           (1'b0),
     
-    .wrreq          (ctt_fifo_wrreq),
-    .data           (ctt_fifo_din),
+    .wreq           (ctt_fifo_wrreq),
+    .wdata          (ctt_fifo_din),
     
-    .rdreq          (ctt_fifo_rdack),
-    .q              (ctt_fifo_dout),
+    .rdack          (ctt_fifo_rdack),
+    .rdata          (ctt_fifo_dout),
     
-    .empty          ( ),
-    .almost_empty   ( ),
+    .rvalid         ( ),
+    .rempty         ( ),
+    .rusedw         ( ),
 
-    .full           ( ),
-    .almost_full    ( ),
-    .usedw          ( ),
-    
-    .eccstatus      (ctt_fifo_eccstatus)
+    .wfull          ( ),
+    .almfull        ( ),
+    .wusedw         ( )
 );
-defparam
-    ctt_fifo.add_ram_output_register  = "ON",
-    ctt_fifo.almost_empty_value  = 2,
-    ctt_fifo.almost_full_value  = 1023,
-    ctt_fifo.enable_ecc  = "TRUE",
-`ifdef DEVICE_FAMILY
-    ctt_fifo.intended_device_family  = `DEVICE_FAMILY,
-`else
-    ctt_fifo.intended_device_family  = "Stratix 10",
-`endif
-    ctt_fifo.lpm_hint  = "RAM_BLOCK_TYPE=M20K",
-    ctt_fifo.lpm_numwords  = 1024,
-    ctt_fifo.lpm_showahead  = "ON",
-    ctt_fifo.lpm_type  = "scfifo",
-    ctt_fifo.lpm_width  = 64,
-    ctt_fifo.lpm_widthu  = 10,
-    ctt_fifo.overflow_checking  = "ON",
-    ctt_fifo.underflow_checking  = "ON",
-    ctt_fifo.use_eab  = "ON";
+
+assign ctt_fifo_eccstatus = '0;
 
 //--------------------------------------------------------
 // Construct Completion Header
