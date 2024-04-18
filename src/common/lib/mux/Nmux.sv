@@ -89,6 +89,7 @@
 module Nmux 
      #(parameter                        WIDTH   = 128                         ,// width of the input port
                                         DEPTH   = 1                           ,// depth of the output fifo = 2**DEPTH
+                                        REG_OUT = 0                           ,// extra output register stages?
                                         N       = 4                          ) // number of mux input ports
       (                                                                        //  
       input      [N-1:0][WIDTH-1:0]     mux_in_data                           ,// Mux in data
@@ -115,7 +116,7 @@ module Nmux
       logic      [WIDTH-1:0]            out_q_din                             ;// out_q(fifo) data in
       logic                             out_q_wen                             ;// out_q(fifo) write enable strobe
       logic                             out_q_ren                             ;// out_q(fifo) read enable strobe
-      logic                             out_q_full                            ;// out_q(fifo) full threshold reached
+      logic                             out_q_ready                           ;// out_q(fifo) is ready
       integer                           i , j                                 ;// index
                                                                                //
       always @(*) begin                                                        //
@@ -135,7 +136,7 @@ module Nmux
                                                   : select_q + i              ;//
                                                                                //
                mux_in_ready           = 0                                     ;//
-               mux_in_ready[select_q] = !out_q_full                           ;// indicates arbitration accepted input port data
+               mux_in_ready[select_q] = out_q_ready                           ;// indicates arbitration accepted input port data
                                                                                //
                out_q_din    = mux_in_data  [select_q]                         ;// if mux pipe reg is instantiated connect fifo to pipe out        
                out_q_wen    = mux_in_ready [select_q]                          //
@@ -160,6 +161,51 @@ module Nmux
           end                                                                  //
       end                                                                      //
                                                                                //
+      if (DEPTH <= 1) begin : p
+          //
+          // Requested depth is equivalent to a 2 stage skid buffer. Use
+          // that simpler primitive instead.
+          //
+          ofs_fim_axis_register  #(
+                   .ENABLE_TKEEP    (       0            ),
+                   .ENABLE_TLAST    (       0            ),
+                   .TDATA_WIDTH     (     WIDTH          ),
+                   .REG_IN          (     REG_OUT        )
+                   )
+              out_q
+                   (
+                    .clk,
+                    .rst_n,
+
+                    .s_tready       (  out_q_ready       ),
+                    .s_tvalid       (  mux_in_valid[select_q] ),
+                    .s_tdata        (  out_q_din         ),
+                    .s_tkeep        (  '0                ),
+                    .s_tlast        (  '0                ),
+                    .s_tid          (  '0                ),
+                    .s_tdest        (  '0                ),
+                    .s_tuser        (  '0                ),
+
+                    .m_tready       (  mux_out_ready     ),
+                    .m_tvalid       (  mux_out_valid     ),
+                    .m_tdata        (  mux_out_data      ),
+                    .m_tkeep        (                    ),
+                    .m_tlast        (                    ),
+                    .m_tid          (                    ),
+                    .m_tdest        (                    ),
+                    .m_tuser        (                    )
+                    );
+
+          assign out_q_err = 1'b0;
+          assign out_q_perr = 1'b0;
+
+      end else begin : f
+          //
+          // Requested depth is greater than a 2 stage pipeline. Use a FIFO.
+          //
+          logic out_q_full;
+          assign out_q_ready = ~out_q_full;
+
           bfifo  #(                                                            // 0-delay fifo (din in clk0, dout is valid clk1)
                    .WIDTH           (     WIDTH          )                    ,// all outputs are registered
                    .DEPTH           (     DEPTH          )                    ,//
@@ -185,4 +231,5 @@ module Nmux
                    .fifo_err        (  out_q_err         )                    ,// FIFO overflow/underflow error
                    .fifo_perr       (  out_q_perr        )                     // FIFO pairty error
                    )                                                          ;//
+      end
 endmodule                                                                      //

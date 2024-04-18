@@ -24,6 +24,8 @@
 //  
 // 
 
+`include "ofs_ip_cfg_db.vh"
+
 //===================================================================================================================================
 //                                     PF/VF Mux/Switch Main 
 //===================================================================================================================================
@@ -280,10 +282,21 @@ module pf_vf_mux_w_params
         ,.out_interface   (mx2fn_rx_port)   // pcie_ss_axis_if.source (out_bus)  out_interface   ([N-1:0]) (8 busses to the individual ports (a master interfase)
         );
    
+   // Add extra MUX output registers if running at high frequency or the
+   // PCIe data bus is very wide.
+   localparam REG_OUT = (ofs_fim_cfg_pkg::MAIN_CLK_MHZ > 470) ||
+                        (ofs_fim_cfg_pkg::PCIE_TDATA_WIDTH > 512);
+
+   (* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg rst_n_q = 1'b0;
+   always @(posedge clk) begin
+      rst_n_q <= rst_n;
+   end
+
    switch  # (// M X N switch with output FIFO
               .WIDTH       (    WIDTH      )              ,// Port Data Width                              
               .M           (    M          )              ,// Number of M Ports 
               .N           (    N          )              ,// Number of N Ports 
+              .REG_OUT     (    REG_OUT    )              ,// Extra output stages?
               .DEPTH       (    DEPTH      )               // FIFO Depth=2**DEPTH 
               )
    switch   ( // ----------- input -----------------------------------
@@ -297,7 +310,7 @@ module pf_vf_mux_w_params
               .N_in_eop     (N_in_eop),    // Mux N to M data in end of packet
               .N_in_valid   (N_in_valid),  // Mux N to M data in valid
               .N_out_ready  (N_out_ready), // Mux N to M data out ready from next stage logic 
-              .rst_n        (rst_n),       // reset low active
+              .rst_n        (rst_n_q),     // reset low active
               .clk          (clk),         // clock
               //----------  output ----------------------------------
               .M_in_ready   (M_in_ready),  // Mux M to N ready 

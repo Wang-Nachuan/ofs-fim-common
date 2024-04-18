@@ -24,7 +24,19 @@ module ofs_fim_axis_register
     parameter TID_WIDTH            = 8,
     parameter TDEST_WIDTH          = 8,
     parameter TUSER_WIDTH          = 1,
+
+    // Preserve registers for crossing a PR boundary? Set to "RX" for flow
+    // into a PR region and "TX" for flow out of a PR region.
     parameter PRESERVE_REG         = "OFF",
+
+    // In MODE 0 (skid buffer), setting REG_IN to 1 adds a third register.
+    // When REG_IN is 0 (default), there is no input register and inbound
+    // traffic flows to either of the two skid registers. When REG_IN is 1,
+    // all inbound traffic flows only to an input register. The input
+    // register feeds the two skid registers. The extra pipeline register
+    // can improve the fit for complex flow control such as the PF/VF MUX
+    // and for crossing PR boundaries.
+    parameter REG_IN               = 0,
 
     // --------------------------------------
     // Derived parameters
@@ -94,6 +106,16 @@ if (MODE == 0) begin
     // skid buffer
     // --------------------------------------
     
+    // Input registers, used when REG_IN is set
+    logic                          in_tvalid, in_tvalid_reg;
+    logic [TDATA_WIDTH-1:0]        in_tdata, in_tdata_reg;
+    logic [TKEEP_WIDTH-1:0]        in_tkeep, in_tkeep_reg;
+    logic                          in_tlast, in_tlast_reg;
+    logic [TID_WIDTH-1:0]          in_tid, in_tid_reg;
+    logic [TDEST_WIDTH-1:0]        in_tdest, in_tdest_reg;
+    logic [TUSER_WIDTH-1:0]        in_tuser, in_tuser_reg;
+    logic                          in_tready_reg;
+
     // Registers & signals
     logic                          s_tvalid_reg; 
     logic [TDATA_WIDTH-1:0]        s_tdata_reg;
@@ -115,6 +137,39 @@ if (MODE == 0) begin
     logic [TDEST_WIDTH-1:0]        m_tdest_pre;  
     logic [TUSER_WIDTH-1:0]        m_tuser_pre;
 
+    // These input registers will be consumed only when REG_IN is set.
+    always_ff @(posedge clk) begin
+       if (in_tready_reg) begin
+          in_tvalid_reg <= s_tvalid;
+          in_tdata_reg  <= s_tdata;
+          in_tkeep_reg  <= s_tkeep;
+          in_tlast_reg  <= s_tlast;
+          in_tid_reg    <= s_tid;
+          in_tdest_reg  <= s_tdest;
+          in_tuser_reg  <= s_tuser;
+       end
+
+       // Input register ready (including skid buffer). Same as s_tready_reg
+       // but add a clause that checks the state of in_tvalid_reg.
+       in_tready_reg <= s_tready_pre || (~use_reg && ~in_tvalid) ||
+                        (in_tready_reg ? ~s_tvalid : ~in_tvalid_reg);
+
+       if (~rst_n) begin
+          in_tvalid_reg <= 1'b0;
+          in_tready_reg <= (TREADY_RST_VAL == 0) ? 1'b0 : 1'b1;
+       end
+    end
+
+    // Feed the skid buffer from the incoming wires (REG_IN == 0)
+    // or from the input registers.
+    assign in_tvalid = REG_IN ? in_tvalid_reg : s_tvalid;
+    assign in_tdata  = REG_IN ? in_tdata_reg  : s_tdata;
+    assign in_tkeep  = REG_IN ? in_tkeep_reg  : s_tkeep;
+    assign in_tlast  = REG_IN ? in_tlast_reg  : s_tlast;
+    assign in_tid    = REG_IN ? in_tid_reg    : s_tid;
+    assign in_tdest  = REG_IN ? in_tdest_reg  : s_tdest;
+    assign in_tuser  = REG_IN ? in_tuser_reg  : s_tuser;
+
     assign s_tready_pre = (m_tready || ~m_tvalid);
  
     always_ff @(posedge clk) begin
@@ -122,8 +177,8 @@ if (MODE == 0) begin
         s_tready_reg     <= (TREADY_RST_VAL == 0) ? 1'b0 : 1'b1;
         s_tready_reg_dup <= (TREADY_RST_VAL == 0) ? 1'b0 : 1'b1;
       end else begin
-        s_tready_reg     <= s_tready_pre || (~use_reg && ~s_tvalid);
-        s_tready_reg_dup <= s_tready_pre || (~use_reg && ~s_tvalid);
+        s_tready_reg     <= s_tready_pre || (~use_reg && ~in_tvalid);
+        s_tready_reg_dup <= s_tready_pre || (~use_reg && ~in_tvalid);
       end
     end
     
@@ -140,7 +195,7 @@ if (MODE == 0) begin
           // stop using the buffer when s_tready_pre is high (m_tready=1 or m_tvalid=0)
           use_reg <= 1'b0;
        end else if (s_tready_reg) begin
-          use_reg <= ~s_tready_pre && s_tvalid;
+          use_reg <= ~s_tready_pre && in_tvalid;
        end
     end
     
@@ -148,18 +203,18 @@ if (MODE == 0) begin
        if (~rst_n) begin
           s_tvalid_reg <= 1'b0;
        end else if (s_tready_reg_dup) begin
-          s_tvalid_reg <= s_tvalid;
+          s_tvalid_reg <= in_tvalid;
        end
     end
 
     always_ff @(posedge clk) begin
        if (s_tready_reg_dup) begin
-          s_tdata_reg  <= s_tdata;
-          s_tkeep_reg  <= s_tkeep;
-          s_tlast_reg  <= s_tlast;
-          s_tid_reg    <= s_tid;
-          s_tdest_reg  <= s_tdest;
-          s_tuser_reg  <= s_tuser;
+          s_tdata_reg  <= in_tdata;
+          s_tkeep_reg  <= in_tkeep;
+          s_tlast_reg  <= in_tlast;
+          s_tid_reg    <= in_tid;
+          s_tdest_reg  <= in_tdest;
+          s_tuser_reg  <= in_tuser;
        end
     end
      
@@ -173,13 +228,13 @@ if (MODE == 0) begin
           m_tdest_pre  = s_tdest_reg;
           m_tuser_pre  = s_tuser_reg;
        end else begin
-          m_tvalid_pre = s_tvalid;
-          m_tdata_pre  = s_tdata;
-          m_tkeep_pre  = s_tkeep;
-          m_tlast_pre  = s_tlast;
-          m_tid_pre    = s_tid;
-          m_tdest_pre  = s_tdest;
-          m_tuser_pre  = s_tuser;
+          m_tvalid_pre = in_tvalid;
+          m_tdata_pre  = in_tdata;
+          m_tkeep_pre  = in_tkeep;
+          m_tlast_pre  = in_tlast;
+          m_tid_pre    = in_tid;
+          m_tdest_pre  = in_tdest;
+          m_tuser_pre  = in_tuser;
        end
     end
      
@@ -213,7 +268,7 @@ if (MODE == 0) begin
     assign m_tid    = ENABLE_TID   ? m_tid_reg   : '0;
     assign m_tdest  = ENABLE_TDEST ? m_tdest_reg : '0;
     assign m_tuser  = ENABLE_TUSER ? m_tuser_reg : '0;
-    assign s_tready = s_tready_reg;
+    assign s_tready = REG_IN ? in_tready_reg : s_tready_reg;
 
 end else if (MODE == 1) begin 
    // --------------------------------------

@@ -35,7 +35,7 @@
 // 
 //
 
-module switch #(parameter WIDTH=80, N=4, M=2, DEPTH=2)                           // crossbar switch of N ports to M ports
+module switch #(parameter WIDTH=80, N=4, M=2, REG_OUT=0, DEPTH=2)                // crossbar switch of N ports to M ports
       (                                                                          //----------- input -------------------------------------
       input   wire  [M-1:0][WIDTH-1:0]  M_in_data                               ,// Mux M to N ports data in 
       input   wire  [M-1:0][N-1:0]      M_in_sop                                ,// Mux M to N ports start of packet
@@ -117,6 +117,7 @@ module switch #(parameter WIDTH=80, N=4, M=2, DEPTH=2)                          
                                        |    |M_out_q_perr                       ;//
       end                                                                        //                                                                                // 
                   Nmux #(.WIDTH     (   WIDTH    )                              ,// Port Data Width
+                         .REG_OUT   (   REG_OUT  )                              ,// Extra output stages?
                          .DEPTH     (   DEPTH    )                              ,// out_q fifo depth = 2**DEPTH
                          .N         (   N        )                               // Number of input ports to mux
                         )                                                        //
@@ -137,6 +138,7 @@ module switch #(parameter WIDTH=80, N=4, M=2, DEPTH=2)                          
                         )                                                       ;//
                                                                                  //
                   Nmux #(.WIDTH     (   WIDTH    )                              ,// Port Data Width
+                         .REG_OUT   (   REG_OUT  )                              ,// Extra output stages?
                          .DEPTH     (   DEPTH    )                              ,// out_q fifo depth = 2**DEPTH
                          .N         (   M        )                               // Number of input ports to mux
                         )                                                        //
@@ -155,4 +157,4 @@ module switch #(parameter WIDTH=80, N=4, M=2, DEPTH=2)                          
                                 N_out_q_err                                     ,//
                                 N_out_q_perr                                     //
                         )                                                       ;//
-endmodule                                                                 
+endmodule // switch
