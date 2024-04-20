@@ -14,13 +14,8 @@
 package tg2_csr_pkg;
 
 import ofs_csr_pkg::*;
-// FUTURE_IMPROVEMENT_kroberso: some strange behavior can happen if M_CHANNEL is not = to the
-// correct # of channels
-`ifndef __OFS_FIM_MEM_IF_PKG__
-   localparam M_CHANNEL = 4;
-`else
-   localparam M_CHANNEL = ofs_fim_mem_if_pkg::NUM_MEM_CHANNELS;
-`endif
+
+localparam M_CHANNEL = ofs_fim_mem_if_pkg::NUM_MEM_CHANNELS;
    
 // AFU ID
 // From https://www.uuidgenerator.net/version1:
@@ -40,7 +35,8 @@ localparam CSR_ADDR_SHIFT  = 3;
 //-------------------
 // DFH
 //
-localparam MEM_TG2_NUM_REGS = 16;
+// Base regs + channel perf counter reg
+localparam MEM_TG2_NUM_REGS = 10 + M_CHANNEL;
 
 localparam AFU_DFH_CSR     = 16'h0000; //00
 localparam AFU_ID_L_CSR    = 16'h0008; //01
