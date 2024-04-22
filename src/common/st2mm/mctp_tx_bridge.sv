@@ -81,10 +81,9 @@ module mctp_tx_bridge #(
 
    assign vdm_hdr.metadata_l = 32'b0;        // meta-data field
    assign vdm_hdr.metadata_h = 32'b0;        // meta-data field
-   assign vdm_hdr.bar_number = 7'b0;         // Bar Number
-   assign vdm_hdr.mm_mode    = 1'b0;         // Memory Mapped mode
+   assign vdm_hdr.rsvd2      = '0;
    assign vdm_hdr.slot_num   = 5'b0;         // Slot Number
-   assign vdm_hdr.rsvd2      = 4'b0;         // Reserved
+   assign vdm_hdr.bar_number = 4'b0;         // Bar Number
    assign vdm_hdr.vf_active  = VF_ACTIVE;
    assign vdm_hdr.vf_num     = VF_NUM;
    assign vdm_hdr.pf_num     = PF_NUM;

@@ -216,7 +216,7 @@ typedef struct packed {
     // Byte 23 - Byte 20
     logic   [7:0]       rsvd2;              // Reserved
     logic   [4:0]       slot_num;           // Slot Number
-    logic   [6:0]       bar_number;         // Bar Number 
+    logic   [3:0]       bar_number;         // Bar Number 
     logic               vf_active;          // VF active     
     logic   [10:0]      vf_num;             // VF number 
     logic   [2:0]       pf_num;             // PF number
@@ -288,12 +288,11 @@ typedef struct packed {
     logic   [31:0]      metadata_h;         // meta-data field 
 
     // Byte 23 - Byte 20
-    logic   [6:0]       bar_number;         // Bar Number 
-    logic               mm_mode;            // Memory Mapped mode
+    logic   [7:0]       rsvd2;              // Reserved
     logic   [4:0]       slot_num;           // Slot Number
-    logic   [3:0]       rsvd2;              // Reserved
+    logic   [3:0]       bar_number;         // Bar Number 
     logic               vf_active;          
-    logic   [10:0]      vf_num;             // 
+    logic   [10:0]      vf_num;
     logic   [2:0]       pf_num;
 
     // Byte 19 - Byte 16
@@ -386,13 +385,12 @@ typedef struct packed {
     logic   [31:0]      metadata_h;         // metadata[63:32]
 
     // Byte 23 - Byte 20
-    logic   [6:0]       rsvd1;              // Reserved
-    logic               mm_mode;            // Memory Mapped mode
+    logic   [7:0]       rsvd2;              // Reserved
     logic   [4:0]       slot_num;           // Slot Number
-    logic   [3:0]       rsvd2;              // Reserved
-    logic               vf_active;          // VF Active 
-    logic   [10:0]      vf_num;             // VF Number
-    logic   [2:0]       pf_num;             // PF Number
+    logic   [3:0]       bar_number;         // Bar Number 
+    logic               vf_active;          
+    logic   [10:0]      vf_num;
+    logic   [2:0]       pf_num;
 
     // Byte 19 - Byte 16
     logic   [1:0]       rsvd3;              // Reserved

@@ -91,12 +91,30 @@ import ofs_fim_pcie_pkg::*;
     localparam CFG_SOC_PCIE_SS_``NAME = 0 \
   `endif
 
+// Vector macro with N_ELEM entries
+`define MACRO_TO_PARAM_VEC(NAME, V_TYPE, N_ELEM) \
+  `ifdef OFS_FIM_IP_CFG_PCIE_SS_``NAME \
+    localparam V_TYPE CFG_PCIE_SS_``NAME``[N_ELEM] = { `OFS_FIM_IP_CFG_PCIE_SS_``NAME }; \
+  `else \
+    localparam V_TYPE CFG_PCIE_SS_``NAME``[N_ELEM] = '{N_ELEM{0}}; \
+  `endif \
+  `ifdef OFS_FIM_IP_CFG_SOC_PCIE_SS_``NAME \
+    localparam V_TYPE CFG_SOC_PCIE_SS_``NAME``[N_ELEM] = { `OFS_FIM_IP_CFG_SOC_PCIE_SS_``NAME } \
+  `else \
+    localparam V_TYPE CFG_SOC_PCIE_SS_``NAME``[N_ELEM] = '{N_ELEM{0}} \
+  `endif
+
 // Map macro names from ofs_ip_cfg_db headers and then pick the active
 // instance (either from PCIE_SS or SOC_PCIE_SS), generating a single
 // localparam CFG_<NAME>.
 `define SET_CFG_PARAM(NAME) \
   `MACRO_TO_PARAM(NAME); \
   localparam CFG_``NAME = SOC_ATTACH ? CFG_SOC_PCIE_SS_``NAME : CFG_PCIE_SS_``NAME
+
+// Vector macro with N_ELEM entries
+`define SET_CFG_PARAM_VEC(NAME, V_TYPE, N_ELEM) \
+  `MACRO_TO_PARAM_VEC(NAME, V_TYPE, N_ELEM); \
+  localparam V_TYPE CFG_``NAME``[N_ELEM] = SOC_ATTACH ? CFG_SOC_PCIE_SS_``NAME : CFG_PCIE_SS_``NAME
 
 // Generate localparams from relevant ofs_ip_cfg_db macros using the macros
 // above. Each results in a localparam named CFG_<argument>. The value is either
@@ -115,6 +133,22 @@ import ofs_fim_pcie_pkg::*;
 `SET_CFG_PARAM(HAS_TX_TUSER_LAST_SEGMENT);
 `SET_CFG_PARAM(ST_RX_HAS_TREADY);
 `SET_CFG_PARAM(HAS_RXCRDT);
+
+`SET_CFG_PARAM(NUM_PFS);
+`SET_CFG_PARAM(TOTAL_NUM_VFS);
+`SET_CFG_PARAM_VEC(NUM_VFS_VEC, int, CFG_NUM_PFS);
+`SET_CFG_PARAM_VEC(MSIX_PF_TABLE_SIZE_VEC, int, 8);
+`SET_CFG_PARAM_VEC(MSIX_PF_TABLE_OFFSET_VEC, int, 8);
+`SET_CFG_PARAM_VEC(MSIX_PF_TABLE_BAR_VEC, int, 8);
+`SET_CFG_PARAM_VEC(MSIX_PF_TABLE_BAR_LOG2_SIZE_VEC, int, 8);
+`SET_CFG_PARAM_VEC(MSIX_PF_PBA_OFFSET_VEC, int, 8);
+`SET_CFG_PARAM_VEC(MSIX_PF_PBA_BAR_VEC, int, 8);
+`SET_CFG_PARAM_VEC(MSIX_VF_TABLE_SIZE_VEC, int, 8);
+`SET_CFG_PARAM_VEC(MSIX_VF_TABLE_OFFSET_VEC, int, 8);
+`SET_CFG_PARAM_VEC(MSIX_VF_TABLE_BAR_VEC, int, 8);
+`SET_CFG_PARAM_VEC(MSIX_VF_TABLE_BAR_LOG2_SIZE_VEC, int, 8);
+`SET_CFG_PARAM_VEC(MSIX_VF_PBA_OFFSET_VEC, int, 8);
+`SET_CFG_PARAM_VEC(MSIX_VF_PBA_BAR_VEC, int, 8);
 
 `undef MACRO_TO_PARAM
 `undef SET_CFG_PARAM
@@ -246,7 +280,77 @@ logic [1:0]                              initiate_warmrst_req;
 logic [PCIE_NUM_LINKS-1:0]               ss_app_dlup;
 logic [PCIE_NUM_LINKS-1:0]               ss_app_serr;
 
+// Find a representative PF that is configured with an MSI-X table.
+// The table implementation requires that all functions with MSI-X
+// enabled must have identical configurations.
+function automatic int find_msix_enabled_pf();
+    for (int f = 0; f < 8; f += 1) begin
+        if (CFG_MSIX_PF_TABLE_SIZE_VEC[f] != 0) return f;
+    end
+
+    return -1;
+endfunction // find_msix_enabled_pf
+
 for (genvar j=0; j<PCIE_NUM_LINKS; j++) begin : PCIE_LINK_CONN
+    // MSI-X table, including mapping interrupt requests to writes
+    pcie_ss_axis_if#(.DATA_W(axi_st_rxreq_if[j].DATA_W), .USER_W(axi_st_rxreq_if[j].USER_W))
+        rxreq_to_msix(fim_clk, fim_rst_n);
+    pcie_ss_axis_if#(.DATA_W(axi_st_tx_if[j].DATA_W), .USER_W(axi_st_tx_if[j].USER_W))
+        tx_from_msix(fim_clk, fim_rst_n);
+    pcie_ss_axis_pkg::t_axis_pcie_flr msix_flr_rsp_if;
+
+    if (find_msix_enabled_pf() != -1) begin : msix
+        // MSI-X manager. Handle MMIO requests to the tables and transform AFU
+        // interrupt requests to host writes. All other traffic passes through.
+        ofs_fim_pcie_ss_msix
+          #(
+            .NUM_PFS(CFG_NUM_PFS),
+            .TOTAL_NUM_VFS(CFG_TOTAL_NUM_VFS),
+            .VFS_COUNT_PER_PF(CFG_NUM_VFS_VEC),
+
+            .MSIX_PF_TABLE_SIZE(CFG_MSIX_PF_TABLE_SIZE_VEC),
+            .MSIX_PF_TABLE_OFFSET(CFG_MSIX_PF_TABLE_OFFSET_VEC),
+            .MSIX_PF_TABLE_BAR(CFG_MSIX_PF_TABLE_BAR_VEC),
+            .MSIX_PF_TABLE_BAR_LOG2_SIZE(CFG_MSIX_PF_TABLE_BAR_LOG2_SIZE_VEC),
+            .MSIX_PF_PBA_OFFSET(CFG_MSIX_PF_PBA_OFFSET_VEC),
+            .MSIX_PF_PBA_BAR(CFG_MSIX_PF_PBA_BAR_VEC),
+
+            .MSIX_VF_TABLE_SIZE(CFG_MSIX_VF_TABLE_SIZE_VEC),
+            .MSIX_VF_TABLE_OFFSET(CFG_MSIX_VF_TABLE_OFFSET_VEC),
+            .MSIX_VF_TABLE_BAR(CFG_MSIX_VF_TABLE_BAR_VEC),
+            .MSIX_VF_TABLE_BAR_LOG2_SIZE(CFG_MSIX_VF_TABLE_BAR_LOG2_SIZE_VEC),
+            .MSIX_VF_PBA_OFFSET(CFG_MSIX_VF_PBA_OFFSET_VEC),
+            .MSIX_VF_PBA_BAR(CFG_MSIX_VF_PBA_BAR_VEC)
+            )
+        msix
+          (
+           .axi_st_rxreq_in(rxreq_to_msix),
+           .axi_st_rxreq_out(axi_st_rxreq_if[j]),
+
+           .axi_st_tx_in(axi_st_tx_if[j]),
+           .axi_st_tx_out(tx_from_msix),
+
+           .csr_clk,
+           .csr_rst_n,
+           .ctrlshadow_tvalid(ss_app_st_ctrlshadow_tvalid),
+           .ctrlshadow_tdata(ss_app_st_ctrlshadow_tdata),
+
+           .flr_req_if(flr_rsp_if[j]),
+           .flr_rsp_if(msix_flr_rsp_if),
+           .flr_rsp_tready(ss_app_st_flrcmpl_tready[j])
+           );
+    end else begin : no_msix
+        // MSI-X is not enabled
+        ofs_fim_axis_pipeline #(.PL_DEPTH(0))
+            pipe_rxreq(.clk(fim_clk), .rst_n(fim_rst_n), .axis_s(rxreq_to_msix), .axis_m(axi_st_rxreq_if[j]));
+
+        ofs_fim_axis_pipeline #(.PL_DEPTH(0))
+            pipe_tx(.clk(fim_clk), .rst_n(fim_rst_n), .axis_s(axi_st_tx_if[j]), .axis_m(tx_from_msix));
+
+        assign msix_flr_rsp_if = flr_rsp_if[j];
+    end
+
+
     // Connecting the RX ST Interface
     ofs_fim_pcie_ss_pipe_rx_sb
       #(
@@ -271,7 +375,7 @@ for (genvar j=0; j<PCIE_NUM_LINKS; j++) begin : PCIE_LINK_CONN
         .ss_app_st_rxcrdt_tvalid(ss_app_st_rxcrdt_tvalid[j]),
         .ss_app_st_rxcrdt_tdata(ss_app_st_rxcrdt_tdata[j]),
 
-        .axi_st_rxreq_if(axi_st_rxreq_if[j]),
+        .axi_st_rxreq_if(rxreq_to_msix),
         .axi_st_rx_if(axi_st_rx_if[j])
         );
 
@@ -328,7 +432,7 @@ for (genvar j=0; j<PCIE_NUM_LINKS; j++) begin : PCIE_LINK_CONN
       pipe_tx
        (
         .axi_st_txreq_if(axi_st_txreq_if[j]),
-        .axi_st_tx_if(axi_st_tx_if[j]),
+        .axi_st_tx_if(tx_from_msix),
 
         .hip_clk(coreclkout_hip),
         .hip_rst_n(reset_status_n),
@@ -355,8 +459,9 @@ for (genvar j=0; j<PCIE_NUM_LINKS; j++) begin : PCIE_LINK_CONN
     assign flr_req_if[j].tvalid = ss_app_st_flrrcvd_tvalid[j];
     assign flr_req_if[j].tdata  = ss_app_st_flrrcvd_tdata[j];
 
-    assign app_ss_st_flrcmpl_tvalid[j] = flr_rsp_if[j].tvalid;
-    assign app_ss_st_flrcmpl_tdata[j]  = flr_rsp_if[j].tdata;
+    // FLR response from FIM flows through the MSI-X handler above
+    assign app_ss_st_flrcmpl_tvalid[j] = msix_flr_rsp_if.tvalid;
+    assign app_ss_st_flrcmpl_tdata[j]  = msix_flr_rsp_if.tdata;
 
 
     // Connecting the csr interface
@@ -735,11 +840,19 @@ generate if (SOC_ATTACH == 0) begin : host_pcie
     pcie_ss pcie_ss(
         `PCIE_SS_AXIS_PORTS(PCIE_SS)
     );
+
+   `ifndef OFS_FIM_IP_CFG_PCIE_SS_FLRCMPL_HAS_TREADY
+       assign ss_app_st_flrcmpl_tready = {PCIE_NUM_LINKS{1'b1}};
+   `endif
 end
 else begin : soc_pcie
     soc_pcie_ss pcie_ss(
         `PCIE_SS_AXIS_PORTS(SOC_PCIE_SS)
     );
+
+   `ifndef OFS_FIM_IP_CFG_SOC_PCIE_SS_FLRCMPL_HAS_TREADY
+       assign ss_app_st_flrcmpl_tready = {PCIE_NUM_LINKS{1'b1}};
+   `endif
 end
 endgenerate
 endmodule // pcie_ss_axis_top

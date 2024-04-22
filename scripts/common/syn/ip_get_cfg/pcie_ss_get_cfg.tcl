@@ -318,11 +318,13 @@ proc emit_ip_cfg {ofile_name ip_name} {
     set msix_table_size_list {0 0 0 0 0 0 0 0}
     set msix_table_offset_list {0 0 0 0 0 0 0 0}
     set msix_table_bar_list {0 0 0 0 0 0 0 0}
+    set msix_table_bar_log2_size_list {0 0 0 0 0 0 0 0}
     set msix_pba_offset_list {0 0 0 0 0 0 0 0}
     set msix_pba_bar_list {0 0 0 0 0 0 0 0}
     set msix_vf_table_size_list {0 0 0 0 0 0 0 0}
     set msix_vf_table_offset_list {0 0 0 0 0 0 0 0}
     set msix_vf_table_bar_list {0 0 0 0 0 0 0 0}
+    set msix_vf_table_bar_log2_size_list {0 0 0 0 0 0 0 0}
     set msix_vf_pba_offset_list {0 0 0 0 0 0 0 0}
     set msix_vf_pba_bar_list {0 0 0 0 0 0 0 0}
     for { set pf_num 0 } { $pf_num <= $max_pf_num } { incr pf_num } {
@@ -331,14 +333,24 @@ proc emit_ip_cfg {ofile_name ip_name} {
             set msix_table_size_list [lreplace $msix_table_size_list $pf_num $pf_num [expr $core(pf${pf_num}_pci_msix_table_size_hwtcl) + 1]]
             # Convert offsets to true BAR byte offset
             set msix_table_offset_list [lreplace $msix_table_offset_list $pf_num $pf_num [format 'h%x [expr int($core(pf${pf_num}_pci_msix_table_offset_hwtcl)) << 3]]]
-            set msix_table_bar_list [lreplace $msix_table_bar_list $pf_num $pf_num $core(pf${pf_num}_pci_msix_bir_hwtcl)]
+            set b $core(pf${pf_num}_pci_msix_bir_hwtcl)
+            set msix_table_bar_list [lreplace $msix_table_bar_list $pf_num $pf_num $b]
+            # Size of the BAR (first check that the BAR is enabled)
+            if { $core(pf${pf_num}_bar${b}_type_user_hwtcl) != 0 } {
+                set msix_table_bar_log2_size_list [lreplace $msix_table_bar_log2_size_list $pf_num $pf_num $core(pf${pf_num}_bar${b}_address_width_user_hwtcl)]
+            }
             set msix_pba_offset_list [lreplace $msix_pba_offset_list $pf_num $pf_num [format 'h%x [expr int($core(pf${pf_num}_pci_msix_pba_offset_hwtcl)) << 3]]]
             set msix_pba_bar_list [lreplace $msix_pba_bar_list $pf_num $pf_num $core(pf${pf_num}_pci_msix_pba_hwtcl)]
 
             if { $num_vfs_arr($pf_num) && $core(virtual_pf${pf_num}_exvf_msix_cap_enable_hwtcl) } {
                 set msix_vf_table_size_list [lreplace $msix_vf_table_size_list $pf_num $pf_num [expr $core(exvf_msix_tablesize_pf${pf_num}) + 1]]
                 set msix_vf_table_offset_list [lreplace $msix_vf_table_offset_list $pf_num $pf_num [format 'h%x [expr int($core(exvf_msixtable_offset_pf${pf_num})) << 3]]]
-                set msix_vf_table_bar_list [lreplace $msix_vf_table_bar_list $pf_num $pf_num $core(exvf_msixtable_bir_pf${pf_num})]
+                set b $core(exvf_msixtable_bir_pf${pf_num})
+                set msix_vf_table_bar_list [lreplace $msix_vf_table_bar_list $pf_num $pf_num $b]
+                # Size of the BAR (first check that the BAR is enabled)
+                if { $core(pf${pf_num}_sriov_vf_bar${b}_type_hwtcl) != 0 } {
+                    set msix_vf_table_bar_log2_size_list [lreplace $msix_vf_table_bar_log2_size_list $pf_num $pf_num $core(pf${pf_num}_sriov_vf_bar${b}_address_width_hwtcl)]
+                }
                 set msix_vf_pba_offset_list [lreplace $msix_vf_pba_offset_list $pf_num $pf_num [format 'h%x [expr int($core(exvf_msixpba_offset_pf${pf_num})) << 3]]]
                 set msix_vf_pba_bar_list [lreplace $msix_vf_pba_bar_list $pf_num $pf_num $core(exvf_msixpba_bir_pf${pf_num})]
             }
@@ -353,12 +365,14 @@ proc emit_ip_cfg {ofile_name ip_name} {
     puts $of "`define OFS_FIM_IP_CFG_${ip_name}_MSIX_PF_TABLE_SIZE_VEC [join $msix_table_size_list ", "]"
     puts $of "`define OFS_FIM_IP_CFG_${ip_name}_MSIX_PF_TABLE_OFFSET_VEC [join $msix_table_offset_list ", "]"
     puts $of "`define OFS_FIM_IP_CFG_${ip_name}_MSIX_PF_TABLE_BAR_VEC [join $msix_table_bar_list ", "]"
+    puts $of "`define OFS_FIM_IP_CFG_${ip_name}_MSIX_PF_TABLE_BAR_LOG2_SIZE_VEC [join $msix_table_bar_log2_size_list ", "]"
     puts $of "`define OFS_FIM_IP_CFG_${ip_name}_MSIX_PF_PBA_OFFSET_VEC [join $msix_pba_offset_list ", "]"
     puts $of "`define OFS_FIM_IP_CFG_${ip_name}_MSIX_PF_PBA_BAR_VEC [join $msix_pba_bar_list ", "]"
     puts $of "// VF table sizes (true size, not encoded size-1)"
     puts $of "`define OFS_FIM_IP_CFG_${ip_name}_MSIX_VF_TABLE_SIZE_VEC [join $msix_vf_table_size_list ", "]"
     puts $of "`define OFS_FIM_IP_CFG_${ip_name}_MSIX_VF_TABLE_OFFSET_VEC [join $msix_vf_table_offset_list ", "]"
     puts $of "`define OFS_FIM_IP_CFG_${ip_name}_MSIX_VF_TABLE_BAR_VEC [join $msix_vf_table_bar_list ", "]"
+    puts $of "`define OFS_FIM_IP_CFG_${ip_name}_MSIX_VF_TABLE_BAR_LOG2_SIZE_VEC [join $msix_vf_table_bar_log2_size_list ", "]"
     puts $of "`define OFS_FIM_IP_CFG_${ip_name}_MSIX_VF_PBA_OFFSET_VEC [join $msix_vf_pba_offset_list ", "]"
     puts $of "`define OFS_FIM_IP_CFG_${ip_name}_MSIX_VF_PBA_BAR_VEC [join $msix_vf_pba_bar_list ", "]"
     puts $of ""
