@@ -294,9 +294,9 @@ endfunction // find_msix_enabled_pf
 for (genvar j=0; j<PCIE_NUM_LINKS; j++) begin : PCIE_LINK_CONN
     // MSI-X table, including mapping interrupt requests to writes
     pcie_ss_axis_if#(.DATA_W(axi_st_rxreq_if[j].DATA_W), .USER_W(axi_st_rxreq_if[j].USER_W))
-        rxreq_to_msix(fim_clk, fim_rst_n);
+        rxreq_to_msix(fim_clk, fim_rst_n[j]);
     pcie_ss_axis_if#(.DATA_W(axi_st_tx_if[j].DATA_W), .USER_W(axi_st_tx_if[j].USER_W))
-        tx_from_msix(fim_clk, fim_rst_n);
+        tx_from_msix(fim_clk, fim_rst_n[j]);
     pcie_ss_axis_pkg::t_axis_pcie_flr msix_flr_rsp_if;
 
     if (find_msix_enabled_pf() != -1) begin : msix
@@ -331,9 +331,9 @@ for (genvar j=0; j<PCIE_NUM_LINKS; j++) begin : PCIE_LINK_CONN
            .axi_st_tx_out(tx_from_msix),
 
            .csr_clk,
-           .csr_rst_n,
-           .ctrlshadow_tvalid(ss_app_st_ctrlshadow_tvalid),
-           .ctrlshadow_tdata(ss_app_st_ctrlshadow_tdata),
+           .csr_rst_n(csr_rst_n[j]),
+           .ctrlshadow_tvalid(ss_app_st_ctrlshadow_tvalid[j]),
+           .ctrlshadow_tdata(ss_app_st_ctrlshadow_tdata[j]),
 
            .flr_req_if(flr_rsp_if[j]),
            .flr_rsp_if(msix_flr_rsp_if),
@@ -342,10 +342,10 @@ for (genvar j=0; j<PCIE_NUM_LINKS; j++) begin : PCIE_LINK_CONN
     end else begin : no_msix
         // MSI-X is not enabled
         ofs_fim_axis_pipeline #(.PL_DEPTH(0))
-            pipe_rxreq(.clk(fim_clk), .rst_n(fim_rst_n), .axis_s(rxreq_to_msix), .axis_m(axi_st_rxreq_if[j]));
+            pipe_rxreq(.clk(fim_clk), .rst_n(fim_rst_n[j]), .axis_s(rxreq_to_msix), .axis_m(axi_st_rxreq_if[j]));
 
         ofs_fim_axis_pipeline #(.PL_DEPTH(0))
-            pipe_tx(.clk(fim_clk), .rst_n(fim_rst_n), .axis_s(axi_st_tx_if[j]), .axis_m(tx_from_msix));
+            pipe_tx(.clk(fim_clk), .rst_n(fim_rst_n[j]), .axis_s(axi_st_tx_if[j]), .axis_m(tx_from_msix));
 
         assign msix_flr_rsp_if = flr_rsp_if[j];
     end
@@ -437,7 +437,7 @@ for (genvar j=0; j<PCIE_NUM_LINKS; j++) begin : PCIE_LINK_CONN
         .hip_clk(coreclkout_hip),
         .hip_rst_n(reset_status_n),
         .csr_clk,
-        .csr_rst_n,
+        .csr_rst_n(csr_rst_n[j]),
 
         .app_ss_st_tx_tvalid(app_ss_st_tx_tvalid[j]),
         .app_ss_st_tx_tdata(app_ss_st_tx_tdata[j]),

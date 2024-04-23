@@ -45,6 +45,8 @@ func_params = {
     "core16_{func_num}_sriov_vf_bar4_type_user_hwtcl": "Disabled",
     "core16_{func_num}_sriov_vf_bar4_address_width_hwtcl": 0,
     "core16_{func_num}_pci_msix_table_size_hwtcl": 6,
+    # The core8 pf0 value having a different name is a bug in the 24.1 PCIe SS IP
+    "core8_pf0_pci_msix_table_size_user_hwtcl": 6,
     "core16_{func_num}_pci_msix_table_offset_hwtcl": 1536,
     "core16_{func_num}_pci_msix_bir_hwtcl": 4,
     "core16_{func_num}_pci_msix_pba_offset_hwtcl": 1550,
