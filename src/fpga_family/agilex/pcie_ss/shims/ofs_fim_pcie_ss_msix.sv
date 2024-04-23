@@ -233,6 +233,7 @@ module ofs_fim_pcie_ss_msix
     pcie_ss_axis_mux
       #(
         .NUM_CH(2),
+        .PL_DEPTH({ 1, 0 }),
         .TDATA_WIDTH(axi_st_tx_out.DATA_W),
         .TUSER_WIDTH(axi_st_tx_out.USER_W)
         )
