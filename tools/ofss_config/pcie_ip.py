@@ -21,7 +21,8 @@ class PCIe(OFS):
         super().__init__(ofs_config, target)
         self.ip_type = "PCIe"
         self.pcie_config = pcie_config
-        self.ip_component = pcie_config["settings"].get("ip_component", "pcie_ss")
+        self.ip_component = pcie_config["settings"].get("ip_component",
+                                                        "intel_pcie_ss_axi")
         self.ip_path = os.path.join(self.target_rootdir, "ipss", "pcie", "qip")
 
         self.pf_vf_count = {}
