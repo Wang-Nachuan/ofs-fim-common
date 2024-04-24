@@ -230,19 +230,44 @@ generate
    end
 endgenerate
 
-   // Use implicit connections
-   hbm_ss hbm_inst (
-      .mem_local_cal_success_local_cal_success (hbm_cal_success[0]),
-      .mem_local_cal_fail_local_cal_fail (hbm_cal_fail[0]),
-      .mem_uib_clk_clk (uib_refclk[0]),
-      .mem_fab_clk_clk (fab_clk[0]),
-      .mem_rst_n_reset_n (~reset),
-      .mem_cattrip_conduit (hbm_cattrip[0]),
-      .mem_temp_conduit (hbm_temp[0]),
-      .noc_ctrl_clk(noc_ctrl_refclk[0]),
-      .*
-   );
+   // HBM/NoC signals
+   logic        hbm_0_fab_clk_clk, hbm_1_fab_clk_clk;
+   logic        hbm_0_rst_n_reset_n, hbm_1_rst_n_reset_n;
+   logic        hbm_0_cattrip_conduit, hbm_1_cattrip_conduit;
+   logic [2:0]  hbm_0_temp_conduit, hbm_1_temp_conduit;
+   logic        hbm_0_local_cal_success_local_cal_success, hbm_1_local_cal_success_local_cal_success;
+   logic        hbm_0_local_cal_fail_local_cal_fail, hbm_1_local_cal_fail_local_cal_fail;
+   logic        hbm_0_uib_clk_clk, hbm_1_uib_clk_clk;
+   logic        noc_0_ctrl_clk, noc_1_ctrl_clk;
 
+generate
+   always_comb begin
+      hbm_0_fab_clk_clk     = fab_clk[0];
+      hbm_0_rst_n_reset_n   = ~reset;
+      hbm_0_cattrip_conduit = hbm_cattrip[0];
+      hbm_0_temp_conduit    = hbm_temp[0];
+      hbm_0_uib_clk_clk     = uib_refclk[0];
+      hbm_cal_success[0]    = hbm_0_local_cal_success_local_cal_success;
+      hbm_cal_fail[0]       = hbm_0_local_cal_fail_local_cal_fail;
+      noc_0_ctrl_clk        = noc_ctrl_refclk[0];
+   end
+
+if(NUM_HBM_DEVICES > 1) begin : hbm_1
+   always_comb begin
+      hbm_1_fab_clk_clk     = fab_clk[1];
+      hbm_1_rst_n_reset_n   = ~reset;
+      hbm_1_cattrip_conduit = hbm_cattrip[1];
+      hbm_1_temp_conduit    = hbm_temp[1];
+      hbm_1_uib_clk_clk     = uib_refclk[1];
+      hbm_cal_success[1]    = hbm_1_local_cal_success_local_cal_success;
+      hbm_cal_fail[1]       = hbm_1_local_cal_fail_local_cal_fail;
+      noc_1_ctrl_clk        = noc_ctrl_refclk[1];
+   end
+end
+endgenerate
+
+   // Use implicit connections
+   hbm_ss hbm_inst ( .* );
 
 
 endmodule // mem_ss_top

@@ -49,9 +49,13 @@ logic [ADDR_W-1:0] csr_address_q;
 logic [CSR_REG_WIDTH-1:0] csr_reg   [MEM_TG2_NUM_REGS-1:0];
 logic                     csr_write [MEM_TG2_NUM_REGS-1:0];
 
+
+// all the status fields packed into 1 vector
+// 4 stats bits so the values are easily divisible across 
+t_csr_tg_stat tg_stats;
+   
 t_csr_tg_ctrl tg_ctrl;
 csr_tg_ctrl_t mem_tg_ctrl_current;
-csr_tg_stat_t tg_stat;
 
 
 //----------------------------------------------------------------------------
@@ -256,7 +260,6 @@ always @(posedge csr_if.clk) begin : csr_upd
    csr_reg[AFU_ID_L_CSR_IDX] <= MEM_TG2_ID_L;
    csr_reg[AFU_ID_H_CSR_IDX] <= MEM_TG2_ID_H;
    csr_reg[AFU_NEXT_IDX]     <= '0;
-   csr_reg[MEM_TG_STAT_IDX]  <= tg_stat.data;
 
    csr_reg[SCRATCHPAD_IDX] <= update_reg (
                               .attr            (SCRATCH_ATTR),
@@ -273,6 +276,10 @@ always @(posedge csr_if.clk) begin : csr_upd
                                .reg_current_val (csr_reg[MEM_TG_CTRL_IDX]),
                                .write           (csr_write[MEM_TG_CTRL_IDX]),
                                .state           (hw_state) );
+
+   for (int c = 0; c < NUM_REG_TG_STATS; c++) begin
+      csr_reg[MEM_TG_STAT_IDX+c] <= tg_stats[c*64+:64];
+   end
 
    for (int c = 0; c < NUM_TG; c++) begin
       csr_reg[MEM_TG_CLOCKS_IDX+c] <= clock_count[c];
@@ -295,20 +302,26 @@ logic [NUM_TG-1:0] tg_pass_1;
 logic [NUM_TG-1:0] tg_fail_1;
 logic [NUM_TG-1:0] tg_timeout_1;
 
-
    always_ff @ (posedge csr_if.clk) begin
       if(!csr_if.rst_n) begin
-	 tg_stat.data <= '0;
+	 tg_stats <= '{'0};
          tg_pass_1    <= '0;
          tg_fail_1    <= '0;
          tg_timeout_1 <= '0;
       end else begin
 	 for (int ch = 0; ch < NUM_TG; ch++) begin
-            tg_stat.csr_tg_stat.tg_stat.tg_stat[ch].tg_active  <= (tg_stat.csr_tg_stat.tg_stat.tg_stat[ch].tg_active | tg_start[ch]) & ~tg_stop[ch];
-            tg_stat.csr_tg_stat.tg_stat.tg_stat[ch].tg_pass    <= (tg_stat.csr_tg_stat.tg_stat.tg_stat[ch].tg_pass | tg_pass_re[ch]) & ~tg_start[ch];
-            tg_stat.csr_tg_stat.tg_stat.tg_stat[ch].tg_fail    <= (tg_stat.csr_tg_stat.tg_stat.tg_stat[ch].tg_fail | tg_fail_re[ch]) & ~tg_start[ch];
-            tg_stat.csr_tg_stat.tg_stat.tg_stat[ch].tg_timeout <= (tg_stat.csr_tg_stat.tg_stat.tg_stat[ch].tg_timeout | tg_timeout_re[ch]) & ~tg_start[ch];
-
+            if(tg_start[ch]) begin
+               tg_stats.tg_stat[ch].tg_active  <= '1;
+               tg_stats.tg_stat[ch].tg_pass    <= '0;
+               tg_stats.tg_stat[ch].tg_fail    <= '0;
+               tg_stats.tg_stat[ch].tg_timeout <= '0;
+            end else begin
+               if(tg_stop[ch]) tg_stats.tg_stat[ch].tg_active <= '0;
+               // latch status on rising edge
+               if(tg_pass_re[ch])    tg_stats.tg_stat[ch].tg_pass    <= '1;
+               if(tg_fail_re[ch])    tg_stats.tg_stat[ch].tg_fail    <= '1;
+               if(tg_timeout_re[ch]) tg_stats.tg_stat[ch].tg_timeout <= '1;
+            end
             tg_pass_1[ch]                                      <= tg_pass[ch];
             tg_fail_1[ch]                                      <= tg_fail[ch];
             tg_timeout_1[ch]                                   <= tg_timeout[ch];
@@ -318,7 +331,7 @@ logic [NUM_TG-1:0] tg_timeout_1;
 
    always_comb begin
       for (int ch = 0; ch < NUM_TG; ch++) begin
-         mem_tg_active[ch] = tg_stat.csr_tg_stat.tg_stat.tg_stat[ch].tg_active;
+         mem_tg_active[ch] = tg_stats.tg_stat[ch].tg_active;
          tg_start[ch]      = (tg2_write[ch] && (tg2_address == TG_START_ADDR)) | tg_ctrl_start[ch];
          tg_stop[ch]       = tg_pass_re[ch] | tg_fail_re[ch] | tg_timeout_re[ch];
          tg_pass_re[ch]    = tg_pass[ch] & ~tg_pass_1[ch];

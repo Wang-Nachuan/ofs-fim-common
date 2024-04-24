@@ -69,7 +69,7 @@ module local_mem_wrapper
 `endif
                 
 `ifdef INCLUDE_HBM
-   // FM Subsystem
+   // FP Subsystem
    hbm_ss_top #(
       .FEAT_ID         (FEAT_ID),
       .FEAT_VER        (FEAT_VER),

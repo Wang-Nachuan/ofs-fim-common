@@ -32,11 +32,28 @@ localparam MEM_TG2_ID_H = 64'h4DADEA342C7848CB;
 localparam CSR_ADDR_W      = 20;
 localparam CSR_ADDR_SHIFT  = 3;
 
+//---------------------------------------------------------
+// Memory traffic gen status register
+//---------------------------------------------------------
+typedef struct packed {
+   logic tg_pass;
+   logic tg_fail;
+   logic tg_timeout;
+   logic tg_active;
+} t_tg_stat;
+
+typedef struct packed {
+   t_tg_stat [M_CHANNEL-1:0] tg_stat;
+} t_csr_tg_stat;
+
+localparam CSR_TG_STAT_WIDTH = $bits(t_csr_tg_stat);
+localparam NUM_REG_TG_STATS  = int'($ceil(CSR_TG_STAT_WIDTH/64));
+
 //-------------------
 // DFH
 //
 // Base regs + channel perf counter reg
-localparam MEM_TG2_NUM_REGS = 10 + M_CHANNEL;
+localparam MEM_TG2_NUM_REGS = 9 + NUM_REG_TG_STATS + M_CHANNEL;
 
 localparam AFU_DFH_CSR     = 16'h0000; //00
 localparam AFU_ID_L_CSR    = 16'h0008; //01
@@ -129,31 +146,16 @@ typedef union packed {
    ofs_csr_reg_2x32_t    word;
 } csr_tg_ctrl_t;
 
-//---------------------------------------------------------
-// Memory traffic gen status register
-//---------------------------------------------------------
-typedef struct packed {
-   logic tg_pass;
-   logic tg_fail;
-   logic tg_timeout;
-   logic tg_active;
-} t_tg_stat;
+// typedef struct packed {
+//    logic [63:CSR_TG_STAT_WIDTH] reserved1;
+//    t_csr_tg_stat tg_stat;
+// } csr_tg_stat_fields_t;
 
-typedef struct packed {
-   t_tg_stat [M_CHANNEL-1:0] tg_stat;
-} t_csr_tg_stat;
-
-localparam CSR_TG_STAT_WIDTH = $bits(t_csr_tg_stat);
-typedef struct packed {
-   logic [63:CSR_TG_STAT_WIDTH] reserved1;
-   t_csr_tg_stat tg_stat;
-} csr_tg_stat_fields_t;
-
-typedef union packed {
-   csr_tg_stat_fields_t  csr_tg_stat;
-   logic [63:0]          data;
-   ofs_csr_reg_2x32_t    word;
-} csr_tg_stat_t;
+// typedef union packed {
+//    csr_tg_stat_fields_t  csr_tg_stat;
+//    logic [63:0]          data;
+//    ofs_csr_reg_2x32_t    word;
+// } csr_tg_stat_t;
 
 endpackage : tg2_csr_pkg
 `endif //  `ifndef __TG2_CSR_PKG_SV__
