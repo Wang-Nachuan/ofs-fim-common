@@ -4805,7 +4805,7 @@ module ofs_fim_pcie_ss_msix_table
   assign intc_flrcmpl_tvalid = ~flrcmpl_fifo_empty;
 
   dcfifo #(
-  .lpm_width                ( FLRFIFO_WIDTH                                                       ),
+  .lpm_width                ( $bits(flrcmpl_fifo_tdata)                                           ),
   .lpm_widthu               ( 2                                                                   ),
   .lpm_numwords             ( 4                                                                   ),
   .lpm_showahead            ( "ON"                                                                ),
