@@ -277,9 +277,13 @@ always @(posedge csr_if.clk) begin : csr_upd
                                .write           (csr_write[MEM_TG_CTRL_IDX]),
                                .state           (hw_state) );
 
-   for (int c = 0; c < NUM_REG_TG_STATS; c++) begin
+
+   // Assign a full 64b status string if the status vector spans more registers
+   for (int c = 0; c < NUM_REG_TG_STATS-1; c++) begin
       csr_reg[MEM_TG_STAT_IDX+c] <= tg_stats[c*64+:64];
    end
+   // assign the last status vector
+   csr_reg[MEM_TG_STAT_IDX+NUM_REG_TG_STATS-1] <= tg_stats[$bits(tg_stats)-1:64*(NUM_REG_TG_STATS-1)];
 
    for (int c = 0; c < NUM_TG; c++) begin
       csr_reg[MEM_TG_CLOCKS_IDX+c] <= clock_count[c];

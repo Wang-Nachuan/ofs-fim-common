@@ -47,7 +47,7 @@ typedef struct packed {
 } t_csr_tg_stat;
 
 localparam CSR_TG_STAT_WIDTH = $bits(t_csr_tg_stat);
-localparam NUM_REG_TG_STATS  = int'($ceil(CSR_TG_STAT_WIDTH/64));
+localparam NUM_REG_TG_STATS  = int'($ceil(real'(CSR_TG_STAT_WIDTH)/64.0));
 
 //-------------------
 // DFH
