@@ -57,7 +57,7 @@ generate
          assign ctt_raddr = i_ctt_raddr; 
 
          // RAM to store the information retrieved from MRd request
-         ram_1r1w #(
+         fim_ram_1r1w #(
             .DEPTH          (pcie_ss_hdr_pkg::PCIE_TAG_WIDTH),
             .WIDTH          (st2mm_pkg::CPL_HDR_INFO_WIDTH), 
             .GRAM_MODE      (2'd1),

@@ -392,7 +392,7 @@ module tag_remap_multi_tx #(
   //
   // Tag map-back memory
   //
-  ram_1r1w #(
+  fim_ram_1r1w #(
                .DEPTH       ( SS_TAG_WIDTH  ),
                .WIDTH       ( AFU_TAG_WIDTH ),
                .GRAM_MODE   ( 0             ),

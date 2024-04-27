@@ -17,8 +17,8 @@ $OFS_ROOTDIR/src/includes/ofs_axis_if.sv
 $OFS_ROOTDIR/src/includes/ofs_avst_if.sv
 $OFS_ROOTDIR/src/includes/pcie_ss_axis_if.sv
 $OFS_ROOTDIR/src/common/fifo/bfifo.sv
-$OFS_ROOTDIR/src/common/ram/ram_1r1w.sv
-$OFS_ROOTDIR/src/common/ram/gram_sdp.sv
+$OFS_ROOTDIR/src/common/ram/fim_ram_1r1w.sv
+$OFS_ROOTDIR/src/common/ram/fim_gram_sdp.sv
 $OFS_ROOTDIR/src/common/mux/pf_vf_mux_pkg.sv
 $OFS_ROOTDIR/src/common/mux/Nmux.sv
 $OFS_ROOTDIR/src/common/mux/switch.sv

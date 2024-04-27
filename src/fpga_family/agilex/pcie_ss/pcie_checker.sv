@@ -1074,7 +1074,7 @@ if (ENABLE_COMPLETION_TIMEOUT_CHECK == 1) begin : cpl_timeout
    // Gate read with avl_rst_n since clk may not be active during reset, and ram is not driven by reset
    assign ttq_start_time_re = (~avl_rst_n) ? 1'b0 : ttq_start_time_valid; 
       
-   ram_1r1w #(
+   fim_ram_1r1w #(
       .DEPTH(PCIE_EP_TAG_WIDTH),
       .WIDTH(1+VF_WIDTH+PF_WIDTH+CPL_TIME_WIDTH),
       .GRAM_MODE(2'd1),

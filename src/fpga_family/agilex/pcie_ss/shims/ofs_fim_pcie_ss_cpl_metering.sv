@@ -648,7 +648,7 @@ module ofs_fim_pcie_ss_cpl_metering_impl
         end
     end
 
-    ram_1r1w
+    fim_ram_1r1w
       #(
         .WIDTH(RAM_DATA_WIDTH),
         .DEPTH(TAG_WIDTH),
@@ -675,7 +675,7 @@ module ofs_fim_pcie_ss_cpl_metering_impl
     logic [RAM_DATA_WIDTH-1 : 0] rdata_ram_b;
     logic rd_during_write_b;
 
-    ram_1r1w
+    fim_ram_1r1w
       #(
         .WIDTH(RAM_DATA_WIDTH),
         .DEPTH(TAG_WIDTH),

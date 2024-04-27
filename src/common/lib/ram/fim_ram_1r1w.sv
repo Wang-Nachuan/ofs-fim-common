@@ -3,7 +3,7 @@
 
 // Description
 //-----------------------------------------------------------------------------
-// ram_1r1w.sv: Generic simple dual port RAM with one write port and one read port
+// fim_ram_1r1w.sv: Generic simple dual port RAM with one write port and one read port
 // Copyright Intel 2008
 // edited by pratik marolia on 3/15/2010
 // Created 2008Oct16
@@ -46,7 +46,7 @@
 //
 `include "vendor_defines.vh"
 
-module ram_1r1w #(
+module fim_ram_1r1w #(
    parameter   DEPTH           =   4,         // number of bits of address bus
    parameter   WIDTH           =   32,        // number of bits of data bus
    parameter   GRAM_MODE       =   2'd3,      // GRAM read mode
@@ -147,7 +147,7 @@ if (INCLUDE_PARITY) begin
 
     always @(*) perr_or = |(perr_out_int ^ perr_expected_int);
 
-    gram_sdp #( 
+    fim_gram_sdp #( 
        .BUS_SIZE_ADDR ( DEPTH),
        .BUS_SIZE_DATA ( PARITY_WIDTH+WIDTH),
        .GRAM_MODE     ( GRAM_MODE),
@@ -165,7 +165,7 @@ if (INCLUDE_PARITY) begin
 end else begin
    always @(*) perr_or = 0;
    
-   gram_sdp #( 
+   fim_gram_sdp #( 
      .BUS_SIZE_ADDR ( DEPTH),
      .BUS_SIZE_DATA ( WIDTH),
      .GRAM_MODE     ( GRAM_MODE),

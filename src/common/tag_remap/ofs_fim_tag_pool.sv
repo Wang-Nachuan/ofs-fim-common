@@ -53,7 +53,7 @@ module ofs_fim_tag_pool
     t_uid waddr, waddr_init;
     logic wdata;
 
-    ram_1r1w
+    fim_ram_1r1w
       #(
         .DEPTH($clog2(N_ENTRIES)),
         .WIDTH(1),

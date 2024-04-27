@@ -204,7 +204,7 @@ always @(posedge clk)                                                           
     begin                                                                       //
         fifo_din_q    <= fifo_din                                              ;//
         fifo_w_q      <= fifo_wen                                              ;//
-        perr_en_q     <= perr_en                                               ;// delayed version of perr_en to align to perr output from ram_1r1w
+        perr_en_q     <= perr_en                                               ;// delayed version of perr_en to align to perr output from fim_ram_1r1w
         perr_en       <= fifo_gt_2  & fifo_ren                                 ;//
         fifo_dout_sel <= fifo_gt_2  & fifo_ren                                 ;//
         fifo_out_q    <= fifo_out                                              ;// for REG_OUT1=:  register at FIFO outputs
@@ -271,7 +271,7 @@ begin                                                                           
     full      <= fifo_cntr_d>=FULL_THRESHOLD                                   ;// fifo count reached full threshold
 end
 
-ram_1r1w  #(.DEPTH(DEPTH),.WIDTH(WIDTH),.GRAM_MODE(1),.GRAM_STYLE(GRAM_STYLE), .BITS_PER_PARITY(BITS_PER_PARITY)) fifo_ram 
+fim_ram_1r1w  #(.DEPTH(DEPTH),.WIDTH(WIDTH),.GRAM_MODE(1),.GRAM_STYLE(GRAM_STYLE), .BITS_PER_PARITY(BITS_PER_PARITY)) fifo_ram 
                (
                 .din        (fifo_in    ) ,// input   write data with configurable width
                 .waddr      (fifo_w_ptr ) ,// input   write address with configurable width

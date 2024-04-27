@@ -3,7 +3,7 @@
 
 // Description
 //-----------------------------------------------------------------------------
-// gram_sdp.v: Generic simple dual port RAM with one write port and one read port
+// fim_gram_sdp.v: Generic simple dual port RAM with one write port and one read port
 // Copyright Intel 2008
 // edited by pratik marolia on 3/15/2010
 // Created 2008Oct16
@@ -46,7 +46,8 @@
 //
 `include "vendor_defines.vh"
 
-module gram_sdp (clk,      // input   clock
+module fim_gram_sdp(
+                clk,       // input   clock
                 we,        // input   write enable
                 waddr,     // input   write address with configurable width
                 din,       // input   write data with configurable width
@@ -150,7 +151,7 @@ generate
                    else    driveX <= 0;            /*synthesis translate_on */
             end
         `else   // Compilation 
-            ram_sdp_wysiwyg #(
+            fim_ram_sdp_wysiwyg #(
                 .BUS_SIZE_ADDR  (BUS_SIZE_ADDR),
                 .BUS_SIZE_DATA  (BUS_SIZE_DATA),
                 .RAM_BLOCK_TYPE (RAM_BLOCK_TYPE)

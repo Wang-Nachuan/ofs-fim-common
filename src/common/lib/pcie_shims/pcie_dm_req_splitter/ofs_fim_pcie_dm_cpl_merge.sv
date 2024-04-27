@@ -628,7 +628,7 @@ module ofs_fim_pcie_dm_cpl_merge
         end
     end
 
-    ram_1r1w
+    fim_ram_1r1w
       #(
         .GRAM_MODE(1),
         .DEPTH($bits(t_req_tag)),
