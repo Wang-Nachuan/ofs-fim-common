@@ -1,20 +1,24 @@
 // Copyright (C) 2024 Intel Corporation
 // SPDX-License-Identifier: MIT
 
+//
+// Track outstanding host read requests, ensuring that total outstanding
+// requests don't exceed the HIP's completion buffers. New read requests
+// on axi_st_txreq_in and axi_st_rx_in block until buffer space is
+// available.
+//
+
 module ofs_fim_pcie_ss_cpl_metering
   #(
     parameter SB_HEADERS = 1,
     parameter NUM_OF_SEG = 1,
 
-    parameter TILE            = "P-TILE",
-    parameter PORT_ID         = 0,
-    parameter ENTRY_SIZE      = PORT_ID==0 ? (TILE=="R-TILE" ? 32 : 16) : (PORT_ID==1 ? (TILE=="R-TILE" ? 32 : 16) : (TILE=="R-TILE" ? 16 : 8)),
-    parameter TAG_WIDTH       = 10,
-    parameter MPS             = 512,
-    parameter MRRS            = 4096,
-    parameter RCB             = 64,
-    parameter MAX_HDR_ENTRY   = MRRS/RCB + 1,
-    parameter MAX_DATA_ENTRY  = MRRS/ENTRY_SIZE + 1
+    parameter TILE       = "P-TILE",
+    parameter PORT_ID    = 0,
+    parameter TAG_WIDTH  = 10,
+    parameter MPS        = 512,
+    parameter MRRS       = 4096,
+    parameter RCB        = 64
     )
    (
     // Data in axi_st_txreq_in is unused. txreq is header only (read requests).
@@ -33,6 +37,90 @@ module ofs_fim_pcie_ss_cpl_metering
     input  logic cpl_hdr_valid,
     input  pcie_ss_hdr_pkg::PCIe_PUReqHdr_t cpl_hdr
     );
+
+    // HIP completion buffer data entry size is the smallest allocation unit.
+    // A single DWORD consumes this allocation unit. The documented completion
+    // buffer space tables often miss this detail.
+    function automatic int port_data_entry_bytes();
+        if ((TILE == "P-TILE") || (TILE == "F-TILE")) begin
+            if (PORT_ID <= 1)
+                // Port 0 is 2x the size of port 1, but the entry size is the
+                // same. Each port 0 buffer slot has 2 independent entries.
+                return 16;
+            else
+                return 8;
+        end else if (TILE == "R-TILE") begin
+            if (PORT_ID <= 1)
+                // Port 0 is 2x the size of port 1, but the entry size is the
+                // same. Each port 0 buffer slot has 2 independent entries.
+                return 32;
+            else
+                return 16;
+        end else begin
+            return -1;
+        end
+    endfunction // port_data_entry_size
+
+    // Number of data entry slots in the HIP completion buffer.
+    function automatic int port_num_data_entries();
+        if ((TILE == "P-TILE") || (TILE == "F-TILE")) begin
+            if (PORT_ID == 0)
+                // 2 entries per 32 byte group. See the entry size
+                // calculation in port_data_entry_bytes().
+                return 1444 * 2;
+            else
+                return 1444;
+        end else if (TILE == "R-TILE") begin
+            if (PORT_ID == 0)
+                // 2 entries per 64 byte group. See the entry size
+                // calculation in port_data_entry_bytes().
+                return 2016 * 2;
+            else
+                return 2016;
+        end else begin
+            return -1;
+        end
+    endfunction // port_num_data_entries
+
+    function automatic int port_num_hdr_entries();
+        if ((TILE == "P-TILE") || (TILE == "F-TILE")) begin
+            if (PORT_ID == 0)
+                return 1144;
+            else if (PORT_ID == 1)
+                return 572;
+            else
+                return 286;
+        end else if (TILE == "R-TILE") begin
+            if (PORT_ID == 0)
+                return 1444;
+            else if (PORT_ID == 1)
+                return 1144;
+            else
+                return 572;
+        end else begin
+            return -1;
+        end
+    endfunction // port_num_hdr_entries
+
+    // Tile/port-specific completion buffer entry size (bytes). This is the
+    // minimum allocation unit.
+    localparam ENTRY_SIZE = port_data_entry_bytes();
+    localparam CPL_DATA_ENTRY_HIP = port_num_data_entries();
+    localparam CPL_HDR_ENTRY_HIP  = port_num_hdr_entries();
+
+    localparam MAX_HDR_ENTRY = MRRS/RCB + 1;
+    localparam MAX_DATA_ENTRY = MRRS/ENTRY_SIZE + 1;
+
+    // synthesis translate_off
+    initial begin
+        if (ENTRY_SIZE <= 0)
+            $fatal(2, "Error %m: ENTRY_SIZE undefined for tile %0s port %0d", TILE, PORT_ID);
+        if (CPL_DATA_ENTRY_HIP <= 0)
+            $fatal(2, "Error %m: CPL_DATA_ENTRY_HIP undefined for tile %0s port %0d", TILE, PORT_ID);
+        if (CPL_HDR_ENTRY_HIP <= 0)
+            $fatal(2, "Error %m: CPL_HDR_ENTRY_HIP undefined for tile %0s port %0d", TILE, PORT_ID);
+    end
+    // synthesis translate_on
 
     wire clk = axi_st_tx_out.clk;
     wire rst_n = axi_st_tx_out.rst_n;
@@ -165,8 +253,15 @@ module ofs_fim_pcie_ss_cpl_metering
 
     ofs_fim_pcie_ss_cpl_metering_impl
       #(
-        .TILE(TILE),
-        .PORT_ID(PORT_ID)
+        .ENTRY_SIZE(ENTRY_SIZE),
+        .TAG_WIDTH(TAG_WIDTH),
+        .CPL_HDR_ENTRY_HIP(CPL_HDR_ENTRY_HIP),
+        .CPL_DATA_ENTRY_HIP(CPL_DATA_ENTRY_HIP),
+        .MPS(MPS),
+        .MRRS(MRRS),
+        .RCB(RCB),
+        .MAX_HDR_ENTRY(MAX_HDR_ENTRY),
+        .MAX_DATA_ENTRY(MAX_DATA_ENTRY)
         )
       impl
        (
@@ -192,15 +287,15 @@ endmodule // ofs_fim_pcie_ss_cpl_metering
 
 module ofs_fim_pcie_ss_cpl_metering_impl
   #(
-    parameter TILE            = "P-TILE",
-    parameter PORT_ID         = 0,
-    parameter ENTRY_SIZE      = PORT_ID==0 ? (TILE=="R-TILE" ? 32 : 16) : (PORT_ID==1 ? (TILE=="R-TILE" ? 32 : 16) : (TILE=="R-TILE" ? 16 : 8)),
-    parameter TAG_WIDTH       = 10,
-    parameter MPS             = 512,
-    parameter MRRS            = 4096,
-    parameter RCB             = 64,
-    parameter MAX_HDR_ENTRY   = MRRS/RCB + 1,
-    parameter MAX_DATA_ENTRY  = MRRS/ENTRY_SIZE + 1
+    parameter ENTRY_SIZE,
+    parameter TAG_WIDTH,
+    parameter CPL_HDR_ENTRY_HIP,
+    parameter CPL_DATA_ENTRY_HIP,
+    parameter MPS,
+    parameter MRRS,
+    parameter RCB,
+    parameter MAX_HDR_ENTRY,
+    parameter MAX_DATA_ENTRY
     )
    (
     input  logic clk,
@@ -223,11 +318,6 @@ module ofs_fim_pcie_ss_cpl_metering_impl
     );
 
     localparam MAX_CPL_DATA_ENTRY = MPS/ENTRY_SIZE;
-
-    localparam CPL_HDR_ENTRY_P_F  = PORT_ID==0 ? 1144 : (PORT_ID==1 ? 572 : 286);
-    localparam CPL_HDR_ENTRY_R    = PORT_ID==0 ? 1444 : (PORT_ID==1 ? 1144 : 572);
-    localparam CPL_HDR_ENTRY_HIP  = (TILE=="R-TILE") ? CPL_HDR_ENTRY_R : CPL_HDR_ENTRY_P_F;
-    localparam CPL_DATA_ENTRY_HIP = PORT_ID==0 ? (TILE=="R-TILE" ? 2016*2 : 1444*2) : (TILE=="R-TILE" ? 2016 : 1444);
 
     // CPL_HDR_ENTRY and CPL_DATA_ENTRY would normally just be equal
     // to the HIP values. A simplifcation is made for timing. See
@@ -266,6 +356,7 @@ module ofs_fim_pcie_ss_cpl_metering_impl
 
     logic [$clog2(MAX_HDR_ENTRY)+$clog2(MAX_DATA_ENTRY)-1:0] wdata_a;
     logic [$clog2(MAX_HDR_ENTRY)+$clog2(MAX_DATA_ENTRY)-1:0] wdata_b;
+    logic [$clog2(MAX_HDR_ENTRY)+$clog2(MAX_DATA_ENTRY)-1:0] prev_wdata_b;
     logic [$clog2(MAX_HDR_ENTRY)+$clog2(MAX_DATA_ENTRY)-1:0] rdata_a;
     logic [$clog2(MAX_HDR_ENTRY)+$clog2(MAX_DATA_ENTRY)-1:0] rdata_b;
 
@@ -315,8 +406,10 @@ module ofs_fim_pcie_ss_cpl_metering_impl
 
     wire hip_cpl_buffer_avail = |data_entry_count[$clog2(CPL_DATA_ENTRY)-1:$clog2(MAX_DATA_ENTRY)] &
                                 |hdr_entry_count[$clog2(CPL_HDR_ENTRY)-1:$clog2(MAX_HDR_ENTRY)];
-    assign c2h_grant[0] = c2h_req_arb_valid[0] & hip_cpl_buffer_avail;
-    assign c2h_grant[1] = c2h_req_arb_valid[1] & hip_cpl_buffer_avail;
+    // The A and B logical write ports share the same RAM port. Only use
+    // A when B is not busy.
+    assign c2h_grant[0] = c2h_req_arb_valid[0] & hip_cpl_buffer_avail & !wren_b;
+    assign c2h_grant[1] = c2h_req_arb_valid[1] & hip_cpl_buffer_avail & !wren_b;
 
     always_ff @(posedge clk) begin
         if (c2h_grant[0])
@@ -328,31 +421,26 @@ module ofs_fim_pcie_ss_cpl_metering_impl
             arb_prev_winner <= 1'b0;
     end
 
-    always_ff @(posedge clk) begin
-        if (~rst_n) begin
-            waddr_a  <= 0;
-            wren_a   <= 0;
-            wdata_a  <= 0;
-        end
-        else begin
-            unique case (1'b1)
-              c2h_grant[0]: begin
-                waddr_a <= c2h_req_tag[0];
-                wren_a  <= 1'b1;
-                wdata_a <= {c2h_req_hdr_entries[0], c2h_req_data_entries[0]};
-                end
-              c2h_grant[1]: begin
-                waddr_a <= c2h_req_tag[1];
-                wren_a  <= 1'b1;
-                wdata_a <= {c2h_req_hdr_entries[1], c2h_req_data_entries[1]};
-                end
-              default: begin
-                waddr_a <= 0;
-                wren_a  <= 0;
-                wdata_a <= 0;
-                end
-            endcase // unique case (1'b1)
-        end
+    // Write request will be written to a register when merging the A
+    // and B requests into a single RAM port.
+    always_comb begin
+        unique case (1'b1)
+          c2h_grant[0]: begin
+            waddr_a = c2h_req_tag[0];
+            wren_a  = 1'b1;
+            wdata_a = {c2h_req_hdr_entries[0], c2h_req_data_entries[0]};
+            end
+          c2h_grant[1]: begin
+            waddr_a = c2h_req_tag[1];
+            wren_a  = 1'b1;
+            wdata_a = {c2h_req_hdr_entries[1], c2h_req_data_entries[1]};
+            end
+          default: begin
+            waddr_a = 0;
+            wren_a  = 0;
+            wdata_a = 0;
+            end
+        endcase // unique case (1'b1)
     end 
 
     pciess_vecsync_handshake
@@ -463,35 +551,34 @@ module ofs_fim_pcie_ss_cpl_metering_impl
         end
     end
 
+    always_comb begin
+        wren_b = cpl_valid[1] & !last_cpl[1];
+        waddr_b = cpl_tag_d[1];
+        wdata_b = (cpl_tag_d[1]==prev_cpl_tag & prev_cpl_tag_valid) ? {(prev_wdata_b[$clog2(MAX_DATA_ENTRY)+:$clog2(MAX_HDR_ENTRY)] - 1'b1), (prev_wdata_b[$clog2(MAX_DATA_ENTRY)-1:0] - cpl_data_entry_return_d[1])} : 
+                  {(rdata_b[$clog2(MAX_DATA_ENTRY)+:$clog2(MAX_HDR_ENTRY)] - 1'b1), (rdata_b[$clog2(MAX_DATA_ENTRY)-1:0] - cpl_data_entry_return_d[1])};
+    end
+
+    always_ff @(posedge clk) begin
+        prev_wdata_b <= wdata_b;
+    end
+
     always_ff @(posedge clk) begin
         if (~rst_n) begin
-            waddr_b <= 0;
-            wren_b <= 0;
-            wdata_b <= 0;
             data_entry_count_incr0 <= 0;
             hdr_entry_count_incr0 <= 0;
         end
         else begin
             if (cpl_valid[1]) begin
-                waddr_b <= cpl_tag_d[1];
-                wren_b <= 1'b1;
                 if (last_cpl[1]) begin
-                    wdata_b <= 0;
-                    data_entry_count_incr0 <= (cpl_tag_d[1]==prev_cpl_tag & prev_cpl_tag_valid) ? wdata_b[$clog2(MAX_DATA_ENTRY)-1:0] : rdata_b[$clog2(MAX_DATA_ENTRY)-1:0];
-                    hdr_entry_count_incr0 <= (cpl_tag_d[1]==prev_cpl_tag & prev_cpl_tag_valid) ? wdata_b[$clog2(MAX_DATA_ENTRY)+:$clog2(MAX_HDR_ENTRY)] : rdata_b[$clog2(MAX_DATA_ENTRY)+:$clog2(MAX_HDR_ENTRY)];
+                    data_entry_count_incr0 <= (cpl_tag_d[1]==prev_cpl_tag & prev_cpl_tag_valid) ? prev_wdata_b[$clog2(MAX_DATA_ENTRY)-1:0] : rdata_b[$clog2(MAX_DATA_ENTRY)-1:0];
+                    hdr_entry_count_incr0 <= (cpl_tag_d[1]==prev_cpl_tag & prev_cpl_tag_valid) ? prev_wdata_b[$clog2(MAX_DATA_ENTRY)+:$clog2(MAX_HDR_ENTRY)] : rdata_b[$clog2(MAX_DATA_ENTRY)+:$clog2(MAX_HDR_ENTRY)];
                 end
                 else begin
-                    wdata_b <= (cpl_tag_d[1]==prev_cpl_tag & prev_cpl_tag_valid) ? {(wdata_b[$clog2(MAX_DATA_ENTRY)+:$clog2(MAX_HDR_ENTRY)] - 1'b1), (wdata_b[$clog2(MAX_DATA_ENTRY)-1:0] - cpl_data_entry_return_d[1])} : 
-                               {(rdata_b[$clog2(MAX_DATA_ENTRY)+:$clog2(MAX_HDR_ENTRY)] - 1'b1), (rdata_b[$clog2(MAX_DATA_ENTRY)-1:0] - cpl_data_entry_return_d[1])};
-
                     data_entry_count_incr0 <= cpl_data_entry_return_d[1];
                     hdr_entry_count_incr0 <= 1'b1;
                 end
             end
             else begin
-                waddr_b <= 0;
-                wren_b <= 0;
-                wdata_b <= 0;
                 data_entry_count_incr0 <= 0;
                 hdr_entry_count_incr0 <= 0;
             end
@@ -536,17 +623,85 @@ module ofs_fim_pcie_ss_cpl_metering_impl
         end
     end
 
-    fim_ram_2r2w
+    localparam RAM_DATA_WIDTH = $clog2(MAX_HDR_ENTRY)+$clog2(MAX_DATA_ENTRY);
+
+    logic wren;
+    logic [TAG_WIDTH-1:0] waddr;
+    logic [RAM_DATA_WIDTH-1:0] wdata;
+
+    // synthesis translate_off
+    always_ff @(negedge clk) begin
+        // Arbitration above must prevent attempted writes to both A and B
+        assert (~wren_a | ~wren_b | ~rst_n) else
+            $fatal(2, "Error %m: RAM write arbitration failure!");
+    end
+    // synthesis translate_on
+
+    always_ff @(posedge clk) begin
+        wren <= wren_a | wren_b;
+        if (wren_b) begin
+            waddr <= waddr_b;
+            wdata <= wdata_b;
+        end else begin
+            waddr <= waddr_a;
+            wdata <= wdata_a;
+        end
+    end
+
+    ram_1r1w
       #(
-        .DWIDTH($clog2(MAX_HDR_ENTRY)+$clog2(MAX_DATA_ENTRY)),
-        .AWIDTH(TAG_WIDTH),
-        .READ_DURING_WRITE("NEW_DATA_B")
+        .WIDTH(RAM_DATA_WIDTH),
+        .DEPTH(TAG_WIDTH),
+        .GRAM_MODE(1)
         )
-      u_hdr_data_alloc_mem
+      u_hdr_data_alloc_mem_a
        (
         .clk,
-        .reset_n(rst_n),
-        .*
+        .perr(),
+
+        .we(wren),
+        .waddr(waddr),
+        .din(wdata),
+
+        .re(rden_a),
+        .raddr(raddr_a),
+        .dout(rdata_a)
         );
+
+
+    // Make RAM-B return new data for simultaneous read/write to the same
+    // address by monitoring the read/write traffic here.
+    logic [RAM_DATA_WIDTH-1 : 0] wdata_reg;
+    logic [RAM_DATA_WIDTH-1 : 0] rdata_ram_b;
+    logic rd_during_write_b;
+
+    ram_1r1w
+      #(
+        .WIDTH(RAM_DATA_WIDTH),
+        .DEPTH(TAG_WIDTH),
+        .GRAM_MODE(1)
+        )
+      u_hdr_data_alloc_mem_b
+       (
+        .clk,
+        .perr(),
+
+        .we(wren),
+        .waddr(waddr),
+        .din(wdata),
+
+        .re(rden_b),
+        .raddr(raddr_b),
+        .dout(rdata_ram_b)
+        );
+
+    assign rdata_b = rd_during_write_b ? wdata_reg : rdata_ram_b;
+
+    always_ff @(posedge clk) begin
+        rd_during_write_b <= wren & rden_b & (waddr == raddr_b);
+
+        if (wren)
+            wdata_reg <= wdata;
+    end
 
 endmodule // ofs_fim_pcie_ss_cpl_metering_impl
