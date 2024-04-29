@@ -89,10 +89,6 @@ module ofs_fim_pcie_ss_pipe_rx_sb
       rx_cdc(.axis_s(rx_in), .axis_m(rx_buf));
 
     ofs_fim_axis_pipeline
-      #(
-        .TDATA_WIDTH(TDATA_WIDTH),
-        .TUSER_WIDTH($bits(rx_in_tuser))
-        )
       pipe_rx_buf(.clk(fim_clk), .rst_n(fim_rst_n), .axis_s(rx_buf), .axis_m(rx_buf_skid));
 
     // Split the RX stream into two: completions (rx) and everything else (rxreq).

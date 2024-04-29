@@ -436,9 +436,7 @@ module tag_remap_multi_tx #(
     // Decode each of the TX ports
     for (genvar txp = 0; txp < N_TX_PORTS; txp = txp + 1) begin : tx_pipe
       ofs_fim_axis_pipeline #(
-                   .PL_DEPTH    ( TX_PL_DEPTH        ),
-                   .TDATA_WIDTH ( ofs_pcie_ss_cfg_pkg::TDATA_WIDTH ),
-                   .TUSER_WIDTH ( ofs_pcie_ss_cfg_pkg::TUSER_WIDTH ))
+                   .PL_DEPTH    ( TX_PL_DEPTH        ))
         tx_axis_pipe  (
                    .clk         ( clk                ),
                    .rst_n       ( rst_n              ),
@@ -448,9 +446,7 @@ module tag_remap_multi_tx #(
   endgenerate
 
   ofs_fim_axis_pipeline #(
-               .PL_DEPTH    ( RX_PL_DEPTH   ),
-               .TDATA_WIDTH ( ofs_pcie_ss_cfg_pkg::TDATA_WIDTH ),
-               .TUSER_WIDTH ( ofs_pcie_ss_cfg_pkg::TUSER_WIDTH ))
+               .PL_DEPTH    ( RX_PL_DEPTH   ))
    rx_axis_pipe  (
                .clk         ( clk           ),
                .rst_n       ( rst_n         ),

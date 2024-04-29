@@ -176,8 +176,6 @@ module pcie_arb_local_commit #(
    assign commit_in.tlast = 1'b1;
 
    ofs_fim_axis_pipeline #(
-      .TDATA_WIDTH(TDATA_WIDTH),
-      .TUSER_WIDTH(TUSER_WIDTH),
       .MODE(1)
    ) commit_skid (
       .clk,

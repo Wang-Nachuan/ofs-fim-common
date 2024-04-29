@@ -86,10 +86,7 @@ begin
     axis_tx_error      = ctt_fifo_error_pipe[2] || rsp_fifo_eccstatus[0];
 end
 
-ofs_fim_axis_pipeline #(
-    .TDATA_WIDTH(axis_tx_if.DATA_W),
-    .TUSER_WIDTH(axis_tx_if.USER_W))
-tx_skid (
+ofs_fim_axis_pipeline tx_skid (
     .clk,
     .rst_n,
     .axis_s(tx_if),

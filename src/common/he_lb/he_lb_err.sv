@@ -36,10 +36,7 @@ logic axi_tx_qq_tready ='b0;
 logic [7:0]   axi_tx_err_fmttype;
 
 assign  axi_tx_q.tready = axi_tx_if_err.tready;
-    ofs_fim_axis_pipeline #(
-         .TDATA_WIDTH(ofs_pcie_ss_cfg_pkg::TDATA_WIDTH),
-         .TUSER_WIDTH(ofs_pcie_ss_cfg_pkg::TUSER_WIDTH),
-         .PL_DEPTH(1) )
+    ofs_fim_axis_pipeline #(.PL_DEPTH(1))
     axi_tx_if_q_port (
         .clk            ( clk          ),
         .rst_n          (   SoftReset  ),

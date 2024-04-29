@@ -79,8 +79,6 @@ ofs_fim_emif_axi_mm_if #(
 //----------------------------------------------
 ofs_fim_axis_pipeline #( 
    .MODE(0),
-   .TDATA_WIDTH(axis_rx_if.DATA_W),
-   .TUSER_WIDTH(axis_rx_if.USER_W),
    .PL_DEPTH(2)
 ) rx_pl_inst (
    .clk    (clk),
@@ -91,8 +89,6 @@ ofs_fim_axis_pipeline #(
 
 ofs_fim_axis_pipeline #( 
    .MODE(0),
-   .TDATA_WIDTH(axis_tx_if.DATA_W),
-   .TUSER_WIDTH(axis_tx_if.USER_W),
    .PL_DEPTH(2)
 ) tx_pl_inst (
    .clk    (clk),

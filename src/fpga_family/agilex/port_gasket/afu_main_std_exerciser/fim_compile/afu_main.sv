@@ -150,8 +150,6 @@ for (genvar j=0; j<PG_NUM_LINKS; j++) begin : PCIE_FREEZE_BRIDGE
    // All ports need to flopped and preserved
    // Port A - Primary Port for all Traffic
    ofs_fim_axis_pipeline #(
-      .TDATA_WIDTH (TDATA_WIDTH),
-      .TUSER_WIDTH (TUSER_WIDTH),
       .PRESERVE_REG("RX"),
       .PL_DEPTH    (PL_DEPTH)
    ) pcie_pipeline_rx_a (
@@ -162,8 +160,6 @@ for (genvar j=0; j<PG_NUM_LINKS; j++) begin : PCIE_FREEZE_BRIDGE
    );
 
    ofs_fim_axis_pipeline #(
-      .TDATA_WIDTH (TDATA_WIDTH),
-      .TUSER_WIDTH (TUSER_WIDTH),
       .PRESERVE_REG("TX"),
       .PL_DEPTH    (PL_DEPTH)
    ) pcie_pipeline_tx_a (
@@ -175,8 +171,6 @@ for (genvar j=0; j<PG_NUM_LINKS; j++) begin : PCIE_FREEZE_BRIDGE
  
    // Port B - Secondary Port
    ofs_fim_axis_pipeline #(
-      .TDATA_WIDTH (TDATA_WIDTH),
-      .TUSER_WIDTH (TUSER_WIDTH),
       .PRESERVE_REG("RX"),
       .PL_DEPTH    (PL_DEPTH)
    ) pcie_pipeline_rx_b (
@@ -187,8 +181,6 @@ for (genvar j=0; j<PG_NUM_LINKS; j++) begin : PCIE_FREEZE_BRIDGE
    );
 
    ofs_fim_axis_pipeline #(
-      .TDATA_WIDTH (TDATA_WIDTH),
-      .TUSER_WIDTH (TUSER_WIDTH),
       .PRESERVE_REG("TX"),
       .PL_DEPTH    (PL_DEPTH)
    ) pcie_pipeline_tx_b (

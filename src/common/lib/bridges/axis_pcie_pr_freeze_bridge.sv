@@ -45,8 +45,6 @@ end
 endgenerate
 
 ofs_fim_axis_pipeline #(
-   .TDATA_WIDTH (TDATA_WIDTH),
-   .TUSER_WIDTH (TUSER_WIDTH),
    .PL_DEPTH    (PL_DEPTH),
    .MODE        (TX_REG_MODE) 
 ) pr_frz_fn2mx_port (
@@ -73,8 +71,6 @@ end
 
 // Register rx-a signals for freeze logic
 ofs_fim_axis_pipeline #(
-   .TDATA_WIDTH (TDATA_WIDTH),
-   .TUSER_WIDTH (TUSER_WIDTH),
    .PL_DEPTH    (PL_DEPTH),
    .MODE        (RX_REG_MODE) 
 ) pr_frz_mx2fn_port (

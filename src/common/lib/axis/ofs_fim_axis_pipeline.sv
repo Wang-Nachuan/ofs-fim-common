@@ -20,11 +20,6 @@ module ofs_fim_axis_pipeline
     parameter ENABLE_TDEST         = 0,
     parameter ENABLE_TUSER         = 1,
    
-    parameter TDATA_WIDTH          = ofs_pcie_ss_cfg_pkg::TDATA_WIDTH,
-    parameter TID_WIDTH            = 8,
-    parameter TDEST_WIDTH          = 8,
-    parameter TUSER_WIDTH          = ofs_pcie_ss_cfg_pkg::TUSER_WIDTH,
-
     parameter PRESERVE_REG         = "OFF",
     parameter REG_IN               = 0,
 
@@ -36,6 +31,23 @@ module ofs_fim_axis_pipeline
     pcie_ss_axis_if.source axis_m
 
 );
+
+localparam TDATA_WIDTH = axis_s.DATA_W;
+localparam TUSER_WIDTH = axis_s.USER_W;
+
+// synthesis translate_off
+initial begin
+    assert (TDATA_WIDTH == axis_m.DATA_W) else
+        $fatal(2, "Error %m: DATA WIDTH mismatch axis_s (%0d) vs. axis_m (%0d)", axis_s.DATA_W, axis_m.DATA_W);
+
+    assert (TUSER_WIDTH == axis_m.USER_W) else
+        $fatal(2, "Error %m: USER WIDTH mismatch axis_s (%0d) vs. axis_m (%0d)", axis_s.USER_W, axis_m.USER_W);
+end
+// synthesis translate_on
+
+// Unused ofs_fim_axis_register parameters
+localparam TID_WIDTH   = 8;
+localparam TDEST_WIDTH = 8;
 
 generate
    if (PL_DEPTH == 0) begin : c
@@ -112,4 +124,3 @@ generate
 endgenerate
 
 endmodule // ofs_fim_axis_pipeline
-

@@ -60,7 +60,7 @@ module ofs_fim_pcie_ss_ib2sb
     // ====================================================================
 
     pcie_ss_axis_if #(.DATA_W(TDATA_WIDTH), .USER_W(IN_TUSER_WIDTH)) source_skid(clk, rst_n);
-    ofs_fim_axis_pipeline #(.TDATA_WIDTH(TDATA_WIDTH), .TUSER_WIDTH(IN_TUSER_WIDTH))
+    ofs_fim_axis_pipeline
         conn_source_skid (.clk, .rst_n, .axis_s(stream_in), .axis_m(source_skid));
 
     logic source_skid_sop;
@@ -80,7 +80,7 @@ module ofs_fim_pcie_ss_ib2sb
     //
     // ====================================================================
 
-    pcie_ss_axis_if #(.DATA_W(TDATA_WIDTH), .USER_W(IN_TUSER_WIDTH)) hdr_stream(clk, rst_n);
+    pcie_ss_axis_if #(.DATA_W(HDR_WIDTH), .USER_W(IN_TUSER_WIDTH)) hdr_stream(clk, rst_n);
     pcie_ss_axis_if #(.DATA_W(TDATA_WIDTH), .USER_W(IN_TUSER_WIDTH)) data_stream(clk, rst_n);
 
     logic prev_must_drain;
@@ -99,7 +99,7 @@ module ofs_fim_pcie_ss_ib2sb
 
     // Header - only when SOP in the incoming stream
     assign hdr_stream.tvalid = process_msg && source_skid_sop;
-    assign hdr_stream.tdata = { '0, source_skid.tdata[$bits(pcie_ss_hdr_pkg::PCIe_CplHdr_t)-1 : 0] };
+    assign hdr_stream.tdata = source_skid.tdata[$bits(pcie_ss_hdr_pkg::PCIe_CplHdr_t)-1 : 0];
     assign hdr_stream.tuser_vendor = source_skid.tuser_vendor;
     assign hdr_stream.tkeep = 64'((65'h1 << ($bits(pcie_ss_hdr_pkg::PCIe_CplHdr_t)) / 8) - 1);
     assign hdr_stream.tlast = 1'b1;
@@ -170,12 +170,12 @@ module ofs_fim_pcie_ss_ib2sb
     // Header must be a skid buffer to avoid deadlocks, as headers may arrive
     // before the payload.
     pcie_ss_axis_if #(.DATA_W(HDR_WIDTH), .USER_W(IN_TUSER_WIDTH)) hdr_stream_sink(clk, rst_n);
-    ofs_fim_axis_pipeline #(.PL_DEPTH(2), .TDATA_WIDTH(TDATA_WIDTH), .TUSER_WIDTH(IN_TUSER_WIDTH)) 
+    ofs_fim_axis_pipeline
         conn_hdr_skid (.clk, .rst_n, .axis_s(hdr_stream), .axis_m(hdr_stream_sink));
 
     // Just a register
     pcie_ss_axis_if #(.DATA_W(TDATA_WIDTH), .USER_W(IN_TUSER_WIDTH)) data_stream_sink(clk, rst_n);
-    ofs_fim_axis_pipeline #(.MODE(1), .TDATA_WIDTH(TDATA_WIDTH), .TUSER_WIDTH(IN_TUSER_WIDTH))
+    ofs_fim_axis_pipeline #(.MODE(1))
         conn_data_skid (.clk, .rst_n, .axis_s(data_stream), .axis_m(data_stream_sink));
 
     // Map data and header to a single interface

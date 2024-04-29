@@ -64,9 +64,7 @@ module ofs_fim_pcie_ss_sb2ib
 
     ofs_fim_axis_pipeline
       #(
-        .MODE(PL_MODE_IN),
-        .TDATA_WIDTH(TDATA_WIDTH),
-        .TUSER_WIDTH(IN_TUSER_WIDTH)
+        .MODE(PL_MODE_IN)
         )
       in_skid (.clk, .rst_n, .axis_s(stream_in), .axis_m(source));
 
@@ -211,10 +209,6 @@ module ofs_fim_pcie_ss_sb2ib
     // ====================================================================
 
     ofs_fim_axis_pipeline
-      #(
-        .TDATA_WIDTH(TDATA_WIDTH),
-        .TUSER_WIDTH(OUT_TUSER_WIDTH)
-        )
       conn_sink_skid (.clk, .rst_n, .axis_s(sink_skid), .axis_m(stream_out));
 
 endmodule // ofs_fim_pcie_ss_sb2ib

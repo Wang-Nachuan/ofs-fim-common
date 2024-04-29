@@ -233,10 +233,6 @@ module ofs_fim_pcie_ss_rx_seg_align
     end
 
     ofs_fim_axis_pipeline
-      #(
-        .TDATA_WIDTH(TDATA_WIDTH),
-        .TUSER_WIDTH(OUT_TUSER_WIDTH)
-        )
       to_sink (.clk, .rst_n, .axis_s(work_out), .axis_m(stream_out));
 
 endmodule // ofs_fim_pcie_ss_rx_seg_align

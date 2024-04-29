@@ -111,8 +111,6 @@ for (genvar j=0; j<PG_NUM_PORTS; j++) begin : p
 
    // Register tx signals for freeze logic
    ofs_fim_axis_pipeline #(
-      .TDATA_WIDTH(TDATA_WIDTH),
-      .TUSER_WIDTH(TUSER_WIDTH),
       .PL_DEPTH(1) )
    pr_frz_fn2mx_a_port (
       .clk            ( clk_2x                            ),
@@ -138,8 +136,6 @@ for (genvar j=0; j<PG_NUM_PORTS; j++) begin : p
 
    // Register tx B port signals for freeze logic
    ofs_fim_axis_pipeline #(
-      .TDATA_WIDTH(TDATA_WIDTH),
-      .TUSER_WIDTH(TUSER_WIDTH),
       .PL_DEPTH(1) )
    pr_frz_fn2mx_b_port (
       .clk            ( clk_2x                            ),
@@ -165,8 +161,6 @@ for (genvar j=0; j<PG_NUM_PORTS; j++) begin : p
 
    // Register rx signals for freeze logic
    ofs_fim_axis_pipeline #(
-      .TDATA_WIDTH (TDATA_WIDTH),
-      .TUSER_WIDTH (TUSER_WIDTH),
       .PL_DEPTH    (1)
    ) pr_frz_mx2fn_a_port (
       .clk    (clk_2x),
@@ -192,8 +186,6 @@ for (genvar j=0; j<PG_NUM_PORTS; j++) begin : p
 
    // Register rx B signals for freeze logic
    ofs_fim_axis_pipeline #(
-      .TDATA_WIDTH (TDATA_WIDTH),
-      .TUSER_WIDTH (TUSER_WIDTH),
       .PL_DEPTH    (1)
    ) pr_frz_mx2fn_b_port (
       .clk    (clk_2x),
