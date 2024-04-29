@@ -81,6 +81,12 @@ proc ofs_post_module_script_fim {} {
 
         ofs_post_module_exec "Updating database..." \
             [list quartus_cdb ${project} -c ${revision} --update_mif]
+
+
+        # Generating values post fit for the ASP
+        ofs_post_module_exec "Emitting FIM resources for the ASP..." \
+            [list quartus_sh -t "${THIS_DIR}/generate_pr_usage_for_asp.tcl" \
+                 --project=${project} --revision=${revision} --output=ofs_ip_cfg_db/ofs_fim_util_asp.qprs]
     }
 
     if {$module == "quartus_asm"} {
