@@ -243,7 +243,7 @@ always_ff@(posedge clk) begin
             (csr_axisttx_mrdstart == 1'b0           ) )   //complete data received as per the csr_img_size. No more read to be issued to host 
                         ||
             ((axistrx_axisttx_fc_q == 1'b1          ) &&  //Intermediate state: final completion received
-            (rx_data_pkt_cnt      < total_req_count)))   //for the current request sent. Further read to be issued to host
+            (rx_data_pkt_cnt      != total_req_count)))   //for the current request sent. Further read to be issued to host
                         ||
             (axistrx_axisttx_cplerr  ==1'b1) ||       //error at AXIST rx side- ce soft reset expected
             (csr_axisttx_fifoerr     ==1'b1) ||       //FIFO1 & FIFO2 not healthy!- ce soft reset expected
@@ -280,7 +280,7 @@ end
 //-------------------------------
 always_comb begin
    n_state= p_state;
-   case(p_state)
+   unique case (p_state)
          ST_TX_IDLE:
          begin
             if(mmio_rsp_fifo_noemp ==1) begin //FIFO1 has at least one CSR completion data
@@ -372,7 +372,7 @@ always_comb begin
                   (csr_axisttx_mrdstart == 1'b0           ) )
                               ||
                   ((axistrx_axisttx_fc_q || ~dma_in_progress         ) && //Intermediate state: final completion received
-                  (rx_data_pkt_cnt      < total_req_count)))  //for the current request sent. Further read to be issued to host
+                  (rx_data_pkt_cnt      != total_req_count)))  //for the current request sent. Further read to be issued to host
                               ||
                   (axistrx_axisttx_cplerr==1'b1)           //error at AXIST RX side- ce soft reset expected
                               ||
@@ -416,7 +416,7 @@ always_ff@(posedge clk) begin
          axisttx_csr_dmaerr  <= 1'b0                     ;
    end
    else begin
-         case(n_state)
+         unique case (n_state)
             ST_TX_IDLE: begin
                ce2mux_tx_tvalid    <= 1'b0                      ;
                ce2mux_tx_tkeep     <= {CE_BUS_STRB_WIDTH{1'b0}} ;
@@ -502,9 +502,9 @@ always_ff@(posedge clk) begin
                if ( (csr_axisttx_mrdstart ==1) && (curr_req_count==32'h0) ) begin//first rd req from ce to host
                      next_addr  <= csr_axisttx_hostaddr ;
                      //next_tid   <= 10'h0                 ;
-                  case (csr_axisttx_datareqlimit)
+                  unique case (csr_axisttx_datareqlimit)
                      512:
-                           case(csr_axisttx_imgxfrsize[31:0]%512)
+                           unique case (csr_axisttx_imgxfrsize[31:0]%512)
                               0: begin              //csr_axisttx_imgxfrsize >= csr_axisttx_datareqlimit and Image size programed is a multiple of data request limit
                                     total_req_count <= csr_axisttx_imgxfrsize[31:0] >> (csr_axisttx_datareqlimit_log2);
                                     next_size       <= {13'd0,csr_axisttx_datareqlimit}                               ;//next size will be constant for all transfers
@@ -522,7 +522,7 @@ always_ff@(posedge clk) begin
                               end
                            endcase
                      64:
-                           case(csr_axisttx_imgxfrsize[31:0]%64)
+                           unique case (csr_axisttx_imgxfrsize[31:0]%64)
                               0: begin              //csr_axisttx_imgxfrsize >= csr_axisttx_datareqlimit and Image size programed is a multiple of data request limit
                                     total_req_count <= csr_axisttx_imgxfrsize[31:0] >> (csr_axisttx_datareqlimit_log2);
                                     next_size       <= {13'd0,csr_axisttx_datareqlimit}                               ;//next size will be constant for all transfers
@@ -540,7 +540,7 @@ always_ff@(posedge clk) begin
                               end
                            endcase
                      128:
-                           case(csr_axisttx_imgxfrsize[31:0]%128)
+                           unique case (csr_axisttx_imgxfrsize[31:0]%128)
                               0: begin              //csr_axisttx_imgxfrsize >= csr_axisttx_datareqlimit and Image size programed is a multiple of data request limit
                                     total_req_count <= csr_axisttx_imgxfrsize[31:0] >> (csr_axisttx_datareqlimit_log2);
                                     next_size       <= {13'd0,csr_axisttx_datareqlimit}                               ;//next size will be constant for all transfers
@@ -558,7 +558,7 @@ always_ff@(posedge clk) begin
                               end
                            endcase
                      1024:
-                           case(csr_axisttx_imgxfrsize[31:0]%1024)
+                           unique case (csr_axisttx_imgxfrsize[31:0]%1024)
                               0: begin              //csr_axisttx_imgxfrsize >= csr_axisttx_datareqlimit and Image size programed is a multiple of data request limit
                                     total_req_count <= csr_axisttx_imgxfrsize[31:0] >> (csr_axisttx_datareqlimit_log2);
                                     next_size       <= {13'd0,csr_axisttx_datareqlimit}                               ;//next size will be constant for all transfers
@@ -604,9 +604,9 @@ always_ff@(posedge clk) begin
                end
                else begin
                //incrementing counter,addr, tid for next read request
-                     case(csr_axisttx_datareqlimit)
+                     unique case (csr_axisttx_datareqlimit)
                         64:
-                           case(csr_axisttx_imgxfrsize[31:0]%64)
+                           unique case (csr_axisttx_imgxfrsize[31:0]%64)
                                  0: begin              //perfectly divisible
                                        next_size       <= csr_axisttx_datareqlimit ;
                                        curr_size       <= curr_size                ;
@@ -618,7 +618,7 @@ always_ff@(posedge clk) begin
                                  end
                            endcase
                         128:
-                           case(csr_axisttx_imgxfrsize[31:0]%128)
+                           unique case (csr_axisttx_imgxfrsize[31:0]%128)
                                  0: begin              //perfectly divisible
                                        next_size       <= csr_axisttx_datareqlimit ;
                                        curr_size       <= curr_size                ;
@@ -630,7 +630,7 @@ always_ff@(posedge clk) begin
                                  end
                            endcase
                         512:
-                           case(csr_axisttx_imgxfrsize[31:0]%512)
+                           unique case (csr_axisttx_imgxfrsize[31:0]%512)
                                  0: begin              //perfectly divisible
                                        next_size       <= csr_axisttx_datareqlimit ;
                                        curr_size       <= curr_size                ;
@@ -642,7 +642,7 @@ always_ff@(posedge clk) begin
                                  end
                            endcase
                         1024:
-                           case(csr_axisttx_imgxfrsize[31:0]%1024)
+                           unique case (csr_axisttx_imgxfrsize[31:0]%1024)
                                  0: begin              //perfectly divisible
                                        next_size       <= csr_axisttx_datareqlimit ;
                                        curr_size       <= curr_size                ;
