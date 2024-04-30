@@ -11,9 +11,8 @@
 
 module ofs_fim_pcie_ss_sb2ib
   #(
-    // Allow control of inbound pipeline mode to save area. Default to
-    // skid buffer.
-    parameter PL_MODE_IN = 0
+    // Set to 1 to add a skid buffer to the inbound stream.
+    parameter PL_DEPTH_IN = 0
     )
    (
     // Input stream with side-band headers. Put the header at the high
@@ -62,11 +61,8 @@ module ofs_fim_pcie_ss_sb2ib
 
     pcie_ss_axis_if #(.DATA_W(TDATA_WIDTH), .USER_W(IN_TUSER_WIDTH)) source(clk, rst_n);
 
-    ofs_fim_axis_pipeline
-      #(
-        .MODE(PL_MODE_IN)
-        )
-      in_skid (.clk, .rst_n, .axis_s(stream_in), .axis_m(source));
+    ofs_fim_axis_pipeline #(.PL_DEPTH(PL_DEPTH_IN))
+      in_pipe (.clk, .rst_n, .axis_s(stream_in), .axis_m(source));
 
 
     // ====================================================================

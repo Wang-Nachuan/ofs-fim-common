@@ -12,6 +12,8 @@
 
 module ofs_fim_pcie_ss_ib2sb
   #(
+    // Set to 1 to add a skid buffer to the inbound stream.
+    parameter PL_DEPTH_IN = 0
     )
    (
     // Input stream with in-band headers.
@@ -59,18 +61,18 @@ module ofs_fim_pcie_ss_ib2sb
     //
     // ====================================================================
 
-    pcie_ss_axis_if #(.DATA_W(TDATA_WIDTH), .USER_W(IN_TUSER_WIDTH)) source_skid(clk, rst_n);
-    ofs_fim_axis_pipeline
-        conn_source_skid (.clk, .rst_n, .axis_s(stream_in), .axis_m(source_skid));
+    pcie_ss_axis_if #(.DATA_W(TDATA_WIDTH), .USER_W(IN_TUSER_WIDTH)) source(clk, rst_n);
+    ofs_fim_axis_pipeline #(.PL_DEPTH(PL_DEPTH_IN))
+        in_pipe (.clk, .rst_n, .axis_s(stream_in), .axis_m(source));
 
-    logic source_skid_sop;
+    logic source_sop;
     always_ff @(posedge clk)
     begin
-        if (source_skid.tready && source_skid.tvalid)
-            source_skid_sop <= source_skid.tlast;
+        if (source.tready && source.tvalid)
+            source_sop <= source.tlast;
 
         if (!rst_n)
-            source_skid_sop <= 1'b1;
+            source_sop <= 1'b1;
     end
 
 
@@ -86,10 +88,10 @@ module ofs_fim_pcie_ss_ib2sb
     logic prev_must_drain;
 
     // New message available and there is somewhere to put it?
-    wire process_msg = source_skid.tvalid && source_skid.tready;
+    wire process_msg = source.tvalid && source.tready;
     wire process_drain = prev_must_drain && data_stream.tready;
 
-    assign source_skid.tready = hdr_stream.tready && data_stream.tready;
+    assign source.tready = hdr_stream.tready && data_stream.tready;
 
     //
     // Requirements:
@@ -98,9 +100,9 @@ module ofs_fim_pcie_ss_ib2sb
     //
 
     // Header - only when SOP in the incoming stream
-    assign hdr_stream.tvalid = process_msg && source_skid_sop;
-    assign hdr_stream.tdata = source_skid.tdata[$bits(pcie_ss_hdr_pkg::PCIe_CplHdr_t)-1 : 0];
-    assign hdr_stream.tuser_vendor = source_skid.tuser_vendor;
+    assign hdr_stream.tvalid = process_msg && source_sop;
+    assign hdr_stream.tdata = source.tdata[$bits(pcie_ss_hdr_pkg::PCIe_CplHdr_t)-1 : 0];
+    assign hdr_stream.tuser_vendor = source.tuser_vendor;
     assign hdr_stream.tkeep = 64'((65'h1 << ($bits(pcie_ss_hdr_pkg::PCIe_CplHdr_t)) / 8) - 1);
     assign hdr_stream.tlast = 1'b1;
 
@@ -119,12 +121,12 @@ module ofs_fim_pcie_ss_ib2sb
         end
         if (process_msg)
         begin
-            prev_payload <= source_skid.tdata;
-            prev_keep <= source_skid.tkeep;
+            prev_payload <= source.tdata;
+            prev_keep <= source.tkeep;
             // Either there is data that won't fit in this beat or the data+header
             // is a single beat.
-            prev_must_drain <= source_skid.tlast &&
-                               (source_skid.tkeep[HDR_TKEEP_WIDTH] || source_skid_sop);
+            prev_must_drain <= source.tlast &&
+                               (source.tkeep[HDR_TKEEP_WIDTH] || source_sop);
         end
 
         if (!rst_n)
@@ -135,22 +137,22 @@ module ofs_fim_pcie_ss_ib2sb
 
     // Continuation of multi-cycle data?
     logic payload_is_pure_data;
-    assign payload_is_pure_data = !source_skid_sop;
+    assign payload_is_pure_data = !source_sop;
 
     assign data_stream.tvalid = (process_msg && payload_is_pure_data) || process_drain;
 
     always_comb
     begin
-        data_stream.tlast = (source_skid.tlast && !source_skid.tkeep[HDR_TKEEP_WIDTH]) ||
+        data_stream.tlast = (source.tlast && !source.tkeep[HDR_TKEEP_WIDTH]) ||
                             prev_must_drain;
         data_stream.tuser_vendor = '0;
 
         // Realign data - low part from previous flit, high part from current
         data_stream.tdata =
-            { source_skid.tdata[0 +: HDR_WIDTH],
+            { source.tdata[0 +: HDR_WIDTH],
               prev_payload[HDR_WIDTH +: DATA_AFTER_HDR_WIDTH] };
         data_stream.tkeep =
-            { source_skid.tkeep[0 +: HDR_TKEEP_WIDTH],
+            { source.tkeep[0 +: HDR_TKEEP_WIDTH],
               prev_keep[HDR_TKEEP_WIDTH +: DATA_AFTER_HDR_TKEEP_WIDTH] };
 
         if (prev_must_drain)
@@ -171,12 +173,12 @@ module ofs_fim_pcie_ss_ib2sb
     // before the payload.
     pcie_ss_axis_if #(.DATA_W(HDR_WIDTH), .USER_W(IN_TUSER_WIDTH)) hdr_stream_sink(clk, rst_n);
     ofs_fim_axis_pipeline
-        conn_hdr_skid (.clk, .rst_n, .axis_s(hdr_stream), .axis_m(hdr_stream_sink));
+        out_hdr_skid (.clk, .rst_n, .axis_s(hdr_stream), .axis_m(hdr_stream_sink));
 
     // Just a register
     pcie_ss_axis_if #(.DATA_W(TDATA_WIDTH), .USER_W(IN_TUSER_WIDTH)) data_stream_sink(clk, rst_n);
     ofs_fim_axis_pipeline #(.MODE(1))
-        conn_data_skid (.clk, .rst_n, .axis_s(data_stream), .axis_m(data_stream_sink));
+        out_data_skid (.clk, .rst_n, .axis_s(data_stream), .axis_m(data_stream_sink));
 
     // Map data and header to a single interface
     logic out_sop;

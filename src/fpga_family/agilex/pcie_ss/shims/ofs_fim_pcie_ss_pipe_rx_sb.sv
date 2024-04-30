@@ -153,7 +153,11 @@ module ofs_fim_pcie_ss_pipe_rx_sb
     assign rx_sb2ib_in.tkeep = rx_sb_aligned.tkeep;
     assign rx_sb_aligned.tready = rx_sb2ib_in.tready;
 
-    ofs_fim_pcie_ss_sb2ib rx_sb2ib
+    ofs_fim_pcie_ss_sb2ib
+      #(
+        .PL_DEPTH_IN(TDATA_WIDTH > 512 ? 1 : 0)
+        )
+      rx_sb2ib
        (
         .stream_in(rx_sb2ib_in),
         .stream_out(rx_ib)
@@ -172,7 +176,11 @@ module ofs_fim_pcie_ss_pipe_rx_sb
     assign rxreq_sb2ib_in.tkeep = rxreq_sb_aligned.tkeep;
     assign rxreq_sb_aligned.tready = rxreq_sb2ib_in.tready;
 
-    ofs_fim_pcie_ss_sb2ib rxreq_sb2ib
+    ofs_fim_pcie_ss_sb2ib
+      #(
+        .PL_DEPTH_IN(TDATA_WIDTH > 512 ? 1 : 0)
+        )
+      rxreq_sb2ib
        (
         .stream_in(rxreq_sb2ib_in),
         .stream_out(rxreq_ib)

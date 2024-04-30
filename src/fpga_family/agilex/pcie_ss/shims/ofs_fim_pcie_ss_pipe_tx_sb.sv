@@ -92,7 +92,11 @@ module ofs_fim_pcie_ss_pipe_tx_sb
         )
       tx_sb(fim_clk, fim_rst_n);
 
-    ofs_fim_pcie_ss_ib2sb ib2sb
+    ofs_fim_pcie_ss_ib2sb
+      #(
+        .PL_DEPTH_IN(TDATA_WIDTH > 512 ? 1 : 0)
+        )
+      ib2sb
        (
         .stream_in(axi_st_tx_if),
         .stream_out(tx_sb)

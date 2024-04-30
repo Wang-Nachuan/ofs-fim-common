@@ -23,7 +23,10 @@
 
 module ofs_fim_pcie_ss_rx_seg_align
   #(
-    parameter NUM_OF_SEG = 2
+    parameter NUM_OF_SEG = 2,
+
+    // Set to 1 to add a skid buffer to the inbound stream.
+    parameter PL_DEPTH_IN = 0
     )
    (
     // Input stream with NUM_OF_SEG segments
@@ -59,6 +62,13 @@ module ofs_fim_pcie_ss_rx_seg_align
                    OUT_TUSER_WIDTH, $bits(ofs_fim_pcie_ss_shims_pkg::t_tuser_seg));
     end
     // synthesis translate_on
+
+
+    // Optional skid buffer on source stream
+    pcie_ss_axis_if#(.DATA_W(TDATA_WIDTH), .USER_W(IN_TUSER_WIDTH)) stream(clk, rst_n);
+
+    ofs_fim_axis_pipeline #(.PL_DEPTH(PL_DEPTH_IN))
+      pipe_rx_buf(.clk, .rst_n, .axis_s(stream_in), .axis_m(stream));
 
 
     // ====================================================================
@@ -138,7 +148,7 @@ module ofs_fim_pcie_ss_rx_seg_align
     wire shift_work_bus = ~|work_valid[0 +: NUM_OF_SEG] ||
                           (work_out_valid && work_out_ready && work_out_seg_mask[NUM_OF_SEG-1]);
 
-    assign stream_in.tready = shift_work_bus || ~|work_valid[NUM_OF_SEG +: NUM_OF_SEG];
+    assign stream.tready = shift_work_bus || ~|work_valid[NUM_OF_SEG +: NUM_OF_SEG];
 
     always_ff @(posedge clk)
     begin
@@ -180,10 +190,10 @@ module ofs_fim_pcie_ss_rx_seg_align
         end
 
         // Add new data if the high half of the work bus is available.
-        if (stream_in.tready && stream_in.tvalid) begin
-            work_bus.tdata[NUM_OF_SEG +: NUM_OF_SEG] <= stream_in.tdata;
-            work_bus.tkeep[NUM_OF_SEG +: NUM_OF_SEG] <= stream_in.tkeep;
-            work_bus.tuser[NUM_OF_SEG +: NUM_OF_SEG] <= stream_in.tuser_vendor;
+        if (stream.tready && stream.tvalid) begin
+            work_bus.tdata[NUM_OF_SEG +: NUM_OF_SEG] <= stream.tdata;
+            work_bus.tkeep[NUM_OF_SEG +: NUM_OF_SEG] <= stream.tkeep;
+            work_bus.tuser[NUM_OF_SEG +: NUM_OF_SEG] <= stream.tuser_vendor;
         end
 
         if (!rst_n)
