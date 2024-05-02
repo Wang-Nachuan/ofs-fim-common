@@ -180,7 +180,7 @@ proc emit_ip_cfg {ofile_name ip_name} {
    puts $of "-->"
    puts $of "<ip>"
    puts $of " <presets version=\"12.1\">"
-   puts $of "  </preset"
+   puts $of "  <preset"
    puts $of "     name=\"oneapi_asp_preset\""
    puts $of "     kind=\"oneAPI_kernel_wrapper\""
    puts $of "     version=\"All\""
@@ -191,7 +191,7 @@ proc emit_ip_cfg {ofile_name ip_name} {
    puts $of "   <parameter name=\"OFS_FIM_IP_CFG_${ip_name}_ETH_PACKET_WIDTH\" value=\"${eth_packet_width}\"/>"
    puts $of "   <parameter name=\"OFS_FIM_IP_CFG_${ip_name}_NUM_LANES\" value=\"${lanes_per_port}\"/>"
    puts $of "  </preset>"
-   puts $of " </preset>"
+   puts $of "</preset>"
    puts $of "</ip>"
    close $of
         

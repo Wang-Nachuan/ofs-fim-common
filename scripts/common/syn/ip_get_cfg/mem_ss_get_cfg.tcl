@@ -296,7 +296,7 @@ proc emit_ip_cfg {ofile_name ip_name} {
      puts $of "-->"
      puts $of "<ip>"
      puts $of " <presets version=\"12.1\">"
-     puts $of "  </preset"
+     puts $of "  <preset"
      puts $of "     name=\"oneapi_asp_preset\""
      puts $of "     kind=\"oneAPI_kernel_wrapper\""
      puts $of "     version=\"All\""
@@ -343,10 +343,9 @@ proc emit_ip_cfg {ofile_name ip_name} {
     
     set mem_clk_freq  [get_component_parameter_value PHY_DDR4_MEM_CLK_FREQ_MHZ]
     set theoretical_max_bw_GBps [expr {($mem_clk_freq*2*$num_ddr4_channels*$dq_width_in_bytes)/1000}]
-    puts $of "   <parameter name=\"OFS_FIM_IP_CFG_${ip_name}_THEORETICAL_MAX_BW_GBps\" value=\"${theoretical_max_bw_GBps}\"/>"        
-
+    puts $of "   <parameter name=\"OFS_FIM_IP_CFG_${ip_name}_THEORETICAL_MAX_BW_GBPS\" value=\"${theoretical_max_bw_GBps}\"/>"
     puts $of "  </preset>"
-    puts $of " </preset>"
+    puts $of "</preset>"
     puts $of "</ip>"
     close $of
 
