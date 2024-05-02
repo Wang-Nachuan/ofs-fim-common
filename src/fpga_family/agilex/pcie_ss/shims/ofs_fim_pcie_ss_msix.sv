@@ -350,13 +350,13 @@ module ofs_fim_pcie_ss_msix
         .intc_rx_st_data(axi_st_rxreq_in.tdata[$bits(rxreq_hdr) +: 64]),
         .intc_rx_st_hdr(128'(rxreq_hdr)),
         .intc_rx_st_pvalid(rxreq_hdr.pref_present),
-        .intc_rx_st_prefix({ '0, rxreq_hdr.pref_present, rxreq_hdr.pref_type, rxreq_hdr.pref }),
-        .intc_rx_st_bar_num(rxreq_hdr.bar_number),
+        .intc_rx_st_prefix({ 2'b0, rxreq_hdr.pref_present, rxreq_hdr.pref_type, rxreq_hdr.pref }),
+        .intc_rx_st_bar_num(rxreq_hdr.bar_number[2:0]),
         .intc_rx_st_slot_num(rxreq_hdr.slot_num),
         .intc_rx_st_pf_num(rxreq_hdr.pf_num),
         .intc_rx_st_vf_num(rxreq_hdr.vf_num),
         .intc_rx_st_vf_active(rxreq_hdr.vf_active),
-        .intc_rx_st_unmapped_hdr_addr(pcie_ss_hdr_pkg::func_is_addr32(rxreq_hdr.fmt_type) ? { '0, rxreq_addr32 } : rxreq_addr64),
+        .intc_rx_st_unmapped_hdr_addr(pcie_ss_hdr_pkg::func_is_addr32(rxreq_hdr.fmt_type) ? 64'(rxreq_addr32) : rxreq_addr64),
 
         // CSR write interface not used by OFS
         .lite_csr_awvalid(1'b0),

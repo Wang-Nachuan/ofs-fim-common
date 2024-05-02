@@ -128,12 +128,18 @@ module ofs_fim_pcie_ss_cpl_metering
     ofs_fim_pcie_ss_shims_pkg::t_tuser_seg [NUM_OF_SEG-1:0] txreq_tuser;
     pcie_ss_hdr_pkg::PCIe_PUReqHdr_t txreq_hdr;
     assign txreq_tuser = axi_st_txreq_in.tuser_vendor;
-    assign txreq_hdr = SB_HEADERS ? txreq_tuser[0] : axi_st_txreq_in.tdata[$bits(txreq_hdr)-1:0];
+    if (SB_HEADERS)
+        assign txreq_hdr = txreq_tuser[0];
+    else
+        assign txreq_hdr = axi_st_txreq_in.tdata[$bits(txreq_hdr)-1:0];
 
     ofs_fim_pcie_ss_shims_pkg::t_tuser_seg [NUM_OF_SEG-1:0] tx_tuser;
     pcie_ss_hdr_pkg::PCIe_PUReqHdr_t tx_hdr;
     assign tx_tuser = axi_st_tx_in.tuser_vendor;
-    assign tx_hdr = SB_HEADERS ? tx_tuser[0] : axi_st_tx_in.tdata[$bits(tx_hdr)-1:0];
+    if (SB_HEADERS)
+        assign tx_hdr = tx_tuser[0];
+    else
+        assign tx_hdr = axi_st_tx_in.tdata[$bits(tx_hdr)-1:0];
 
     pcie_ss_axis_if
       #(
