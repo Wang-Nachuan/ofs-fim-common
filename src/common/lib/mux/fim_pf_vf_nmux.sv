@@ -86,7 +86,7 @@
 //         
 // 
 //        
-module Nmux 
+module fim_pf_vf_nmux
      #(parameter                        WIDTH   = 128                         ,// width of the input port
                                         DEPTH   = 1                           ,// depth of the output fifo = 2**DEPTH
                                         REG_OUT = 0                           ,// extra output register stages?

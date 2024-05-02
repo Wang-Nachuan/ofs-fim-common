@@ -5,7 +5,7 @@
 //-----------------------------------------------------------------------------
 //
 // PCIe SS AXI-S multiplexor. This implementation is smaller and simpler than
-// the full Nmux() used in the PF/VF MUX. It is designed for multiplexing
+// the full fim_pf_vf_nmux() used in the PF/VF MUX. It is designed for multiplexing
 // a relatively small number of connections, providing pipeline skid
 // buffers on the inputs and a simple register on output.
 //

@@ -4,9 +4,9 @@
 // Description
 //-----------------------------------------------------------------------------
 //     
-//   Please refer to Nmux.sv for more detials on the design of Nmux.
+//   Please refer to fim_pf_vf_nmux.sv for more detials on the design of fim_pf_vf_nmux.
 //     
-//   N X M mux is composed of M instances of N:1 mux (Nmux.sv) and N instances of M:1 mux (Nmux.sv) 
+//   N X M mux is composed of M instances of N:1 mux (fim_pf_vf_nmux.sv) and N instances of M:1 mux (fim_pf_vf_nmux.sv) 
 //   Each mux output port has an arbitor for the incoming ports that does round robin arbitration.
 //   at the high level, switch appears as below:
 //     
@@ -35,7 +35,7 @@
 // 
 //
 
-module switch #(parameter WIDTH=80, N=4, M=2, REG_OUT=0, DEPTH=2)                // crossbar switch of N ports to M ports
+module fim_pf_vf_switch #(parameter WIDTH=80, N=4, M=2, REG_OUT=0, DEPTH=2)      // crossbar switch of N ports to M ports
       (                                                                          //----------- input -------------------------------------
       input   wire  [M-1:0][WIDTH-1:0]  M_in_data                               ,// Mux M to N ports data in 
       input   wire  [M-1:0][N-1:0]      M_in_sop                                ,// Mux M to N ports start of packet
@@ -116,7 +116,8 @@ module switch #(parameter WIDTH=80, N=4, M=2, REG_OUT=0, DEPTH=2)               
                    out_q_perr          =    |N_out_q_perr                        //
                                        |    |M_out_q_perr                       ;//
       end                                                                        //                                                                                // 
-                  Nmux #(.WIDTH     (   WIDTH    )                              ,// Port Data Width
+                  fim_pf_vf_nmux
+                       #(.WIDTH     (   WIDTH    )                              ,// Port Data Width
                          .REG_OUT   (   REG_OUT  )                              ,// Extra output stages?
                          .DEPTH     (   DEPTH    )                              ,// out_q fifo depth = 2**DEPTH
                          .N         (   N        )                               // Number of input ports to mux
@@ -137,7 +138,8 @@ module switch #(parameter WIDTH=80, N=4, M=2, REG_OUT=0, DEPTH=2)               
                                 M_out_q_perr                                     //
                         )                                                       ;//
                                                                                  //
-                  Nmux #(.WIDTH     (   WIDTH    )                              ,// Port Data Width
+                  fim_pf_vf_nmux #(
+                         .WIDTH     (   WIDTH    )                              ,// Port Data Width
                          .REG_OUT   (   REG_OUT  )                              ,// Extra output stages?
                          .DEPTH     (   DEPTH    )                              ,// out_q fifo depth = 2**DEPTH
                          .N         (   M        )                               // Number of input ports to mux
@@ -157,4 +159,4 @@ module switch #(parameter WIDTH=80, N=4, M=2, REG_OUT=0, DEPTH=2)               
                                 N_out_q_err                                     ,//
                                 N_out_q_perr                                     //
                         )                                                       ;//
-endmodule // switch
+endmodule // fim_pf_vf_switch

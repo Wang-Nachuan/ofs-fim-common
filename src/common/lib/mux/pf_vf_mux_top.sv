@@ -296,7 +296,7 @@ module pf_vf_mux_top
    endgenerate
 
    
-   switch  # (// M X N switch with output FIFO
+   fim_pf_vf_switch  # (// M X N switch with output FIFO
               .WIDTH       (    WIDTH      )              ,// Port Data Width
               .M           (    M          )              ,// Number of M Ports
               .N           (    N          )              ,// Number of N Ports
