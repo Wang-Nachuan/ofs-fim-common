@@ -58,12 +58,10 @@ add_fileset_file ofs_pcie_ss_cfg.vh OTHER PATH ../../includes/ofs_pcie_ss_cfg.vh
 add_fileset_file pcie_ss_axis_mux.sv SYSTEM_VERILOG PATH pcie_ss_axis_mux.sv
 add_fileset_file pcie_ss_hdr_pkg.sv SYSTEM_VERILOG PATH ../../includes/pcie_ss_hdr_pkg.sv
 #add_fileset_file pcie_ss_pkg.sv SYSTEM_VERILOG PATH ../../includes/pcie_ss_pkg.sv
-add_fileset_file pf_vf_mux_top.sv SYSTEM_VERILOG PATH pf_vf_mux_top.sv
 add_fileset_file pf_vf_mux_w_params.sv SYSTEM_VERILOG PATH pf_vf_mux_w_params.sv
 add_fileset_file fim_ram_1r1w.sv SYSTEM_VERILOG PATH ../ram/fim_ram_1r1w.sv
 add_fileset_file fim_pf_vf_switch.sv SYSTEM_VERILOG PATH fim_pf_vf_switch.sv
 #add_fileset_file pf_vf_cfg_pkg.sv SYSTEM_VERILOG PATH pf_vf_mux_pkg.sv
-#add_fileset_file top_cfg_pkg.sv SYSTEM_VERILOG PATH ../../fims/n6000/afu/pf_vf_mux_top/mux/top_cfg_pkg.sv
 add_fileset_file vendor_defines.vh OTHER PATH ../../includes/vendor_defines.vh
 
 add_fileset SIM_VERILOG SIM_VERILOG do_fileset_quartus_synth
@@ -83,12 +81,10 @@ add_fileset_file ofs_pcie_ss_cfg.vh OTHER PATH ../../includes/ofs_pcie_ss_cfg.vh
 add_fileset_file pcie_ss_axis_mux.sv SYSTEM_VERILOG PATH pcie_ss_axis_mux.sv
 add_fileset_file pcie_ss_hdr_pkg.sv SYSTEM_VERILOG PATH ../../includes/pcie_ss_hdr_pkg.sv
 #add_fileset_file pcie_ss_pkg.sv SYSTEM_VERILOG PATH ../../includes/pcie_ss_pkg.sv
-add_fileset_file pf_vf_mux_top.sv SYSTEM_VERILOG PATH pf_vf_mux_top.sv
 add_fileset_file pf_vf_mux_w_params.sv SYSTEM_VERILOG PATH pf_vf_mux_w_params.sv
 add_fileset_file fim_ram_1r1w.sv SYSTEM_VERILOG PATH ../ram/fim_ram_1r1w.sv
 add_fileset_file fim_pf_vf_switch.sv SYSTEM_VERILOG PATH fim_pf_vf_switch.sv
 #add_fileset_file pf_vf_cfg_pkg.sv SYSTEM_VERILOG PATH pf_vf_mux_pkg.sv
-#add_fileset_file top_cfg_pkg.sv SYSTEM_VERILOG PATH ../../fims/n6000/afu/pf_vf_mux_top/mux/top_cfg_pkg.sv
 add_fileset_file vendor_defines.vh OTHER PATH ../../includes/vendor_defines.vh
 
 

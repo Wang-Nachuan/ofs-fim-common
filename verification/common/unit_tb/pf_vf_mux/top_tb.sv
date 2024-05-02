@@ -117,7 +117,7 @@ localparam pf_vf_mux_pkg::t_pfvf_rtable_entry LOCAL_PFVF_ROUTING_TABLE[LOCAL_NUM
 `elsif TB_CONFIG_4
 `define NUM_PORT 2048;
 localparam LOCAL_NUM_RTABLE_ENTRIES = 2048;
-localparam pf_vf_mux_pkg::t_pfvf_rtable_entry LOCAL_PFVF_ROUTING_TABLE[LOCAL_NUM_RTABLE_ENTRIES] = '{
+localparam pf_vf_mux_pkg::t_pfvf_rtable_entry [LOCAL_NUM_RTABLE_ENTRIES-1:0] LOCAL_PFVF_ROUTING_TABLE = '{
 '{ pfvf_port:0  , pf:0 , vf:0    , vf_active:1  },      
 '{ pfvf_port:1  , pf:0 , vf:1    , vf_active:1  },      
 '{ pfvf_port:2  , pf:0 , vf:2    , vf_active:1  },      
@@ -2263,7 +2263,7 @@ module top_tb;
   // DUT Instantiation 
   //================================
 
-  pf_vf_mux_top #(
+  pf_vf_mux_w_params #(
      .MUX_NAME("A"),
      .NUM_RTABLE_ENTRIES(LOCAL_NUM_RTABLE_ENTRIES),
      .PFVF_ROUTING_TABLE(LOCAL_PFVF_ROUTING_TABLE)
