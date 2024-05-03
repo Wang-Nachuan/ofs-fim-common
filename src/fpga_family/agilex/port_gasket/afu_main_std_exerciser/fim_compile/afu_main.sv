@@ -200,12 +200,14 @@ generate
       pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) rx_b_if [PG_NUM_PORTS-1:0](.clk(clk),.rst_n(port_rst_n[link]));
       pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) tx_b_if [PG_NUM_PORTS-1:0](.clk(clk),.rst_n(port_rst_n[link]));
 
-       // Primary PF/VF MUX ("A" ports). Map individual TX A ports from
-       // AFUs down to a single, merged A channel. The RX port from host
-       // to FPGA is demultiplexed and individual connections are forwarded
-       // to AFUs.
-      pf_vf_mux_w_params #(
-         .MUX_NAME("PG_A"),
+      localparam MUX_NAME = $sformatf("PG_L%0d", link);
+
+      // Primary PF/VF MUX ("A" ports). Map individual TX A ports from
+      // AFUs down to a single, merged A channel. The RX port from host
+      // to FPGA is demultiplexed and individual connections are forwarded
+      // to AFUs.
+      pf_vf_mux_tree #(
+         .MUX_NAME({ MUX_NAME, "_A" }),
          .NUM_PORT(PG_NUM_PORTS),
          .NUM_RTABLE_ENTRIES(PG_NUM_RTABLE_ENTRIES),
          .PFVF_ROUTING_TABLE(PG_PFVF_ROUTING_TABLE)
@@ -224,8 +226,8 @@ generate
       // single RX stream is sufficient. The RX input to the MUX is tied off.
       // AFU B TX ports are multiplexed into a single TX B channel that is
       // passed to the A/B MUX above.
-      pf_vf_mux_w_params #(
-         .MUX_NAME ("PG_B"),
+      pf_vf_mux_tree #(
+         .MUX_NAME({ MUX_NAME, "_B" }),
          .NUM_PORT(PG_NUM_PORTS),
          .NUM_RTABLE_ENTRIES(PG_NUM_RTABLE_ENTRIES),
          .PFVF_ROUTING_TABLE(PG_PFVF_ROUTING_TABLE)

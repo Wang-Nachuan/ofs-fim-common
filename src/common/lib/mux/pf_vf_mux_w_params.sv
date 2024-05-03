@@ -333,7 +333,7 @@ module pf_vf_mux_w_params
    
     initial
     begin : log
-        string mux_tag = (MUX_NAME == "") ? "" : {"_", MUX_NAME};
+        static string mux_tag = (MUX_NAME == "") ? "" : {"_", MUX_NAME};
 
         // Open a log file, using a default if the parent didn't specify a name.
         log_fd = $fopen(((LOG_FILE_NAME == "") ? {"log_pf_vf_mux", mux_tag, ".tsv"} : LOG_FILE_NAME), "w");
@@ -343,9 +343,9 @@ module pf_vf_mux_w_params
 
         // Write the routing table to the log
         for (int p = 0; p < NUM_RTABLE_ENTRIES; p = p + 1) begin
-            $fwrite(log_fd, "routing entry %0d: PF %0d, VF %0d, vf_active %0d\n",
+            $fwrite(log_fd, "routing entry %0d: PF %0d, VF %0d, vf_active %0d, port %0d\n",
                     p, PFVF_ROUTING_TABLE[p].pf, PFVF_ROUTING_TABLE[p].vf,
-                    PFVF_ROUTING_TABLE[p].vf_active);
+                    PFVF_ROUTING_TABLE[p].vf_active, PFVF_ROUTING_TABLE[p].pfvf_port);
         end
         $fwrite(log_fd, "\n");
 
