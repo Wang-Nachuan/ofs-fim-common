@@ -25,6 +25,9 @@ if [ -z $1 ]; then
    usage
 fi
 
+CORE_COMMAND="$(strings /proc/$PPID/cmdline)"
+COMMAND_INVOKED="$(printf %q "$0")$((($#)) && printf ' %q' "$@")" # "
+
 while getopts "\-:h" OP; do
     case "${OP}" in
       -)
@@ -67,6 +70,7 @@ shift $((OPTIND-1))
 if [ ! -z "${OFSS_CONFIG_SCRIPT}" ]; then
     OFSS_CONFIG_SCRIPT_ARG="--ofss=${OFSS_CONFIG_SCRIPT}"
 fi
+
 
 # Remove the optional trailing colon and variant string.
 OFS_TARGET="${1%%:*}"
@@ -151,6 +155,9 @@ fi
 
 # Clean up any generated files from previous run
 rm -f "${SIM_SETUP_DIR}"/generated_*
+
+# Save last script invocation command for convenience
+echo "$CORE_COMMAND $COMMAND_INVOKED" > "${SIM_SETUP_DIR}"/generated_cmd.f
 
 #
 # Run Quartus to load the project and dump a list of IP sources.
