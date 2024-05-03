@@ -98,7 +98,7 @@ CMD="quartus_sh --flow compile ${Q_PROJECT} -c ${Q_REVISION}"
 # Just a syntax test?
 if [ ! -z ${ANALYSIS_AND_ELAB_ONLY} ]; then
     # This will be passed to the compilation flow
-    CMD="${CMD} -end synthesis"
+    CMD="${CMD} -end dni_elaboration -aggressive_compile_time -fast_functional_test"
 fi
 
 # Run the compilation
