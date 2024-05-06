@@ -85,6 +85,8 @@ localparam TOTAL_PORTS    = PG_NUM_LINKS * PG_NUM_PORTS;
 
 (* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg [TOTAL_PORTS-1:0] port_rst_n_q1 = {TOTAL_PORTS{1'b0}};
 (* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg [TOTAL_PORTS-1:0] port_rst_n_q2 = {TOTAL_PORTS{1'b0}};
+(* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg [TOTAL_PORTS-1:0] port_rst_n_q3 = {TOTAL_PORTS{1'b0}};
+(* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg [TOTAL_PORTS-1:0] port_rst_n_q4 = {TOTAL_PORTS{1'b0}};
 
 (* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg rst_n_q = 1'b0;
 always @(posedge clk) begin
@@ -100,10 +102,10 @@ pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_rx_b_if_
 // Demultiplexed streams on the AFU side of the PF/VF MUX.
 // The port_afu_instances() module receives a flattened array
 // of ports, merging links and ports into a single dimension.
-pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_rx_a_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q2));
-pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_tx_a_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q2));
-pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_rx_b_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q2));
-pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_tx_b_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q2));
+pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_rx_a_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q4));
+pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_tx_a_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q4));
+pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_rx_b_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q4));
+pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_tx_b_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q4));
 
 
 // Linear mapping function from link/port to the array that
@@ -149,9 +151,8 @@ localparam pcie_ss_hdr_pkg::ReqHdr_pf_vf_info_t[TOTAL_PORTS-1:0] TOTAL_PORT_PF_V
 for (genvar j=0; j<PG_NUM_LINKS; j++) begin : PCIE_FREEZE_BRIDGE
    // All ports need to flopped and preserved
    // Port A - Primary Port for all Traffic
-   ofs_fim_axis_pipeline #(
-      .PRESERVE_REG("RX"),
-      .PL_DEPTH    (PL_DEPTH)
+   ofs_fim_axis_long_skid #(
+      .PRESERVE_REG("RX")
    ) pcie_pipeline_rx_a (
       .clk     (afu_axi_rx_a_if[j].clk),
       .rst_n   (afu_axi_rx_a_if[j].rst_n),
@@ -170,9 +171,8 @@ for (genvar j=0; j<PG_NUM_LINKS; j++) begin : PCIE_FREEZE_BRIDGE
    );
  
    // Port B - Secondary Port
-   ofs_fim_axis_pipeline #(
-      .PRESERVE_REG("RX"),
-      .PL_DEPTH    (PL_DEPTH)
+   ofs_fim_axis_long_skid #(
+      .PRESERVE_REG("RX")
    ) pcie_pipeline_rx_b (
       .clk     (afu_axi_rx_b_if[j].clk),
       .rst_n   (afu_axi_rx_b_if[j].rst_n),
@@ -247,10 +247,10 @@ generate
       for (genvar p = 0; p < PG_NUM_PORTS; p = p + 1) begin: conn
          localparam c = linearLinkPort(link, p);
 
-         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_tx_a (.clk, .rst_n(port_rst_n_q2[c]), .axis_s(port_tx_a_if[c]), .axis_m(tx_a_if[p]));
-         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_rx_a (.clk, .rst_n(port_rst_n_q2[c]), .axis_s(rx_a_if[p]), .axis_m(port_rx_a_if[c]));
-         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_tx_b (.clk, .rst_n(port_rst_n_q2[c]), .axis_s(port_tx_b_if[c]), .axis_m(tx_b_if[p]));
-         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_rx_b (.clk, .rst_n(port_rst_n_q2[c]), .axis_s(rx_b_if[p]), .axis_m(port_rx_b_if[c]));
+         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_tx_a (.clk, .rst_n(port_rst_n_q4[c]), .axis_s(port_tx_a_if[c]), .axis_m(tx_a_if[p]));
+         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_rx_a (.clk, .rst_n(port_rst_n_q4[c]), .axis_s(rx_a_if[p]), .axis_m(port_rx_a_if[c]));
+         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_tx_b (.clk, .rst_n(port_rst_n_q4[c]), .axis_s(port_tx_b_if[c]), .axis_m(tx_b_if[p]));
+         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_rx_b (.clk, .rst_n(port_rst_n_q4[c]), .axis_s(rx_b_if[p]), .axis_m(port_rx_b_if[c]));
       end
    end // block: mux
 endgenerate
@@ -271,7 +271,7 @@ port_afu_instances #(
    .uclk_usr      (uclk_usr),
    .uclk_usr_div2 (uclk_usr_div2),
    .rst_n         (rst_n_q),
-   .port_rst_n    (port_rst_n_q2),
+   .port_rst_n    (port_rst_n_q4),
 
 `ifdef INCLUDE_HSSI
    .hssi_ss_st_tx  (hssi_ss_st_tx),
@@ -308,6 +308,9 @@ generate
       end
    end
 endgenerate
+
+always @(posedge clk) port_rst_n_q3 <= port_rst_n_q2;
+always @(posedge clk) port_rst_n_q4 <= port_rst_n_q3;
 
 
 // ======================================================

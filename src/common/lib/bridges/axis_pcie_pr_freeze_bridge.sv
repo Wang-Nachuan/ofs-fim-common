@@ -30,10 +30,7 @@ module axis_pcie_pr_freeze_bridge
 );
 
 pcie_ss_axis_if     axi_tx_if_t0(.clk(axi_tx_if_m.clk), .rst_n(port_rst_n));
-//pcie_ss_axis_if     axi_tx_if_t1();
-
 pcie_ss_axis_if     axi_rx_if_t0(.clk(axi_tx_if_m.clk), .rst_n(port_rst_n));
-//pcie_ss_axis_if     axi_rx_if_t1();
 
 logic pr_freeze_wire;
 generate 
@@ -44,15 +41,25 @@ end else begin
 end
 endgenerate
 
-ofs_fim_axis_pipeline #(
-   .PL_DEPTH    (PL_DEPTH),
-   .MODE        (TX_REG_MODE) 
-) pr_frz_fn2mx_port (
-   .clk         (axi_tx_if_m.clk),
-   .rst_n       (port_rst_n),
-   .axis_s      (axi_tx_if_s),
-   .axis_m      (axi_tx_if_t0)
-);
+if (TX_REG_MODE == 0) begin : skid
+    ofs_fim_axis_long_skid
+      pr_frz_fn2mx_port (
+       .clk         (axi_tx_if_m.clk),
+       .rst_n       (port_rst_n),
+       .axis_s      (axi_tx_if_s),
+       .axis_m      (axi_tx_if_t0)
+    );
+end else begin : byp
+    ofs_fim_axis_pipeline #(
+       .PL_DEPTH    (PL_DEPTH),
+       .MODE        (TX_REG_MODE) 
+    ) pr_frz_fn2mx_port (
+       .clk         (axi_tx_if_m.clk),
+       .rst_n       (port_rst_n),
+       .axis_s      (axi_tx_if_s),
+       .axis_m      (axi_tx_if_t0)
+    );
+end
 
 // freeze ready & valid
 always_comb begin
