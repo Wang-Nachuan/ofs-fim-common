@@ -14,9 +14,10 @@
 `include "fpga_defines.vh"
 `include "ofs_fim_eth_plat_defines.svh"
 `include "ofs_ip_cfg_db.vh"
-import ofs_fim_eth_if_pkg::*;
 
-module hssi_wrapper #(
+module hssi_wrapper
+  import ofs_fim_eth_if_pkg::*;
+#(
    parameter bit [23:0] NEXT_DFH_OFFSET = 24'h1000,
    parameter bit        END_OF_LIST     = 1'b0
 ) (

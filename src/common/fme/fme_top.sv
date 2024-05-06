@@ -8,11 +8,6 @@
 //
 //-----------------------------------------------------------------------------
 
-import ofs_fim_cfg_pkg::*;
-import ofs_fim_if_pkg::*;
-import ofs_csr_pkg::*;
-import fme_csr_pkg::*;
-
 module fme_top #(
    parameter EXT_FME_IRQ_IFS = 1,
    parameter ST2MM_MSIX_ADDR = 20'h80010,
@@ -27,6 +22,11 @@ module fme_top #(
    ofs_fim_axi_lite_if.master axi_lite_m_if,
    ofs_fim_axi_lite_if.slave  axi_lite_s_if
 );
+
+import ofs_fim_cfg_pkg::*;
+import ofs_fim_if_pkg::*;
+import ofs_csr_pkg::*;
+import fme_csr_pkg::*;
 
 ofs_fim_pwrgoodn_if pgn();
 assign pgn.pwr_good_n = pwr_good_n;

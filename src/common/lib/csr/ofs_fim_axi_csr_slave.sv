@@ -15,10 +15,6 @@
 //
 //-----------------------------------------------------------------------------
 
-import ofs_fim_cfg_pkg::*;
-import ofs_fim_if_pkg::*;
-import ofs_csr_pkg::*;
-
 module ofs_fim_axi_csr_slave #(
    // Derived parameters
    parameter TID_WIDTH   = ofs_fim_cfg_pkg::MMIO_TID_WIDTH,
@@ -31,7 +27,7 @@ module ofs_fim_axi_csr_slave #(
 
    output logic                   csr_write,
    output logic [ADDR_WIDTH-1:0]  csr_waddr,
-   output csr_access_type_t       csr_write_type,
+   output ofs_csr_pkg::csr_access_type_t csr_write_type,
    output logic [DATA_WIDTH-1:0]  csr_wdata,
    output logic [WSTRB_WIDTH-1:0] csr_wstrb,
    input logic                    csr_slv_wready,
@@ -43,6 +39,10 @@ module ofs_fim_axi_csr_slave #(
    input  logic                   csr_readdata_valid
  
 );
+
+import ofs_fim_cfg_pkg::*;
+import ofs_fim_if_pkg::*;
+import ofs_csr_pkg::*;
 
 //-------------------------------------
 // Signals

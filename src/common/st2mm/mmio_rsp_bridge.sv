@@ -10,9 +10,6 @@
 //
 //-----------------------------------------------------------------------------
 
-`include "vendor_defines.vh"
-import pcie_ss_hdr_pkg::*;
-
 module mmio_rsp_bridge #(
    parameter MM_DATA_WIDTH    = 64,
    parameter PF_NUM           = 0,
@@ -29,7 +26,7 @@ module mmio_rsp_bridge #(
 
    // MMIO request fields for CPL/CPLd
    input logic                                         i_tlp_rd,
-   input logic [TAG_WIDTH-1:0]                         i_tlp_rd_tag,
+   input logic [pcie_ss_hdr_pkg::PCIE_TAG_WIDTH-1:0]   i_tlp_rd_tag,
    input logic [1:0]                                   i_tlp_rd_length,
    input logic [15:0]                                  i_tlp_rd_req_id,
    input logic [pcie_ss_hdr_pkg::LOWER_ADDR_WIDTH-1:0] i_tlp_rd_lower_addr,
@@ -41,6 +38,7 @@ module mmio_rsp_bridge #(
 );
 
 import pcie_ss_axis_pkg::*;
+import pcie_ss_hdr_pkg::*;
 import st2mm_pkg::*;
 
 localparam HDR_BYTE_CNT = (HDR_WIDTH/8);

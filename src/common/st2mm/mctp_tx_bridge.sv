@@ -10,9 +10,6 @@
 //
 //-----------------------------------------------------------------------------
 
-import pcie_ss_hdr_pkg::*;
-import ofs_csr_pkg::*;
-
 module mctp_tx_bridge #(
    parameter    MAX_BUF_DEPTH = 32,
    parameter    MM_DATA_WIDTH = 64,
@@ -31,9 +28,13 @@ module mctp_tx_bridge #(
    input                        i_csr_eop,  // A Pulse when PMCI writes to FCR.EOP
    input                        i_csr_val,  // A Pulse when PMCI writes to DR(PAYLOAD)
    input [MM_DATA_WIDTH-1:0]    i_csr_pld,  // Payload valuae
-   input csr_access_type_t      i_csr_type, // Access Type
+   input ofs_csr_pkg::csr_access_type_t i_csr_type, // Access Type
    output                       o_csr_rdy   // FSM Ready to update FCR.BUSY
 );
+
+   import pcie_ss_hdr_pkg::*;
+   import ofs_csr_pkg::*;
+
    //------------------------------------------
    // Signals & Settings
    //------------------------------------------

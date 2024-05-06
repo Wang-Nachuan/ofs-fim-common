@@ -6,11 +6,11 @@
 // PORT Gasket
 //-----------------------------------------------------------------------------
 
-import pcie_ss_axis_pkg::*;
-import ofs_fim_if_pkg::*;
-import ofs_fim_eth_if_pkg::*;
-
-module  port_gasket #(
+module port_gasket
+  import pcie_ss_axis_pkg::*;
+  import ofs_fim_if_pkg::*;
+  import ofs_fim_eth_if_pkg::*;
+ #(
    parameter PG_NUM_LINKS      = 1,
    parameter PG_NUM_PORTS      = 1,
    parameter NUM_PF       = top_cfg_pkg::FIM_NUM_PF,
@@ -44,8 +44,8 @@ module  port_gasket #(
    input                       rst_n_csr,
 
    input  logic                pg_pf_flr_rst_n[PG_NUM_LINKS-1:0],
-   input  t_axis_pcie_flr      flr_req[PG_NUM_LINKS-1:0],
-   output t_axis_pcie_flr      flr_rsp[PG_NUM_LINKS-1:0],
+   input  pcie_ss_axis_pkg::t_axis_pcie_flr flr_req[PG_NUM_LINKS-1:0],
+   output pcie_ss_axis_pkg::t_axis_pcie_flr flr_rsp[PG_NUM_LINKS-1:0],
 
    input  logic                i_sel_mmio_rsp,
    input  logic                i_read_flush_done,

@@ -9,9 +9,9 @@
 //   - Support upto 16 channels
 //-----------------------------------------------------------------------------
 
-import ofs_fim_eth_if_pkg::*;
-
-module hssi_wrapper_csr (
+module hssi_wrapper_csr
+  import ofs_fim_eth_if_pkg::*;
+(
    input                       clk,
    input                       rst_n,
    ofs_fim_axi_lite_if.slave   csr_lite_if,

@@ -6,10 +6,9 @@
 // Partial Reconfiguration Slot
 //-----------------------------------------------------------------------------
 
-import pcie_ss_axis_pkg::*;
-import ofs_fim_eth_if_pkg::*;
-
-module  pr_slot #(
+module pr_slot
+  import ofs_fim_eth_if_pkg::*;
+ #(
    parameter PG_NUM_LINKS      = 1,
    parameter PG_NUM_PORTS      = 1,  // Number of PCIe VF ports to PR region
    // PF/VF to which each port is mapped

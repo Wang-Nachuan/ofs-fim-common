@@ -9,9 +9,6 @@
 //
 //-----------------------------------------------------------------------------
 
-`timescale 1ps / 1ps
-import ofs_csr_pkg::*;
-
 module st2mm #(
    parameter PF_NUM            = 0,
    parameter VF_NUM            = 0,
@@ -58,7 +55,7 @@ logic                         csr_sop;
 logic                         csr_eop;
 logic                         csr_val;
 logic [MM_DATA_WIDTH-1:0]     csr_pld;
-csr_access_type_t             csr_type;
+ofs_csr_pkg::csr_access_type_t  csr_type;
 logic                         csr_rdy;
 
 logic                           msix_strb;

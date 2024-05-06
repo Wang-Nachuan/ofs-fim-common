@@ -8,8 +8,6 @@
 
 `include "fpga_defines.vh"
 
-import pcie_ss_hdr_pkg::*;
-
 module  axis_tx_msix_bridge #(
     parameter PF_NUM            = 0,
     parameter VF_NUM            = 0,
@@ -25,6 +23,8 @@ module  axis_tx_msix_bridge #(
     input   logic   [15:0]  msix_num,
     output  logic           msix_ready
 );
+
+import pcie_ss_hdr_pkg::*;
 
 pcie_ss_hdr_pkg::PCIe_IntrHdr_t     intr_hdr;
 

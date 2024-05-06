@@ -7,8 +7,6 @@
 // - Option to chose VIRTIO GUID
 //-----------------------------------------------------------------------------
 
-import pcie_ss_hdr_pkg::*;
-
 module he_null #(
    parameter CSR_DATA_WIDTH = 64,
    parameter CSR_ADDR_WIDTH = 16,
@@ -30,6 +28,9 @@ module he_null #(
    pcie_ss_axis_if.sink   i_rx_if,
    pcie_ss_axis_if.source o_tx_if
 );
+
+   import pcie_ss_hdr_pkg::*;
+
    // ----------- Parameters -------------
    localparam END_OF_LIST           = 1'h0;  // Set this to 0 if there is another DFH beyond this
    localparam NEXT_DFH_BYTE_OFFSET  = 24'h0; // Next DFH Byte offset

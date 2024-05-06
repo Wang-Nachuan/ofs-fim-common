@@ -12,9 +12,6 @@
 //
 //-----------------------------------------------------------------------------
 
-`ifndef __OFS_CSR_PKG__
-`define __OFS_CSR_PKG__
-
 package ofs_csr_pkg; 
 
 //---------------------------------------------------------
@@ -607,8 +604,4 @@ function automatic logic[63:0] update_error_reg (     // Returns a 64-bit regist
    return update_error_reg;
 endfunction
 
-
-
 endpackage: ofs_csr_pkg
-
-`endif // __OFS_CSR_PKG__

@@ -10,9 +10,9 @@
 //-----------------------------------------------------------------------------
 
 //`include "fpga_defines.vh"
-import ofs_fim_if_pkg::*;
-
-module port_reset_fsm #(
+module port_reset_fsm
+  import ofs_fim_if_pkg::*;
+ #(
    parameter  SYNC_RESET_MIN_WIDTH = 256
 )(
    input  logic                        clk_2x,
