@@ -200,7 +200,7 @@ generate
       pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) rx_b_if [PG_NUM_PORTS-1:0](.clk(clk),.rst_n(port_rst_n[link]));
       pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) tx_b_if [PG_NUM_PORTS-1:0](.clk(clk),.rst_n(port_rst_n[link]));
 
-      localparam MUX_NAME = $sformatf("PG_L%0d", link);
+      localparam MUX_NAME = PG_NUM_LINKS == 1 ? "PG" : $sformatf("PG%0d", link);
 
       // Primary PF/VF MUX ("A" ports). Map individual TX A ports from
       // AFUs down to a single, merged A channel. The RX port from host

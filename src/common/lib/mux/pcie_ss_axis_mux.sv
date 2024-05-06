@@ -13,7 +13,7 @@
 
 module pcie_ss_axis_mux #(
    parameter NUM_CH = 1,
-   parameter PL_DEPTH[NUM_CH] = '{ NUM_CH{1} },
+   parameter int PL_DEPTH[NUM_CH] = '{ NUM_CH{1} },
 
    parameter TDATA_WIDTH = ofs_pcie_ss_cfg_pkg::TDATA_WIDTH,
    parameter TUSER_WIDTH = ofs_pcie_ss_cfg_pkg::TUSER_WIDTH
