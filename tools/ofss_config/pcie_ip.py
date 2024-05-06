@@ -33,6 +33,7 @@ class PCIe(OFS):
         self.pcie_gen, self.pcie_instances = None, None
         self.pcie_lane_width = None
         self.PCIE_AVAILABLE_LANES = 16
+        self.pcie_instances = 1
         self.pcie_instances_enabled = 1
 
         self.PCIE_SS_PARAM = None
@@ -54,8 +55,12 @@ class PCIe(OFS):
         Take additional pcie ofss params that are platform specific and apply to all pfs 
         Platform specific pcie params should be designated under the <platform>_base.ofss 'pcie' section.
         '''
+        if "pcie.settings" in self.ofs_config:
+            for k, v in self.ofs_config["pcie.settings"].items():
+                if k not in self.pcie_config["settings"]:
+                    self.pcie_config["settings"][k] = v
+
         if "pcie" not in self.ofs_config:
-            logging.info("Did not find additional pcie params from ofs_config to add to pcie_config")
             return
 
         pfs_to_update = [section for section in self.pcie_config if section.startswith("pf")]
