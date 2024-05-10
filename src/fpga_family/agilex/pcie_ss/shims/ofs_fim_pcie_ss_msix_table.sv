@@ -5,8 +5,9 @@
 // Taken from DM MSI-X table implementation
 //
 
-module ofs_fim_pcie_ss_msix_table
+`include "fpga_defines.vh"
 
+module ofs_fim_pcie_ss_msix_table
 # (
 
   parameter    MSIX_TABLE                     = "Enable",
@@ -141,6 +142,12 @@ module ofs_fim_pcie_ss_msix_table
   input                          intc_st_tx_tready
 
   );
+
+`ifdef DEVICE_FAMILY
+  localparam DEVICE_FAMILY = `DEVICE_FAMILY;
+`else
+  localparam DEVICE_FAMILY = "Agilex";
+`endif
 
   localparam MAX_TOTAL_MSIX_TABLE_SIZE = 4096;
   localparam MSIX_TABLE_DEPTH          = MSIX_VECTOR_ALLOC=="Static" ? MSIX_TABLE_SIZE*(total_pf_count+total_vf_count) :
@@ -524,7 +531,7 @@ module ofs_fim_pcie_ss_msix_table
     .operation_mode                       ( "DUAL_PORT"                                                            ),
     .optimization_option                  ( "AUTO"                                                                 ),
     .ram_block_type                       ( "AUTO"                                                                 ),
-    .intended_device_family               ( `FAMILY                                                                ),
+    .intended_device_family               ( DEVICE_FAMILY                                                          ),
     .read_during_write_mode_port_b        ( "OLD_DATA"                                                             ),
     .read_during_write_mode_mixed_ports   ( "OLD_DATA"                                                             )
     ) u_ctrlshadow (
@@ -4638,7 +4645,7 @@ module ofs_fim_pcie_ss_msix_table
       .optimization_option                  ( "AUTO"                                                          ),
       .ram_block_type                       ( "AUTO"                                                          ),
       .init_file                            ( "UNUSED"                                                        ),
-      .intended_device_family               ( `FAMILY                                                         ),
+      .intended_device_family               ( DEVICE_FAMILY                                                   ),
       .read_during_write_mode_port_b        ( "OLD_DATA"                                                      ),
       .read_during_write_mode_mixed_ports   ( "OLD_DATA"                                                      )
       ) u_msix_table (
@@ -4711,7 +4718,7 @@ module ofs_fim_pcie_ss_msix_table
       .operation_mode                       ( "DUAL_PORT"                                         ),
       .optimization_option                  ( "AUTO"                                              ),
       .ram_block_type                       ( "AUTO"                                              ),
-      .intended_device_family               ( `FAMILY                                             ),
+      .intended_device_family               ( DEVICE_FAMILY                                       ),
       .read_during_write_mode_port_b        ( "OLD_DATA"                                          ),
       .read_during_write_mode_mixed_ports   ( "OLD_DATA"                                          )
       ) u_pba (
@@ -4874,7 +4881,7 @@ module ofs_fim_pcie_ss_msix_table
       .operation_mode                       ( "DUAL_PORT"                                         ),
       .optimization_option                  ( "AUTO"                                              ),
       .ram_block_type                       ( "AUTO"                                              ),
-      .intended_device_family               ( `FAMILY                                             ),
+      .intended_device_family               ( DEVICE_FAMILY                                       ),
       .read_during_write_mode_port_b        ( "OLD_DATA"                                          ),
       .read_during_write_mode_mixed_ports   ( "OLD_DATA"                                          )
       ) u_size (
@@ -4941,7 +4948,7 @@ module ofs_fim_pcie_ss_msix_table
       .operation_mode                       ( "DUAL_PORT"                                                            ),
       .optimization_option                  ( "AUTO"                                                                 ),
       .ram_block_type                       ( "AUTO"                                                                 ),
-      .intended_device_family               ( `FAMILY                                                                ),
+      .intended_device_family               ( DEVICE_FAMILY                                                          ),
       .read_during_write_mode_port_b        ( "OLD_DATA"                                                             ),
       .read_during_write_mode_mixed_ports   ( "OLD_DATA"                                                             )
       ) u_offset (

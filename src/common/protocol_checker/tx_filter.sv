@@ -38,11 +38,11 @@ module tx_filter
     output logic         o_blocking_traffic_fast,
     output logic         o_mmio_rd_rsp_ack, //Indicates fake completion has been sent by tx_f_fifo on MMIO timeout detection
                          
-                         pcie_ss_axis_if.sink i_tx_st, // this is live from the input of the PC (i.e. r0)
+    pcie_ss_axis_if.sink i_tx_st, // this is live from the input of the PC (i.e. r0)
     input logic          i_tx_st_sop, // this is live from the input of the PC (i.e. r0)
-                         pcie_ss_axis_if.source o_tx_st_r4,
+    pcie_ss_axis_if.source o_tx_st_r4,
     output logic         o_tx_st_sop_r4,
-                         pcie_ss_axis_if.source o_mmio_rsp_tx_st,
+    pcie_ss_axis_if.source o_mmio_rsp_tx_st,
     output logic         o_mmio_rsp_tx_st_sop,
     
     output logic [127:0] o_tx_header_r1,
@@ -57,12 +57,16 @@ module tx_filter
     output logic         o_tx_hdr_is_pu_mode_r4,
     output logic         o_tx_hdr_is_pu_mode_r5
     );
+
+   localparam TDATA_WIDTH = i_tx_st.DATA_W;
+   localparam TUSER_WIDTH = i_tx_st.USER_W;
+
    //Modified AXI ST (added sop signal)
    typedef struct        packed {
       logic              tvalid;
-      logic [511:0]      tdata;
-      logic [63:0]       tkeep;
-      logic [9:0]        tuser;
+      logic [TDATA_WIDTH-1:0]   tdata;
+      logic [TDATA_WIDTH/8-1:0] tkeep;
+      logic [TUSER_WIDTH-1:0]   tuser;
       logic              tlast;
       logic              tready;
       logic              sop;
@@ -268,7 +272,7 @@ module tx_filter
               tx_mmio_st.tvalid          <= 1'b1;
               tx_mmio_st.tlast           <= 1'b1;
               tx_mmio_st.tdata[255:0]    <= cpl_hdr;
-              tx_mmio_st.tdata[511:256]  <= '1;
+              tx_mmio_st.tdata[TDATA_WIDTH-1:256] <= '1;
               if (o_mmio_rsp_tx_st.tready & tx_mmio_st.tvalid) begin
                  tx_mmio_st.sop          <= 1'b0;
                  tx_mmio_st.tvalid       <= 1'b0;

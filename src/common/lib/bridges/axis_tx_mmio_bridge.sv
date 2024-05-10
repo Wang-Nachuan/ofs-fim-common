@@ -76,11 +76,11 @@ pcie_ss_axis_if #(.DATA_W(axis_tx_if.DATA_W), .USER_W(axis_tx_if.USER_W)) tx_if(
 
 always_comb
 begin
-    tx_if.tlast        = rsp_fifo_valid;
+    tx_if.tlast        = 1'b1;
     tx_if.tvalid       = rsp_fifo_valid;
     
     tx_if.tdata        = rsp_fifo_dout;
-    tx_if.tkeep        = {$bits(tx_if.tkeep){1'b1}};
+    tx_if.tkeep        = {'0, 8'hff, {($bits(cpl_hdr)/8){1'b1}}};
     tx_if.tuser_vendor = {$bits(tx_if.tuser_vendor){1'b0}};
     
     axis_tx_error      = ctt_fifo_error_pipe[2] || rsp_fifo_eccstatus[0];
@@ -210,7 +210,7 @@ assign ctt_fifo_eccstatus = '0;
 //--------------------------------------------------------
 always_comb
 begin
-    cpl_hdr                 = {$bits(cpl_hdr){1'b0}};
+    cpl_hdr                 = '0;
 
     cpl_hdr.pf_num          = PF_NUM;
     cpl_hdr.vf_num          = VF_NUM;
