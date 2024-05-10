@@ -251,7 +251,7 @@ module mode_atomic
         // response from an atomic update.
         if (csr2eng.cfg.cont_mode &&
             axi_host_mem.rvalid && axi_host_mem.rready &&
-            axi_host_mem.r.id[0] && axi_host_mem.b.id[1])
+            axi_host_mem.r.id[0] && axi_host_mem.r.id[1])
         begin
             wr_not_done <= 1'b0;
         end
