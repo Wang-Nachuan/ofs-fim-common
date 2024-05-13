@@ -118,7 +118,8 @@ module ofs_fim_pcie_ss_pipe_rx_sb
 
     ofs_fim_pcie_ss_rx_seg_align
       #(
-        .NUM_OF_SEG(NUM_OF_SEG)
+        .NUM_OF_SEG(NUM_OF_SEG),
+        .PL_DEPTH_IN(TDATA_WIDTH > 512 ? 1 : 0)
         )
       rx_seg_align
        (
