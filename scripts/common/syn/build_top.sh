@@ -34,6 +34,12 @@ usage() {
   echo "  passed to the --ofss switch by concatenating them separated by commas." 1>&2
   echo "  For example: \"--ofss config_a.ofss,config_b.ofss\"." 1>&2
   echo "" 1>&2
+  echo "  When --ofss is not specified, the script searches for an .ofss file" 1>&2
+  echo "  in \${OFS_ROOTDIR}/tools/ofss_config/ that matches the board target." 1>&2
+  echo "" 1>&2
+  echo "  Set --ofss to \"none\" to disable OFSS-based IP configuration entirely." 1>&2
+  echo "  --ofss setup is always skipped when \"-k\" is set." 1>&2
+  echo "" 1>&2
   echo "  The -e option runs only Quartus analysis and elaboration. It completes the" 1>&2
   echo "  \"setup\" stage, passes \"-end synthesis\" to the Quartus compilation flow" 1>&2
   echo "  and exits without running the \"finish\" stage." 1>&2

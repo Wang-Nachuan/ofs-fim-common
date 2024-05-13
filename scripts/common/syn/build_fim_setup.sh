@@ -238,7 +238,10 @@ fi
 # The argument is a comma-separated list of .ofss configuration files.
 # Paths may be relative to the directory where the build command was
 # invoked, which was recorded as STARTING_DIR at the top of this script.
-if [ ! -z ${USE_OFSS_CONFIG_SCRIPT} ]; then
+if [ "${USE_OFSS_CONFIG_SCRIPT}" == "none" ]; then
+    # Nothing. Skip OFSS config.
+    echo "No OFSS configuration: --ofss none"
+elif [ ! -z ${USE_OFSS_CONFIG_SCRIPT} ]; then
     IFS=,
     ofss_arr=(${USE_OFSS_CONFIG_SCRIPT})
     all_ofss_files=()
@@ -261,6 +264,16 @@ if [ ! -z ${USE_OFSS_CONFIG_SCRIPT} ]; then
         exit 1
     fi
     unset IFS
+elif [[ "${KEEP_WORK_ARG}" == "" && -f "${OFS_ROOTDIR}/tools/ofss_config/${OFS_BOARD_CORE}.ofss" ]]; then
+    # Generating tree for the first time, no --ofss command was set, and
+    # an OFSS file name matches the target board.
+    ofss_default="${OFS_ROOTDIR}/tools/ofss_config/${OFS_BOARD_CORE}.ofss"
+    echo "Using default OFSS file: ${ofss_default}"
+    echo "Command: \${OFS_ROOTDIR}/ofs-common/tools/ofss_config/gen_ofs_settings.py --ofss \"${ofss_default}\" --target ${BUILD_ROOT_REL}"
+    "${OFS_ROOTDIR}"/ofs-common/tools/ofss_config/gen_ofs_settings.py --ofss "${ofss_default}" --target "${BUILD_ROOT_REL}"
+    if [ $? != 0 ]; then
+        exit 1
+    fi
 fi
 
 #################################################
