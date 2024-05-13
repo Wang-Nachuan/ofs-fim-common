@@ -149,7 +149,12 @@ wire  [CSR_ADDR_WIDTH-1:0           ]   axi4mmrx_csr_waddr      ;
 //wire                              MmioRspFiFo_AxistRx_full      ;                   
 
 assign cpldfifo_acelitetx_empty =!cpldfifo_notempty ;
-assign ce_corereset             =rst| ce_softreset  ;
+
+(* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg [3:0] ce_corereset_reg = 4'hf;
+assign ce_corereset = ce_corereset_reg[3];
+always @(posedge clk) begin
+   ce_corereset_reg <= { ce_corereset_reg[2:0], rst | ce_softreset };
+end
 
 assign cpldfifo_csr_overflow    = cpldfifo_csr_fifoerr& cpldfifo_axistrx_full;
 assign cpldfifo_csr_underflow   = cpldfifo_csr_fifoerr& !cpldfifo_notempty   ; 
