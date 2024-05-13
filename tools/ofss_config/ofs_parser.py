@@ -42,7 +42,7 @@ def process_config_sections(ofss_config):
     """
     curr_ip_config = {}
     for section in ofss_config:
-        if section not in ["DEFAULT", "ip", "include"]:
+        if section not in ["DEFAULT", "ip", "include", "include-default"]:
             curr_ip_config[section] = dict(ofss_config.items(section))
 
     return curr_ip_config
@@ -54,7 +54,15 @@ def process_config_includes(ofss_config_files_queue, ofss_config):
     """
     if "include" in ofss_config:
         for elem in ofss_config["include"]:
-            ofss_config_files_queue.append(os.path.expandvars(elem).replace('"', ""))
+            info = {'name': os.path.expandvars(elem).replace('"', ""),
+                    'default': 0}
+            ofss_config_files_queue.append(info)
+
+    if "include-default" in ofss_config:
+        for elem in ofss_config["include-default"]:
+            info = {'name': os.path.expandvars(elem).replace('"', ""),
+                    'default': 1}
+            ofss_config_files_queue.append(info)
 
 
 def check_ofs_config(ofs_config):
@@ -105,6 +113,12 @@ def process_ofss_configs(ofss_list):
     as files under the 'include' section.
     All OFSS configurations are stored in one dictionary structure
     """
+
+    # Queue of file names to process. Each entry in the queue is a
+    # dictionary with two entries:
+    #  - name: full path of the file to load
+    #  - default: 1 if to file is a default to be used only if a
+    #             specific setting is not already loaded.
     ofss_config_files_queue = collections.deque()
 
     for ofss_string in ofss_list:
@@ -112,7 +126,8 @@ def process_ofss_configs(ofss_list):
         for ofss in ofss_elems:
             if ofss:
                 ofss_abs_path = os.path.abspath(ofss)
-                ofss_config_files_queue.append(ofss_abs_path)
+                ofss_config_files_queue.append({'name': ofss_abs_path,
+                                                'default': 0})
 
     ofs_ip_configurations = collections.defaultdict(list)
     already_processed_configs = set()
@@ -120,7 +135,9 @@ def process_ofss_configs(ofss_list):
         curr_config = configparser.ConfigParser(allow_no_value=True)
         curr_config.optionxform = str
 
-        curr_ofss_file = ofss_config_files_queue.popleft()
+        curr_ofss_file_info = ofss_config_files_queue.popleft()
+        curr_ofss_file = curr_ofss_file_info['name']
+        logging.debug(f"Processing {curr_ofss_file} {curr_ofss_file_info['default']}")
 
         if not os.path.exists(curr_ofss_file):
             raise FileNotFoundError(f"{curr_ofss_file} not found")
@@ -135,8 +152,17 @@ def process_ofss_configs(ofss_list):
 
         process_config_includes(ofss_config_files_queue, curr_config)
         if ip_type is not None:
-            ofs_ip_configurations[ip_type].append(process_config_sections(curr_config))
-            check_num_ip_configs(ip_type, ofs_ip_configurations[ip_type])
+            # Include files are always pushed to the end of the file queue.
+            # If the user specifies an IP config file on the command line
+            # it will be seen before any includes in an include-default
+            # section.
+            if curr_ofss_file_info['default'] and ip_type in ofs_ip_configurations:
+                # Ignore default when an instance of ip_type was already
+                # processed.
+                logging.debug(f"Ignoring default {ip_type}: {curr_ofss_file}")
+            else:
+                ofs_ip_configurations[ip_type].append(process_config_sections(curr_config))
+                check_num_ip_configs(ip_type, ofs_ip_configurations[ip_type])
 
         already_processed_configs.add(curr_ofss_file)
 
