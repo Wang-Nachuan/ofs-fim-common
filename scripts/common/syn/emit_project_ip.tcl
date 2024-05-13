@@ -139,6 +139,11 @@ proc copyIP {mode verbose} {
 
 ## Called by copyIP above to copy a single IP file
 proc copySingleIP {ip mode verbose} {
+  if { ! [file exists $ip] } {
+    puts "Warning: source file \"$ip\" not found."
+    return
+  }
+
   if { [string first "../ip_lib" $ip] == 0 } {
     # The IP reference is in the legacy ../ip_lib tree.
     # Remove the leading part of the path, leaving only the portion
@@ -185,7 +190,7 @@ proc copySingleIP {ip mode verbose} {
   if { ! [file exists $src_file] } {
      puts "Warning: source file \"$src_file\" not found."
   } elseif { [file exists $tgt_file] && [file mtime $src_file] <= [file mtime $tgt_file] } {
-      if { $verbose } { puts "Already present: $tgt_file" }
+     if { $verbose } { puts "Already present: $tgt_file" }
   } else {
     if { $verbose } {
       puts "Copy from: $src_file to $tgt_file"
@@ -200,7 +205,7 @@ proc copySingleIP {ip mode verbose} {
     foreach fn {quartus.ini} {
       set src_dir [file dirname $src_file]
       if { [file exists [file join $src_dir $fn]] } {
-          file copy -force [file join $src_dir $fn] [file join $tgt_dir $fn]
+        file copy -force [file join $src_dir $fn] [file join $tgt_dir $fn]
       }
     }
   }
