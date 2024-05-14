@@ -661,8 +661,8 @@ always_ff@(posedge clk) begin
                      //next_tid        <= next_tid + 10'h1       ;//ID is always incremental. starting from 0
                end
             end
-            /*ST_TX_DATA_WAIT: begin
-               if (axistrx_axisttx_fc==1'b1) begin//final completion bit received for the read req from ce to host
+            ST_TX_DATA_WAIT: begin
+             /*if (axistrx_axisttx_fc==1'b1) begin//final completion bit received for the read req from ce to host
                      rx_data_pkt_cnt     <= rx_data_pkt_cnt + 32'd1; //this counter checks the total FC received.
                                                                      //if img size is 4KB and read req granularity is 1KB,
                                                                      //CE needs to send a total of 4 read req to host     
@@ -671,8 +671,8 @@ always_ff@(posedge clk) begin
                                                                      //data chunk is received as per the csr_img_size programmed          
                                                                      //FSM can go to IDLE state                                          
                                                                      //this counter gets reset during any of the error cases                    
-               end
-            end*/
+               end*/
+            end
       endcase
    end
 end

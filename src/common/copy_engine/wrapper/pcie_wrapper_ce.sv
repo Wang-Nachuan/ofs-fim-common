@@ -37,6 +37,7 @@ module pcie_wrapper_ce#(
    parameter            PCIE_LANES                     = 16                  ,
    parameter            MM_ADDR_WIDTH                  = 19                  ,
    parameter            MM_DATA_WIDTH                  = 64                  ,
+   parameter            PCIE_NUM_LINKS                 = 1                   ,
    parameter bit [11:0] FEAT_ID                        = 12'h0               ,
    parameter bit [3:0]  FEAT_VER                       = 4'h0                ,
    parameter bit [23:0] NEXT_DFH_OFFSET                = 24'h1000            ,
@@ -66,11 +67,11 @@ module pcie_wrapper_ce#(
    output logic [PCIE_LANES-1:0]             pin_pcie_tx_n                     ,
 
    // AXI4-lite CSR interface
-   ofs_fim_axi_lite_if.slave                 csr_lite_if                       ,
+   ofs_fim_axi_lite_if.slave                 csr_lite_if[PCIE_NUM_LINKS-1:0]   ,
 
    // FLR 
-   output t_axis_pcie_flr                    axi_st_flr_req                    ,
-   input  t_axis_pcie_flr                    axi_st_flr_rsp                    ,
+   output t_axis_pcie_flr                    axi_st_flr_req[PCIE_NUM_LINKS-1:0],
+   input  t_axis_pcie_flr                    axi_st_flr_rsp[PCIE_NUM_LINKS-1:0],
    ofs_fim_ace_lite_if.master                ace_lite_tx_if,
    ofs_fim_axi_mmio_if.slave                 axi4mm_rx_if
 );
@@ -82,41 +83,13 @@ module pcie_wrapper_ce#(
 //logic pcie_reset_status;
 
 // AXIS PCIe Subsystem Interface
-pcie_ss_axis_if pcie_ss_axis_rxreq_if(.clk (fim_clk), .rst_n(fim_rst_n));
-pcie_ss_axis_if pcie_ss_axis_txreq_if(.clk (fim_clk), .rst_n(fim_rst_n));
-pcie_ss_axis_if pcie_ss_axis_rx_if(.clk (fim_clk), .rst_n(fim_rst_n));
-pcie_ss_axis_if pcie_ss_axis_tx_if(.clk (fim_clk), .rst_n(fim_rst_n));
+pcie_ss_axis_if pcie_ss_axis_rxreq_if[1](.clk (fim_clk), .rst_n(fim_rst_n));
+pcie_ss_axis_if pcie_ss_axis_txreq_if[1](.clk (fim_clk), .rst_n(fim_rst_n));
+pcie_ss_axis_if pcie_ss_axis_rx_if[1](.clk (fim_clk), .rst_n(fim_rst_n));
+pcie_ss_axis_if pcie_ss_axis_tx_if[1](.clk (fim_clk), .rst_n(fim_rst_n));
 
-pcie_ss_axis_if  axis_tx_if(.clk (fim_clk), .rst_n(fim_rst_n));
-pcie_ss_axis_if  axis_rx_if(.clk (fim_clk), .rst_n(fim_rst_n));
-ofs_fim_axi_lite_if ss_init_lite_if();
+assign pcie_ss_axis_txreq_if[0].tvalid = 'b10;
 
-assign ss_init_lite_if.wready=1'b0;
-assign ss_init_lite_if.awready=1'b0;
-assign ss_init_lite_if.arready=1'b0;
-
-
-assign ss_init_lite_if.bvalid=1'b0;
-assign ss_init_lite_if.rvalid=1'b0;
-
-assign ss_init_lite_if.rresp='h0;
-assign ss_init_lite_if.rdata='h0;
-assign ss_init_lite_if.bresp='h0;
-
-assign pcie_ss_axis_tx_if.tdata        = axis_tx_if.tdata;
-assign pcie_ss_axis_tx_if.tvalid       = axis_tx_if.tvalid;
-assign pcie_ss_axis_tx_if.tkeep        = axis_tx_if.tkeep;       
-assign pcie_ss_axis_tx_if.tuser_vendor = axis_tx_if.tuser_vendor;      
-assign pcie_ss_axis_tx_if.tlast        = axis_tx_if.tlast;
-assign axis_tx_if.tready               = pcie_ss_axis_tx_if.tready;
-
-assign axis_rx_if.tdata          = pcie_ss_axis_rx_if.tdata;
-assign axis_rx_if.tvalid         = pcie_ss_axis_rx_if.tvalid;
-assign axis_rx_if.tkeep          = pcie_ss_axis_rx_if.tkeep;
-assign axis_rx_if.tuser_vendor   = pcie_ss_axis_rx_if.tuser_vendor;
-assign axis_rx_if.tlast          = pcie_ss_axis_rx_if.tlast;
-assign pcie_ss_axis_rx_if.tready = axis_rx_if.tready;
-assign tb_top.DUT.pcie_ss_axis_txreq_if.tvalid = 'b10;
 //-----------------------------------------------------------------------------
 // Modules instances
 //-----------------------------------------------------------------------------
@@ -138,11 +111,11 @@ assign tb_top.DUT.pcie_ss_axis_txreq_if.tvalid = 'b10;
    .csr_clk                      (csr_clk                       ),
    .csr_rst_n                    (csr_rst_n                     ),
    .ninit_done                   (ninit_done                    ),
-   .p0_subsystem_cold_rst_n      (p0_subsystem_cold_rst_n       ),     
-   .p0_subsystem_warm_rst_n      (p0_subsystem_warm_rst_n       ),
-   .p0_subsystem_cold_rst_ack_n  (p0_subsystem_cold_rst_ack_n   ),
-   .p0_subsystem_warm_rst_ack_n  (p0_subsystem_warm_rst_ack_n   ),
    .reset_status                 (reset_status                  ),   
+   .subsystem_cold_rst_n         (p0_subsystem_cold_rst_n       ),     
+   .subsystem_warm_rst_n         (p0_subsystem_warm_rst_n       ),
+   .subsystem_cold_rst_ack_n     (p0_subsystem_cold_rst_ack_n   ),
+   .subsystem_warm_rst_ack_n     (p0_subsystem_warm_rst_ack_n   ),
    .pin_pcie_refclk0_p           (pin_pcie_refclk0_p            ),
    .pin_pcie_refclk1_p           (pin_pcie_refclk1_p            ),
    .pin_pcie_in_perst_n          (pin_pcie_in_perst_n           ),   // connected to HIP
@@ -150,10 +123,10 @@ assign tb_top.DUT.pcie_ss_axis_txreq_if.tvalid = 'b10;
    .pin_pcie_rx_n                (pin_pcie_rx_n                 ),
    .pin_pcie_tx_p                (pin_pcie_tx_p                 ),                
    .pin_pcie_tx_n                (pin_pcie_tx_n                 ),                
-   .axi_st_rxreq_if              (pcie_ss_axis_rxreq_if.source  ),
-   .axi_st_txreq_if              (pcie_ss_axis_txreq_if.sink    ),
-   .axi_st_rx_if                 (pcie_ss_axis_rx_if.source     ),
-   .axi_st_tx_if                 (pcie_ss_axis_tx_if.sink       ), 
+   .axi_st_rxreq_if              (pcie_ss_axis_rxreq_if         ),
+   .axi_st_txreq_if              (pcie_ss_axis_txreq_if         ),
+   .axi_st_rx_if                 (pcie_ss_axis_rx_if            ),
+   .axi_st_tx_if                 (pcie_ss_axis_tx_if            ), 
    .csr_lite_if                  (csr_lite_if                   ),
    .axi_st_flr_req               (axi_st_flr_req                ),
    .axi_st_flr_rsp               (axi_st_flr_rsp                )
@@ -179,13 +152,13 @@ ce_top #(
     .CE_HST2HPS_FIFO_DEPTH  (8        )      
  
 ) ce_top_inst (
-  .clk            (fim_clk                    ),
-  .rst            (~fim_rst_n                 ),
-  .axis_rx_if     (axis_rx_if.sink            ),    // Mux to AFU   PF4
-  .axis_rxreq_if  (pcie_ss_axis_rxreq_if.sink ),
-  .axis_tx_if     (axis_tx_if.source          ),    // AFU to MUX   PF4
-  .ace_lite_tx_if (ace_lite_tx_if             ),
-  .axi4mm_rx_if   (axi4mm_rx_if               ) 
+  .clk            (fim_clk                  ),
+  .rst            (~fim_rst_n               ),
+  .axis_rx_if     (pcie_ss_axis_rx_if[0]    ),    // Mux to AFU   PF4
+  .axis_rxreq_if  (pcie_ss_axis_rxreq_if[0] ),
+  .axis_tx_if     (pcie_ss_axis_tx_if[0]    ),    // AFU to MUX   PF4
+  .ace_lite_tx_if (ace_lite_tx_if           ),
+  .axi4mm_rx_if   (axi4mm_rx_if             ) 
 );
 
 
