@@ -186,10 +186,13 @@ module ofs_fim_pcie_ss_cpl_metering
     logic rd_req_grant[2];
 
     always_ff @(posedge clk) begin
-        // Completion slot granted? Clear the is_rd flag even if the request
-        // can't be forwarded yet since the buffer credit has been allocated.
-        if (rd_req_grant[0])
-            rd_req_valid[0] <= 1'b0;
+        // Read request pending if a new one arrives or an
+        // old one remains unprocessed.
+        rd_req_valid[0] <= (axi_st_txreq_in.tready &&
+                            axi_st_txreq_in.tvalid &&
+                            txreq_tuser[0].hvalid &&
+                            pcie_ss_hdr_pkg::func_is_mrd_req(txreq_hdr.fmt_type)) ||
+                           (rd_req_valid[0] && !rd_req_grant[0]);
 
         if (axi_st_txreq_in.tready) begin
             axi_txreq.tvalid <= axi_st_txreq_in.tvalid;
@@ -198,9 +201,6 @@ module ofs_fim_pcie_ss_cpl_metering
             axi_txreq.tuser_vendor <= axi_st_txreq_in.tuser_vendor;
             axi_txreq.tlast <= axi_st_txreq_in.tlast;
 
-            rd_req_valid[0] <= axi_st_txreq_in.tvalid &&
-                               txreq_tuser[0].hvalid &&
-                               pcie_ss_hdr_pkg::func_is_mrd_req(txreq_hdr.fmt_type);
             rd_req_tag[0] <= { txreq_hdr.tag_h, txreq_hdr.tag_m, txreq_hdr.tag_l };
             rd_req_hdr_entries[0] <= num_hdr_entries(txreq_hdr);
             rd_req_data_entries[0] <= num_data_entries(txreq_hdr);
@@ -213,10 +213,13 @@ module ofs_fim_pcie_ss_cpl_metering
     end
 
     always_ff @(posedge clk) begin
-        // Completion slot granted? Clear the is_rd flag even if the request
-        // can't be forwarded yet since the buffer credit has been allocated.
-        if (rd_req_grant[1])
-            rd_req_valid[1] <= 1'b0;
+        // Similar logic to txreq above for requests with completions on tx.
+        rd_req_valid[1] <= (axi_st_tx_in.tready &&
+                            axi_st_tx_in.tvalid &&
+                            tx_tuser[0].hvalid &&
+                            (pcie_ss_hdr_pkg::func_is_mrd_req(tx_hdr.fmt_type) ||
+                             pcie_ss_hdr_pkg::func_is_atomic_req(tx_hdr.fmt_type))) ||
+                           (rd_req_valid[1] && !rd_req_grant[1]);
 
         if (axi_st_tx_in.tready) begin
             axi_tx.tvalid <= axi_st_tx_in.tvalid;
@@ -225,10 +228,6 @@ module ofs_fim_pcie_ss_cpl_metering
             axi_tx.tuser_vendor <= axi_st_tx_in.tuser_vendor;
             axi_tx.tlast <= axi_st_tx_in.tlast;
 
-            rd_req_valid[1] <= axi_st_tx_in.tvalid &&
-                               tx_tuser[0].hvalid &&
-                               (pcie_ss_hdr_pkg::func_is_mrd_req(tx_hdr.fmt_type) ||
-                                pcie_ss_hdr_pkg::func_is_atomic_req(tx_hdr.fmt_type));
             rd_req_tag[1] <= { tx_hdr.tag_h, tx_hdr.tag_m, tx_hdr.tag_l };
             rd_req_hdr_entries[1] <= num_hdr_entries(tx_hdr);
             rd_req_data_entries[1] <= num_data_entries(tx_hdr);
