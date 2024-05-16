@@ -22,6 +22,7 @@ module ce_csr #(
    parameter            CSR_DATA_WIDTH         = 64                       , 
    parameter            CE_AXI4MM_DATA_WIDTH   = 32                       , 
    parameter            CE_BUS_STRB_WIDTH      = CE_AXI4MM_DATA_WIDTH >>3 ,
+   parameter            PCIE_DM_ENCODING       = 0                        ,
    parameter            REQ_ID_WIDTH           = 16                       , 
    parameter            TAG_WIDTH              = 10
    )(
@@ -180,6 +181,9 @@ reg [CSR_DATA_WIDTH-1:0      ]  csr_host2hps_img_xfr_st;
 reg [CE_AXI4MM_DATA_WIDTH-1:0]  csr_hps2host_rsp       ;
 reg [CSR_DATA_WIDTH-1:0      ]  csr_dma_st             ;
 
+// Set when the source address isn't aligned to the host read request size.
+logic unaligned_imgsrc_addr;
+
 //0x130 CSR_CE2HOST_STATUS
 always@(posedge clk)
 begin
@@ -196,7 +200,7 @@ begin
 
          if (csr_desc_mrd_start[0]==1'b1)begin
             csr_dma_st[1:0  ]    <= 2'd1                                                                                            ;  //DMA in progress
-            csr_dma_st[12:11]    <= ( (|csr_desc_imgdst_addr[63:30] == 1'b1) ) ? 2'b10:2'b01; //checking if host programmed
+            csr_dma_st[12:11]    <= ( (|csr_desc_imgdst_addr[63:30] == 1'b1) || unaligned_imgsrc_addr ) ? 2'b10:2'b01; //checking if host programmed
                                                                                                                                        //valid host DDR & HPS DDR addr
                                                                                                                                        //HPS  DDR= 1GB          
          end
@@ -336,6 +340,12 @@ begin
                                                 end
          endcase
       end
+   end
+
+   if (PCIE_DM_ENCODING == 0) begin
+      // PU encoding with no reorder buffer. Keep the PCIe read request
+      // size at the RCB to avoid reordering problems.
+      csr_data_req_limit <= '0;
    end
 end
 
@@ -599,6 +609,15 @@ begin
    end
 end
 
+// Confirm that the source address is aligned to the request size.
+always_comb begin
+   case(csr_data_req_limit[1:0])
+      2'b00: unaligned_imgsrc_addr = |csr_desc_imgsrc_addr[5:0];
+      2'b01: unaligned_imgsrc_addr = |csr_desc_imgsrc_addr[6:0];
+      2'b10: unaligned_imgsrc_addr = |csr_desc_imgsrc_addr[8:0];
+      2'b11: unaligned_imgsrc_addr = |csr_desc_imgsrc_addr[9:0];
+   endcase
+end
 
 
 assign csr_axisttx_hostaddr    = csr_desc_imgsrc_addr                                   ;  

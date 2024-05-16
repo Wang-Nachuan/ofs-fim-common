@@ -22,6 +22,7 @@ module ce_axist_tx #(
    parameter CSR_ADDR_WIDTH          = 16                   , 
    parameter CSR_DATA_WIDTH          = 64                   , 
    parameter CE_BUS_USER_WIDTH       = 10                   , 
+   parameter PCIE_DM_ENCODING        = 0                    ,
    parameter TAG_WIDTH               = 10                   , 
    parameter REQ_ID_WIDTH            = 16                   , 
    parameter CE_MMIO_RSP_FIFO_THRHLD = 4                    ,
@@ -76,6 +77,10 @@ module ce_axist_tx #(
 //------------------------------------------------------------------
 
 PCIe_ReqHdr_t hostrdreqhdr  ;//host Read request Format
+PCIe_PUReqHdr_t pu_hostrdreqhdr  ;//host Read request Format
+PCIe_ReqHdr_t   dm_hostrdreqhdr  ;//host Read request Format
+assign hostrdreqhdr = PCIE_DM_ENCODING ? dm_hostrdreqhdr : pu_hostrdreqhdr;
+
 PCIe_PUCplHdr_t hostcsrrdhdr;//CSR Read data Completion Format
 
 
@@ -583,7 +588,8 @@ always_ff@(posedge clk) begin
                ce2mux_tx_tvalid    <= 1'b1                                ;
                ce2mux_tx_tkeep     <={32'h0, 32'hFFFF_FFFF}               ;
                ce2mux_tx_tlast     <= 1'b1                                ;
-               ce2mux_tx_tuser     <= { {CE_BUS_USER_WIDTH-1{1'b0}}, 1'b1}; //host DDR read request is in data mover mode only 
+               ce2mux_tx_tuser     <= { {CE_BUS_USER_WIDTH-1{1'b0}},
+                                        (PCIE_DM_ENCODING ? 1'b1 : 1'b0) };
                mmio_rsp_fifo_ren   <= 1'b0                                ;  
                curr_req_count      <= curr_req_count                      ;
                next_addr           <= next_addr                           ;
@@ -714,43 +720,66 @@ end
 logic [2:0]  pf_id;
 logic [10:0] vf_id;
 always_comb begin
-         hostrdreqhdr = 256'h0;
-         hostcsrrdhdr = 256'h0 ;
-         pf_id        = CE_PF_ID;
-         vf_id        = CE_VF_ID;
-   if( (p_state!= ST_TX_CSR_CPLD_DONE) ||
-      (p_state!= ST_TX_RD_REQ_DONE) ) begin 
-      //-----Transaction Layer Packet for host Read request - data Mover Mode                 
-      hostrdreqhdr.fmt_type       = DM_RD                                      ;  
-      {hostrdreqhdr.tag_h,
-      hostrdreqhdr.tag_m,
-      hostrdreqhdr.tag_l}        = 10'd0 ;//next_tid                            ;
-      {hostrdreqhdr.length_h,
-      hostrdreqhdr.length_m,
-      hostrdreqhdr.length_l}     = next_size                                  ;  
-      hostrdreqhdr.pf_num         = CE_PF_ID                                   ;      
-      hostrdreqhdr.vf_num         = CE_VF_ID                                   ;     
-      hostrdreqhdr.vf_active      = CE_VF_ACTIVE                               ;  
-      {hostrdreqhdr.host_addr_h,
-      hostrdreqhdr.host_addr_m,
-      hostrdreqhdr.host_addr_l}  = next_addr                                  ;
-      //-----Transaction Layer Packet for CSR Read data - Power User Mode                      
-      hostcsrrdhdr.fmt_type       = DM_CPL                                     ;      
-      hostcsrrdhdr.cpl_status     = 3'd0                                       ; //Completion status
-      hostcsrrdhdr.attr           = csr_axisttx_rspattr                        ; // csr attribute                                     
-      hostcsrrdhdr.TC             = csr_axisttx_tc                             ; // csr traffic class                                    
-      {hostcsrrdhdr.tag_h,          
-      hostcsrrdhdr.tag_m,          
-      hostcsrrdhdr.tag_l}        = csr_axisttx_rsptag                         ;
-      hostcsrrdhdr.length         = (csr_axisttx_length == 0) ? 10'd1 : 10'd2  ; //DWs 
-      hostcsrrdhdr.req_id         = csr_axisttx_reqid                          ;
-      hostcsrrdhdr.comp_id        = {vf_id, CE_VF_ACTIVE[0], pf_id}            ; 
-      hostcsrrdhdr.byte_count     = (csr_axisttx_length == 0) ? 12'd4 : 12'd8  ; 
-      hostcsrrdhdr.pf_num         = CE_PF_ID                                   ;  //3'h4     
-      hostcsrrdhdr.vf_num         = CE_VF_ID                                   ;  //11'h0   
-      hostcsrrdhdr.vf_active      = CE_VF_ACTIVE                               ;  //1'h0
-      hostcsrrdhdr.low_addr       = {csr_axisttx_rspaddr[6:0]}; 
+   pf_id        = CE_PF_ID;
+   vf_id        = CE_VF_ID;
+
+   //-----Transaction Layer Packet for host Read request - data Mover Mode
+   dm_hostrdreqhdr = 256'h0;
+   dm_hostrdreqhdr.fmt_type       = DM_RD                                      ;  
+   {dm_hostrdreqhdr.tag_h,
+   dm_hostrdreqhdr.tag_m,
+   dm_hostrdreqhdr.tag_l}        = 10'd0 ;//next_tid                            ;
+   {dm_hostrdreqhdr.length_h,
+   dm_hostrdreqhdr.length_m,
+   dm_hostrdreqhdr.length_l}     = next_size                                  ;  
+   dm_hostrdreqhdr.pf_num         = CE_PF_ID                                   ;      
+   dm_hostrdreqhdr.vf_num         = CE_VF_ID                                   ;     
+   dm_hostrdreqhdr.vf_active      = CE_VF_ACTIVE                               ;  
+   {dm_hostrdreqhdr.host_addr_h,
+   dm_hostrdreqhdr.host_addr_m,
+   dm_hostrdreqhdr.host_addr_l}  = next_addr                                  ;
+
+   //-----Transaction Layer Packet for host Read request - PU encoded
+   // This is the same request as dm_hostrdreqhdr above. Only one will
+   // be used, depending on PCIE_DM_ENCODING.
+   pu_hostrdreqhdr = '0;
+   pu_hostrdreqhdr.length = next_size[11:2];
+   pu_hostrdreqhdr.req_id = { vf_id, 1'(CE_VF_ACTIVE), pf_id };
+   pu_hostrdreqhdr.pf_num = CE_PF_ID;
+   pu_hostrdreqhdr.vf_num = CE_VF_ID;
+   pu_hostrdreqhdr.vf_active = CE_VF_ACTIVE;
+   pu_hostrdreqhdr.last_dw_be = 4'hf;
+   pu_hostrdreqhdr.first_dw_be = 4'hf;
+   { pu_hostrdreqhdr.tag_h, pu_hostrdreqhdr.tag_m, pu_hostrdreqhdr.tag_l } = '0;
+   if (|(next_addr[63:32]))
+   begin
+       pu_hostrdreqhdr.fmt_type = DM_RD;
+       pu_hostrdreqhdr.host_addr_h = next_addr[63:32];
+       pu_hostrdreqhdr.host_addr_l = next_addr[31:2];
    end
+   else
+   begin
+       pu_hostrdreqhdr.fmt_type = M_RD;
+       pu_hostrdreqhdr.host_addr_h = next_addr[31:0];
+   end
+
+   //-----Transaction Layer Packet for CSR Read data - Power User Mode                      
+   hostcsrrdhdr = 256'h0 ;
+   hostcsrrdhdr.fmt_type       = DM_CPL                                     ;      
+   hostcsrrdhdr.cpl_status     = 3'd0                                       ; //Completion status
+   hostcsrrdhdr.attr           = csr_axisttx_rspattr                        ; // csr attribute                                     
+   hostcsrrdhdr.TC             = csr_axisttx_tc                             ; // csr traffic class                                    
+   {hostcsrrdhdr.tag_h,          
+   hostcsrrdhdr.tag_m,          
+   hostcsrrdhdr.tag_l}        = csr_axisttx_rsptag                         ;
+   hostcsrrdhdr.length         = (csr_axisttx_length == 0) ? 10'd1 : 10'd2  ; //DWs 
+   hostcsrrdhdr.req_id         = csr_axisttx_reqid                          ;
+   hostcsrrdhdr.comp_id        = {vf_id, CE_VF_ACTIVE[0], pf_id}            ; 
+   hostcsrrdhdr.byte_count     = (csr_axisttx_length == 0) ? 12'd4 : 12'd8  ; 
+   hostcsrrdhdr.pf_num         = CE_PF_ID                                   ;  //3'h4     
+   hostcsrrdhdr.vf_num         = CE_VF_ID                                   ;  //11'h0   
+   hostcsrrdhdr.vf_active      = CE_VF_ACTIVE                               ;  //1'h0
+   hostcsrrdhdr.low_addr       = {csr_axisttx_rspaddr[6:0]}; 
 end
 //------------------------------------------------------------------
 

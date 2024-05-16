@@ -27,8 +27,8 @@ module ce_top #(
    parameter            CE_HST2HPS_FIFO_DEPTH          = 5                   , //Completion FIFO depth; Axi Stream to Ace Lite conversion FIFO
    parameter            CE_PF_ID                       = 4                   , //PF ID of Cpld Packet to host                                                       
    parameter            CE_VF_ID                       = 0                   , //VF ID of Cpld Packet to host
-   parameter            CE_VF_ACTIVE                   = 0                    //VF_ACTIVE of Cpld Packet to host
-                                                                                                                  
+   parameter            CE_VF_ACTIVE                   = 0                   , //VF_ACTIVE of Cpld Packet to host
+   parameter            PCIE_DM_ENCODING               = 0                     //PU vs. DM encoding
 )( 
    // global signals
    input   logic                           clk                      ,
@@ -171,6 +171,7 @@ ce_csr #(
          .CE_BUS_STRB_WIDTH     (CE_AXI4MM_DATA_WIDTH>>3), 
          .CSR_ADDR_WIDTH        (CSR_ADDR_WIDTH         ),
          .CSR_DATA_WIDTH        (CSR_DATA_WIDTH         ),
+         .PCIE_DM_ENCODING      (PCIE_DM_ENCODING       ),
          .TAG_WIDTH             (TAG_WIDTH              ),
          .REQ_ID_WIDTH          (REQ_ID_WIDTH           ))
 
@@ -236,6 +237,7 @@ ce_axist_tx
    .CE_VF_ACTIVE                (CE_VF_ACTIVE           ),
    .CSR_ADDR_WIDTH              (CSR_ADDR_WIDTH         ),
    .CSR_DATA_WIDTH              (CSR_DATA_WIDTH         ),
+   .PCIE_DM_ENCODING            (PCIE_DM_ENCODING       ),
    .TAG_WIDTH                   (TAG_WIDTH              ),
    .REQ_ID_WIDTH                (REQ_ID_WIDTH           ))
 
@@ -283,6 +285,7 @@ ce_axist_rx
    .CE_BUS_STRB_WIDTH        (CE_BUS_STRB_WIDTH ),
    .CSR_ADDR_WIDTH           (CSR_ADDR_WIDTH    ),
    .CSR_DATA_WIDTH           (CSR_DATA_WIDTH    ),
+   .PCIE_DM_ENCODING         (PCIE_DM_ENCODING  ),
    .TAG_WIDTH                (TAG_WIDTH         ),
    .REQ_ID_WIDTH             (REQ_ID_WIDTH      ))
 ce_axist_rx_inst(

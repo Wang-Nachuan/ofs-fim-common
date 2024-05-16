@@ -9,6 +9,8 @@
 //-----------------------------------------------------------------------------
 
 `include "fpga_defines.vh"
+`include "ofs_ip_cfg_db.vh"
+
 import ofs_fim_if_pkg::*;
 import ofs_fim_pcie_pkg::*;
 import ofs_csr_pkg::*;
@@ -76,6 +78,12 @@ module pcie_wrapper_ce#(
    ofs_fim_axi_mmio_if.slave                 axi4mm_rx_if
 );
 
+`ifdef OFS_FIM_IP_CFG_PCIE_SS_FUNC_MODE_IS_DM
+  localparam PCIE_DM_ENCODING = 1;
+`else
+  localparam PCIE_DM_ENCODING = 0;
+`endif
+
 //-----------------------------------------------------------------------------
 // Internal signals
 //-----------------------------------------------------------------------------
@@ -136,6 +144,7 @@ assign pcie_ss_axis_txreq_if[0].tvalid = 'b10;
 // Copy Engine
 //*******************************
 ce_top #(
+    .PCIE_DM_ENCODING       (PCIE_DM_ENCODING),
     .CE_PF_ID               (CE_PF_ID    ),
     .CE_VF_ID               (CE_VF_ID    ),
     .CE_VF_ACTIVE           (CE_VF_ACTIVE),

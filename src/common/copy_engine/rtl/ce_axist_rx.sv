@@ -22,6 +22,7 @@ module ce_axist_rx #(
    parameter CSR_ADDR_WIDTH             = 16, 
    parameter CSR_DATA_WIDTH             = 64, 
    parameter CE_BUS_USER_WIDTH          = 10, 
+   parameter PCIE_DM_ENCODING           = 0,
    parameter TAG_WIDTH                  = 10, 
    parameter REQ_ID_WIDTH               = 16, 
    parameter CE_BUS_STRB_WIDTH          = CE_BUS_DATA_WIDTH>>3
@@ -63,8 +64,9 @@ pcie_ss_axis_if #(
 ) mux2ce_axis_rx_if_q (.clk(clk), .rst_n(~ce_corereset));
 
 //Header Package Signals
-PCIe_PUReqHdr_t csrhdr, csrhdr_q; //Power user mode Request header Format
 PCIe_CplHdr_t   cplhdr;           //Completion header Format
+wire cplhdr_is_cpld = pcie_ss_hdr_pkg::func_is_completion(cplhdr.fmt_type) &&
+                      pcie_ss_hdr_pkg::func_has_data(cplhdr.fmt_type);
 
 //Internal signals
 logic [CSR_DATA_WIDTH-1:0] csrwrdata, csrwrdata_q;
@@ -169,14 +171,14 @@ always_comb begin
    end else begin
       case(pstate)
          AXIST_RX_IDLE :  
-                         if (detect_hdr && (cplhdr.fmt_type == DM_CPL) && csr_axistrx_mrdstart && (acelitetx_axistrx_bresp == 2'b00) && (!axistrx_axisttx_cplerr) && (!csr_axistrx_fifoerr)) begin
+                         if (detect_hdr && cplhdr_is_cpld && csr_axistrx_mrdstart && (acelitetx_axistrx_bresp == 2'b00) && (!axistrx_axisttx_cplerr) && (!csr_axistrx_fifoerr)) begin
                             nstate = AXIST_RX_CPLD_FIFO_WR;
                          end else begin 
                             nstate = AXIST_RX_IDLE;
                          end
 
          AXIST_RX_CPLD_FIFO_WR :  
-                         if((tlast_q1) && (!(detect_hdr && (cplhdr.fmt_type == DM_CPL)))) begin 
+                         if((tlast_q1) && (!(detect_hdr && cplhdr_is_cpld))) begin 
                             nstate = AXIST_RX_IDLE;
                          end else begin //Outstanding DMA Completions 
                             nstate = AXIST_RX_CPLD_FIFO_WR;
@@ -281,7 +283,7 @@ assign axistrx_cpldfifo_wen    =  ((pstate == AXIST_RX_CPLD_FIFO_WR) && (mux2ce_
 assign axistrx_cpldfifo_wrdata =  ((pstate == AXIST_RX_CPLD_FIFO_WR) && (mux2ce_axis_rx_if_q.tvalid || tlast_q1 ) && (!cpldfifo_axistrx_full)) ? {axistrx_fc,tdata_concat,tkeep_concat} : 577'd0;
 
 //---------------------------------------------------------------------------------------
-// Extraction of Final completion(FC) information from DM_CPL Header
+// Extraction of Final completion(FC) information from completion header
 // Copy Engine doesn't send outstanding read request to host         
 // Once complete data of current request is received succesfully (Final completion bit 
 // is HIGH and completion status is 3'b000) and
@@ -291,7 +293,10 @@ assign axistrx_cpldfifo_wrdata =  ((pstate == AXIST_RX_CPLD_FIFO_WR) && (mux2ce_
 // detect_hdr signal in this block detects the header packet in tdata
 //---------------------------------------------------------------------------------------
 
-assign fc_st = (detect_hdr && (cplhdr.fmt_type == DM_CPL) && (cplhdr.cpl_status == 3'b000) && csr_axistrx_mrdstart && (cplhdr.FC));
+assign fc_st = detect_hdr && cplhdr_is_cpld && (cplhdr.cpl_status == 3'b000) && csr_axistrx_mrdstart &&
+               // PU encoded requests are limited to the request completion boundary,
+               // so every PU completion must be an FC.
+               (PCIE_DM_ENCODING ? cplhdr.FC : 1'b1);
 
 always_ff @(posedge clk) 
 begin
@@ -324,7 +329,7 @@ assign axistrx_fc =  (mux2ce_axis_rx_if_q.tvalid && mux2ce_axis_rx_if_q.tlast &&
 // host sw should soft reset the copy engine
 //--------------------------------------------------------------------------
 
-assign cpl_err_hdr = (detect_hdr && (cplhdr.fmt_type == DM_CPL) && (cplhdr.cpl_status != 3'b000) && csr_axistrx_mrdstart) ? 1'b1 : 1'b0;
+assign cpl_err_hdr = (detect_hdr && cplhdr_is_cpld && (cplhdr.cpl_status != 3'b000) && csr_axistrx_mrdstart) ? 1'b1 : 1'b0;
 
 always_ff @(posedge clk) begin 
    if (ce_corereset) begin
@@ -337,7 +342,7 @@ end
 always_ff @(posedge clk) begin
    if (ce_corereset) begin
       axistrx_csr_cplstatus    <= 3'b000;   
-   end else if(csr_axistrx_mrdstart && detect_hdr && (cplhdr.fmt_type == DM_CPL)) begin
+   end else if(csr_axistrx_mrdstart && detect_hdr && cplhdr_is_cpld) begin
       axistrx_csr_cplstatus    <=  cplhdr.cpl_status;
    end
 end
