@@ -198,6 +198,19 @@ proc emit_ip_cfg {ofile_name ip_name} {
         }
     }
 
+    # Configuration extension bus enabled?
+    if { [info exists core(ceb_en_hwtcl)] && $core(ceb_en_hwtcl) } {
+        puts $of ""
+        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_HAS_CEB 1"
+        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_CEB_PF_STD_NEXT_DW [format 'h%x $core(ceb_pf_std_cap_last_ptr_hwtcl)]"
+        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_CEB_PF_EXT_NEXT_DW [format 'h%x $core(ceb_pf_ext_cap_last_ptr_hwtcl)]"
+        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_CEB_VF_STD_NEXT_DW [format 'h%x $core(ceb_vf_std_cap_last_ptr_hwtcl)]"
+        puts $of "`define OFS_FIM_IP_CFG_${ip_name}_CEB_VF_EXT_NEXT_DW [format 'h%x $core(ceb_vf_ext_cap_last_ptr_hwtcl)]"
+        puts $of ""
+    } else {
+        puts $of "// No configuration extension bus (OFS_FIM_IP_CFG_${ip_name}_HAS_CEB not set)"
+    }
+
     # Sorted completions? Meaningful only in DM mode.
     if { [info exists core(cpl_reordering_en_hwtcl)] && $core(cpl_reordering_en_hwtcl) } {
         puts $of "`define OFS_FIM_IP_CFG_${ip_name}_HAS_CPL_REORDER 1"

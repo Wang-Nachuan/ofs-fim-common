@@ -276,6 +276,12 @@ logic [PCIE_NUM_LINKS-1:0]               app_ss_lite_csr_rready;
 logic [PCIE_NUM_LINKS-1:0] [31:0]        ss_app_lite_csr_rdata;
 logic [PCIE_NUM_LINKS-1:0] [1:0]         ss_app_lite_csr_rresp;
 
+logic [PCIE_NUM_LINKS-1:0]               ss_app_st_cebreq_tvalid;
+logic [PCIE_NUM_LINKS-1:0]               app_ss_st_cebreq_tready;
+logic [PCIE_NUM_LINKS-1:0] [67:0]        ss_app_st_cebreq_tdata;
+logic [PCIE_NUM_LINKS-1:0]               app_ss_st_cebresp_tvalid;
+logic [PCIE_NUM_LINKS-1:0] [31:0]        app_ss_st_cebresp_tdata;
+
 logic [1:0]                              initiate_warmrst_req;
 logic [PCIE_NUM_LINKS-1:0]               ss_app_dlup;
 logic [PCIE_NUM_LINKS-1:0]               ss_app_serr;
@@ -484,6 +490,19 @@ for (genvar j=0; j<PCIE_NUM_LINKS; j++) begin : PCIE_LINK_CONN
     assign ss_csr_lite_if[j].rresp       = ss_app_lite_csr_rresp[j];
 
 
+    // Placeholder configuration extension bus. Always return 0 for reads.
+    assign app_ss_st_cebreq_tready[j] = 1'b1;
+    always_ff @(posedge csr_clk) begin
+        app_ss_st_cebresp_tvalid[j] <= ss_app_st_cebreq_tvalid[j] &&
+                                       (ss_app_st_cebreq_tdata[j][67:62] == 4'h0);
+
+        if (~csr_rst_n[j]) begin
+            app_ss_st_cebresp_tvalid[j] <= 1'b0;
+        end
+    end
+    assign app_ss_st_cebresp_tdata[j] = '0;
+
+
     //-------------------------------------
     // Completion timeout interface
     //-------------------------------------
@@ -548,13 +567,13 @@ end //for (genvar j=0; j<PCIE_NUM_LINKS;..
     .p0_ss_app_st_rx_tdata          (ss_app_st_rx_tdata[0]          ), \
     .p0_ss_app_st_rx_tkeep          (ss_app_st_rx_tkeep[0]          ), \
     .p0_ss_app_st_rx_tlast          (ss_app_st_rx_tlast[0]          ), \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_VENDOR                \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_VENDOR               \
     .p0_ss_app_st_rx_tuser_vendor   (ss_app_st_rx_tuser_vendor[0]   ), \
    `endif                                                              \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_HDR                   \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_HDR                  \
     .p0_ss_app_st_rx_tuser_hdr      (ss_app_st_rx_tuser_hdr[0]      ), \
    `endif                                                              \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_HVALID                \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_HVALID               \
     .p0_ss_app_st_rx_tuser_hvalid   (ss_app_st_rx_tuser_hvalid[0]   ), \
     .p0_ss_app_st_rx_tuser_last_segment(ss_app_st_rx_tuser_last_segment[0]), \
    `endif                                                              \
@@ -563,13 +582,13 @@ end //for (genvar j=0; j<PCIE_NUM_LINKS;..
     .p0_app_ss_st_tx_tdata          (app_ss_st_tx_tdata[0]          ), \
     .p0_app_ss_st_tx_tkeep          (app_ss_st_tx_tkeep[0]          ), \
     .p0_app_ss_st_tx_tlast          (app_ss_st_tx_tlast[0]          ), \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_VENDOR                \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_VENDOR               \
     .p0_app_ss_st_tx_tuser_vendor   (app_ss_st_tx_tuser_vendor[0]   ), \
    `endif                                                              \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_HDR                   \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_HDR                  \
     .p0_app_ss_st_tx_tuser_hdr      (app_ss_st_tx_tuser_hdr[0]      ), \
    `endif                                                              \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_HVALID                \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_HVALID               \
     .p0_app_ss_st_tx_tuser_hvalid   (app_ss_st_tx_tuser_hvalid[0]   ), \
     .p0_app_ss_st_tx_tuser_last_segment(app_ss_st_tx_tuser_last_segment[0]), \
    `endif                                                              \
@@ -604,6 +623,13 @@ end //for (genvar j=0; j<PCIE_NUM_LINKS;..
     .p0_ss_app_lite_csr_rdata       (ss_app_lite_csr_rdata[0]       ), \
     .p0_ss_app_lite_csr_rresp       (ss_app_lite_csr_rresp[0]       ), \
     .p0_ss_app_dlup                 (ss_app_dlup[0]                 ), \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_CEB                           \
+    .p0_ss_app_st_cebreq_tvalid     (ss_app_st_cebreq_tvalid[0]     ), \
+    .p0_app_ss_st_cebreq_tready     (app_ss_st_cebreq_tready[0]     ), \
+    .p0_ss_app_st_cebreq_tdata      (ss_app_st_cebreq_tdata[0]      ), \
+    .p0_app_ss_st_cebresp_tvalid    (app_ss_st_cebresp_tvalid[0]    ), \
+    .p0_app_ss_st_cebresp_tdata     (app_ss_st_cebresp_tdata[0]     ), \
+   `endif                                                              \
                                                                        \
  `ifdef OFS_FIM_IP_CFG_``SS_NAME``_NUM_PHYS_LINKS_IS_2                 \
   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_EN_LINK_1                          \
@@ -632,13 +658,13 @@ end //for (genvar j=0; j<PCIE_NUM_LINKS;..
     .p1_ss_app_st_rx_tdata          (ss_app_st_rx_tdata[1]          ), \
     .p1_ss_app_st_rx_tkeep          (ss_app_st_rx_tkeep[1]          ), \
     .p1_ss_app_st_rx_tlast          (ss_app_st_rx_tlast[1]          ), \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_VENDOR                \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_VENDOR               \
     .p1_ss_app_st_rx_tuser_vendor   (ss_app_st_rx_tuser_vendor[1]   ), \
    `endif                                                              \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_HDR                   \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_HDR                  \
     .p1_ss_app_st_rx_tuser_hdr      (ss_app_st_rx_tuser_hdr[1]      ), \
    `endif                                                              \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_HVALID                \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_HVALID               \
     .p1_ss_app_st_rx_tuser_hvalid   (ss_app_st_rx_tuser_hvalid[1]   ), \
     .p1_ss_app_st_rx_tuser_last_segment(ss_app_st_rx_tuser_last_segment[1]), \
    `endif                                                              \
@@ -647,13 +673,13 @@ end //for (genvar j=0; j<PCIE_NUM_LINKS;..
     .p1_app_ss_st_tx_tdata          (app_ss_st_tx_tdata[1]          ), \
     .p1_app_ss_st_tx_tkeep          (app_ss_st_tx_tkeep[1]          ), \
     .p1_app_ss_st_tx_tlast          (app_ss_st_tx_tlast[1]          ), \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_VENDOR                \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_VENDOR               \
     .p1_app_ss_st_tx_tuser_vendor   (app_ss_st_tx_tuser_vendor[1]   ), \
    `endif                                                              \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_HDR                   \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_HDR                  \
     .p1_app_ss_st_tx_tuser_hdr      (app_ss_st_tx_tuser_hdr[1]      ), \
    `endif                                                              \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_HVALID                \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_HVALID               \
     .p1_app_ss_st_tx_tuser_hvalid   (app_ss_st_tx_tuser_hvalid[1]   ), \
     .p1_app_ss_st_tx_tuser_last_segment(app_ss_st_tx_tuser_last_segment[1]), \
    `endif                                                              \
@@ -688,6 +714,13 @@ end //for (genvar j=0; j<PCIE_NUM_LINKS;..
     .p1_ss_app_lite_csr_rdata       (ss_app_lite_csr_rdata[1]       ), \
     .p1_ss_app_lite_csr_rresp       (ss_app_lite_csr_rresp[1]       ), \
     .p1_ss_app_dlup                 (ss_app_dlup[1]                 ), \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_CEB                           \
+    .p1_ss_app_st_cebreq_tvalid     (ss_app_st_cebreq_tvalid[1]     ), \
+    .p1_app_ss_st_cebreq_tready     (app_ss_st_cebreq_tready[1]     ), \
+    .p1_ss_app_st_cebreq_tdata      (ss_app_st_cebreq_tdata[1]      ), \
+    .p1_app_ss_st_cebresp_tvalid    (app_ss_st_cebresp_tvalid[1]    ), \
+    .p1_app_ss_st_cebresp_tdata     (app_ss_st_cebresp_tdata[1]     ), \
+   `endif                                                              \
                                                                        \
   `else /* !`ifdef OFS_FIM_IP_CFG_``SS_NAME``_EN_LINK_1 */             \
                                                                        \
@@ -715,13 +748,13 @@ end //for (genvar j=0; j<PCIE_NUM_LINKS;..
     .p1_ss_app_st_rx_tdata          (                               ), \
     .p1_ss_app_st_rx_tkeep          (                               ), \
     .p1_ss_app_st_rx_tlast          (                               ), \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_VENDOR                \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_VENDOR               \
     .p1_ss_app_st_rx_tuser_vendor   (                               ), \
    `endif                                                              \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_HDR                   \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_HDR                  \
     .p1_ss_app_st_rx_tuser_hdr      (                               ), \
    `endif                                                              \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_HVALID                \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_RX_TUSER_HVALID               \
     .p1_ss_app_st_rx_tuser_hvalid   (                               ), \
     .p1_ss_app_st_rx_tuser_last_segment(                            ), \
    `endif                                                              \
@@ -730,13 +763,13 @@ end //for (genvar j=0; j<PCIE_NUM_LINKS;..
     .p1_app_ss_st_tx_tdata          ('0                             ), \
     .p1_app_ss_st_tx_tkeep          ('0                             ), \
     .p1_app_ss_st_tx_tlast          ('0                             ), \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_VENDOR                \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_VENDOR               \
     .p1_app_ss_st_tx_tuser_vendor   ('0                             ), \
    `endif                                                              \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_HDR                   \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_HDR                  \
     .p1_app_ss_st_tx_tuser_hdr      ('0                             ), \
    `endif                                                              \
-   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_HVALID                \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_TX_TUSER_HVALID               \
     .p1_app_ss_st_tx_tuser_hvalid   ('0                             ), \
     .p1_app_ss_st_tx_tuser_last_segment('0                          ), \
    `endif                                                              \
@@ -767,6 +800,14 @@ end //for (genvar j=0; j<PCIE_NUM_LINKS;..
     .p1_ss_app_lite_csr_rdata       (                               ), \
     .p1_ss_app_lite_csr_rresp       (                               ), \
     .p1_ss_app_dlup                 (                               ), \
+   `ifdef OFS_FIM_IP_CFG_``SS_NAME``_HAS_CEB                           \
+    .p1_ss_app_st_cebreq_tvalid     (ss_app_st_cebreq_tvalid[1]     ), \
+    .p1_app_ss_st_cebreq_tready     (app_ss_st_cebreq_tready[1]     ), \
+    .p1_ss_app_st_cebreq_tdata      (ss_app_st_cebreq_tdata[1]      ), \
+    .p1_app_ss_st_cebresp_tvalid    (app_ss_st_cebresp_tvalid[1]    ), \
+    .p1_app_ss_st_cebresp_tdata     (app_ss_st_cebresp_tdata[1]     ), \
+   `endif                                                              \
+                                                                       \
   `endif /* !`ifdef OFS_FIM_IP_CFG_``SS_NAME``_EN_LINK_1 */            \
  `endif /* `ifdef OFS_FIM_IP_CFG_``SS_NAME``_NUM_PHYS_LINKS_IS_2 */    \
                                                                        \
@@ -844,6 +885,10 @@ generate if (SOC_ATTACH == 0) begin : host_pcie
    `ifndef OFS_FIM_IP_CFG_PCIE_SS_FLRCMPL_HAS_TREADY
        assign ss_app_st_flrcmpl_tready = {PCIE_NUM_LINKS{1'b1}};
    `endif
+
+   `ifndef OFS_FIM_IP_CFG_PCIE_SS_HAS_CEB
+       assign ss_app_st_cebreq_tvalid = {PCIE_NUM_LINKS{1'b0}};
+   `endif
 end
 else begin : soc_pcie
     soc_pcie_ss pcie_ss(
@@ -852,6 +897,10 @@ else begin : soc_pcie
 
    `ifndef OFS_FIM_IP_CFG_SOC_PCIE_SS_FLRCMPL_HAS_TREADY
        assign ss_app_st_flrcmpl_tready = {PCIE_NUM_LINKS{1'b1}};
+   `endif
+
+   `ifndef OFS_FIM_IP_CFG_SOC_PCIE_SS_HAS_CEB
+       assign ss_app_st_cebreq_tvalid = {PCIE_NUM_LINKS{1'b0}};
    `endif
 end
 endgenerate

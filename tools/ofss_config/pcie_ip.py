@@ -156,6 +156,16 @@ class PCIe(OFS):
                 pcie_param,
                 pcie_param_value,
             ) in self.PCIE_SS_PARAM.default_component_params.items():
+                # The value will either be a list or single object. When it is a list,
+                # element 0 is the default value of the parameter. Element 1 is the
+                # name of the field in the .ofss file that can be set to override
+                # the default.
+                if isinstance(pcie_param_value, list):
+                    pcie_param_value, ofss_param = pcie_param_value
+                    if ofss_param in self.pcie_config["settings"]:
+                        # Override default using settings
+                        pcie_param_value = self.pcie_config["settings"][ofss_param]
+
                 self.ip_component_params[pcie_param] = pcie_param_value
                 logging.debug(f"Setting pcie config {pcie_param} to {pcie_param_value}")
 

@@ -12,6 +12,12 @@ default_component_params = {
     "total_pcie_intf_hwtcl": "1",
     "top_topology_hwtcl": "Gen4 1x16",
     "core16_pf0_pcie_cap_port_num_hwtcl": "1",
+    # Configuration extension bus
+    "core16_ceb_en_hwtcl": [0, "ceb_enable"],
+    "core16_ceb_pf_std_cap_last_ptr_hwtcl": [0, "ceb_pf_std_next_dw"],
+    "core16_ceb_pf_ext_cap_last_ptr_hwtcl": [0, "ceb_pf_ext_next_dw"],
+    "core16_ceb_vf_std_cap_last_ptr_hwtcl": [0, "ceb_vf_std_next_dw"],
+    "core16_ceb_vf_ext_cap_last_ptr_hwtcl": [0, "ceb_vf_ext_next_dw"],
 }
 
 #
