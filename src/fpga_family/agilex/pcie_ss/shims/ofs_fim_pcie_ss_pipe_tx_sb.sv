@@ -14,7 +14,8 @@ module ofs_fim_pcie_ss_pipe_tx_sb
     parameter PORT_ID = 0,
     parameter TDATA_WIDTH = 512,
     parameter TKEEP_WIDTH = TDATA_WIDTH / 8,
-    parameter NUM_OF_SEG = 1
+    parameter NUM_OF_SEG = 1,
+    parameter NUM_OF_LINKS = 1
     )
    (
     pcie_ss_axis_if.sink axi_st_txreq_if,
@@ -248,7 +249,8 @@ module ofs_fim_pcie_ss_pipe_tx_sb
       #(
         .TILE(TILE),
         .PORT_ID(PORT_ID),
-        .NUM_OF_SEG(NUM_OF_SEG)
+        .NUM_OF_SEG(NUM_OF_SEG),
+        .NUM_OF_LINKS(NUM_OF_LINKS)
         )
       tx_merge
        (

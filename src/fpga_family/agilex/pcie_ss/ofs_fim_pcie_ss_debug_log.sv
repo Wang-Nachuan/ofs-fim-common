@@ -65,7 +65,7 @@ begin : log
          $fwrite(log_fd, "TXREQ: %s\n",
          pcie_ss_pkg::func_pcie_ss_flit_to_string(
          1'b1, axi_st_txreq_if.tlast,
-         1'b0,
+         pcie_ss_hdr_pkg::func_hdr_is_pu_mode(axi_st_txreq_if.tuser_vendor),
          { '0, axi_st_txreq_if.tdata}, { '0, 32'hffffffff }));
          $fflush(log_fd);
       end

@@ -11,7 +11,8 @@ module ofs_fim_pcie_ss_tx_merge
   #(
     parameter TILE = "P-TILE",
     parameter PORT_ID = 0,
-    parameter NUM_OF_SEG = 1
+    parameter NUM_OF_SEG = 1,
+    parameter NUM_OF_LINKS = 1
     )
    (
     // Data in axi_st_txreq_in is unused. txreq is header only (read requests).
@@ -21,8 +22,14 @@ module ofs_fim_pcie_ss_tx_merge
     pcie_ss_axis_if.source axi_st_tx_out
     );
 
+    // R-Tile Gen4x16 uses half the Gen5x16 HIP. Just like the Gen5x16 4 segment
+    // case, SOP isn't allowed on odd segments.
+    localparam IS_R_TILE_GEN4x16 = (TILE == "R-TILE") &&
+                                   (NUM_OF_SEG == 2) &&
+                                   (NUM_OF_LINKS == 1);
+
     // Pick an implementation from the two choices below
-    if (NUM_OF_SEG == 1) begin : arb
+    if ((NUM_OF_SEG == 1) || IS_R_TILE_GEN4x16) begin : arb
         // One segment -- simple arbitration
         ofs_fim_pcie_ss_tx_merge_arb merge
            (

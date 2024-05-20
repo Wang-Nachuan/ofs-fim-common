@@ -433,7 +433,8 @@ for (genvar j=0; j<PCIE_NUM_LINKS; j++) begin : PCIE_LINK_CONN
         .TILE(CFG_TILE_NAME),
         .PORT_ID(j),
         .TDATA_WIDTH(TDATA_WIDTH),
-        .NUM_OF_SEG(CFG_NUM_SEG)
+        .NUM_OF_SEG(CFG_NUM_SEG),
+        .NUM_OF_LINKS(PCIE_NUM_LINKS)
         )
       pipe_tx
        (
