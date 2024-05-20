@@ -18,17 +18,26 @@ HSSI Subsystem | # of channels, data rates
 
 ### OFSS Files 
 - Each IP (IOPLL, PCIe, Memory, HSSI) can be configured with its corresponding OFSS file.  These files are located in the corresponding platform's `tools/ofss_config/<IP>` directory
-- Each platform has its own OFSS wrapper file, that will include the platform's settings, and the desired IP OFSS files. Please see `<platform>@commit/tools/ofss_config/README.md` for more details.
+- Each platform has its own OFSS wrapper file, that will include the platform's default settings. Please see `$OFS_ROOTDIR/tools/ofss_config/README.md` for more details.
 
 
 ## To run OFSS Config Tool
-`$ python3 gen_ofs_settings.py --ofss <OFSS Files, comma or space separated>  [--target <$WORKDIR>] [--debug]`
+
+Normally, users do not invoke the OFSS configuration tool directly. It is invoked by the build_top.sh OFS synthesis script and the gen_sim_files.sh OFS simulation script. Run `$OFS_ROOTDIR/ofs-common/scripts/common/syn/build_top.sh --help` for details of the --ofss arguments. Simulation scripts use the same --ofss stynax.
+
+The OFSS configuration tool itself:
+
+`$ gen_ofs_settings.py --ofss <OFSS Files, comma or space separated>  [--target <$WORKDIR>] [--debug]`
 
 Examples:
 
-`$ python3 ${OFS_ROOTDIR}/ofs-common/tools/ofss_config/gen_ofs_settings.py --ofss n6001_base.ofss,pcie/pcie_host.ofss,iopll/iopll.ofss,memory/memory.ofss,hssi/hssi_8x25g.ofss`
+Default configuration for n6001:
 
-`$ python3 ${OFS_ROOTDIR}/ofs-common/tools/ofss_config/gen_ofs_settings.py --ofss "n6001.ofss /hssi/hssi_8x25.ofss" --target ../../../..`
+`$ ${OFS_ROOTDIR}/ofs-common/tools/ofss_config/gen_ofs_settings.py --ofss ${OFS_ROOTDIR}/tools/ofss_config/n6001.ofss --target <target dir>`
+
+Change HSSI to 8x10, use n6001 defaults for all other IP:
+
+`$ ${OFS_ROOTDIR}/ofs-common/tools/ofss_config/gen_ofs_settings.py --ofss ${OFS_ROOTDIR}/tools/ofss_config/n6001.ofss,${OFS_ROOTDIR}/tools/ofss_config/hssi/hssi_8x10.ofss --target <target dir>`
 
 
 
