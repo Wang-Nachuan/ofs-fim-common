@@ -42,27 +42,24 @@ def process_config_sections(ofss_config):
     """
     curr_ip_config = {}
     for section in ofss_config:
-        if section not in ["DEFAULT", "ip", "include", "include-default"]:
+        if section not in ["DEFAULT", "default", "ip", "include"]:
             curr_ip_config[section] = dict(ofss_config.items(section))
 
     return curr_ip_config
 
 
-def process_config_includes(ofss_config_files_queue, ofss_config):
+def note_config_defaults(ofss_config_files_queue, ofss_config):
     """
-    Gather all subsequent OFSS files to be processed
+    Gather all default OFSS files. Default files will be used if no OFSS file for
+    a default configuration is passed on the command line.
     """
-    if "include" in ofss_config:
-        for elem in ofss_config["include"]:
-            info = {'name': os.path.expandvars(elem).replace('"', ""),
-                    'default': 0}
-            ofss_config_files_queue.append(info)
-
-    if "include-default" in ofss_config:
-        for elem in ofss_config["include-default"]:
-            info = {'name': os.path.expandvars(elem).replace('"', ""),
-                    'default': 1}
-            ofss_config_files_queue.append(info)
+    # For backward compatibility, "include" is a synonym for "default".
+    for section in ["default", "include"]:
+        if section in ofss_config:
+            for elem in ofss_config[section]:
+                info = {'name': os.path.expandvars(elem).replace('"', ""),
+                        'default': 1}
+                ofss_config_files_queue.append(info)
 
 
 def check_ofs_config(ofs_config):
@@ -81,18 +78,41 @@ def check_ofs_config(ofs_config):
         sys.exit(1)
 
 
-def check_num_ip_configs(ip, ip_config):
+def output_name_unique(new_config, ip_configs):
+    """
+    Return True if the output name of new_config is not already present in
+    the ip_configs list of configurations.
+    """
+    new_name = None
+    if "settings" in new_config and "output_name" in new_config["settings"]:
+        new_name = new_config["settings"]["output_name"]
+
+    if not new_name:
+        # new_config doesn't have a name. Probably an OFSS error. Claim it
+        # is a unique name.
+        return True
+
+    for ip in ip_configs:
+        if "settings" in ip and "output_name" in ip["settings"]:
+            old_name = ip["settings"]["output_name"]
+
+        if new_name == old_name:
+            return False
+
+    return True
+
+
+def check_num_ip_configs(new_config, new_config_fname, ip_configs):
     """
     Check there isn't more than 1 configuration setting for each IP.
-    PCIe is the only exception since there can be PCIe settings for Host and SoC
     """
-    if ip == "pcie":
-        return 
+    if not ip_configs:
+        return
 
-    if len(ip_config) > 1:
-        logging.info(f"!!Error!! {ip} should only have 1 set of configuration")
-        logging.info("Seeing the following desired configs")
-        for ip_c in ip_config:
+    if not output_name_unique(new_config, ip_configs):
+        logging.info(f"!!Error!! {new_config_fname} is a duplicate IP configuration")
+        logging.info("Previous configurations:")
+        for ip_c in ip_configs:
             logging.info(f"{ip_c}")
         sys.exit(1)
 
@@ -101,7 +121,7 @@ def check_configurations(ofs_ip_configurations):
     Check that overall OFS setting is provided
     """
     if "ofs" not in ofs_ip_configurations:
-        logging.info("!!Error!! Must have OFS project info")
+        logging.info("!!Error!! Must have OFS project info. No base file included.")
         sys.exit(1)
 
     check_ofs_config(ofs_ip_configurations["ofs"][0]["settings"])
@@ -110,7 +130,7 @@ def process_ofss_configs(ofss_list):
     """
     Breadth First Search for including and parsing all OFSS files.
     OFSS files can be passed in as individual files on the cmd line, or
-    as files under the 'include' section.
+    as files under the [default] section.
     All OFSS configurations are stored in one dictionary structure
     """
 
@@ -150,19 +170,26 @@ def process_ofss_configs(ofss_list):
         if "ip" in curr_config:
             ip_type = curr_config["ip"]["type"].lower()
 
-        process_config_includes(ofss_config_files_queue, curr_config)
+        note_config_defaults(ofss_config_files_queue, curr_config)
         if ip_type is not None:
-            # Include files are always pushed to the end of the file queue.
+            # Default files are always pushed to the end of the file queue.
             # If the user specifies an IP config file on the command line
-            # it will be seen before any includes in an include-default
-            # section.
-            if curr_ofss_file_info['default'] and ip_type in ofs_ip_configurations:
+            # it will be seen before any default option.
+            if curr_ofss_file_info['default'] and \
+               ip_type in ofs_ip_configurations and \
+               not output_name_unique(curr_config, ofs_ip_configurations[ip_type]):
                 # Ignore default when an instance of ip_type was already
                 # processed.
                 logging.debug(f"Ignoring default {ip_type}: {curr_ofss_file}")
             else:
+                if not curr_ofss_file_info['default']:
+                    logging.info(f"Applying {ip_type}: {curr_ofss_file}")
+                else:
+                    logging.info(f"Applying default {ip_type}: {curr_ofss_file}")
+
+                check_num_ip_configs(curr_config, curr_ofss_file,
+                                     ofs_ip_configurations[ip_type])
                 ofs_ip_configurations[ip_type].append(process_config_sections(curr_config))
-                check_num_ip_configs(ip_type, ofs_ip_configurations[ip_type])
 
         already_processed_configs.add(curr_ofss_file)
 

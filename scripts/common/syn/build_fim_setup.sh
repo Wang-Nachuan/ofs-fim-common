@@ -232,12 +232,18 @@ if [ ! -z ${ENA_SETUP_IP_LIB_SCRIPT} ]; then
     fi
 fi
 
+################################################
+######   OFSS
+
 # optional OFSS-based IP configuration -- modify PCIe SS and other
 # IP inside the work tree.
 #
 # The argument is a comma-separated list of .ofss configuration files.
 # Paths may be relative to the directory where the build command was
 # invoked, which was recorded as STARTING_DIR at the top of this script.
+
+ofss_default="${OFS_ROOTDIR}/tools/ofss_config/${OFS_BOARD_CORE}.ofss"
+
 if [ "${USE_OFSS_CONFIG_SCRIPT}" == "none" ]; then
     # Nothing. Skip OFSS config.
     echo "No OFSS configuration: --ofss none"
@@ -247,6 +253,11 @@ elif [ ! -z ${USE_OFSS_CONFIG_SCRIPT} ]; then
     all_ofss_files=()
     unset IFS
     for ofss_rel in "${ofss_arr[@]}"; do
+        # Map special option "+" to the default OFSS for the board
+        if [ "${ofss_rel}" == "+" ]; then
+            ofss_rel=${ofss_default}
+        fi
+
         # Convert paths relative to the original directory to absolute. Also
         # check whether the file exists.
         ofss=$(cd "${STARTING_DIR}"; realpath "${ofss_rel}")
@@ -254,9 +265,13 @@ elif [ ! -z ${USE_OFSS_CONFIG_SCRIPT} ]; then
             echo "\"${ofss_rel}\" file not found."
             exit 1
         fi
+        if [ ! -f "${ofss}" ]; then
+            echo "\"${ofss}\" file not found."
+            exit 1
+        fi
         all_ofss_files+=(${ofss})
-
     done
+
     echo "Command: \${OFS_ROOTDIR}/ofs-common/tools/ofss_config/gen_ofs_settings.py --ofss \"${all_ofss_files[@]}\" --target ${BUILD_ROOT_REL}"
     "${OFS_ROOTDIR}"/ofs-common/tools/ofss_config/gen_ofs_settings.py --ofss "${all_ofss_files[@]}" --target "${BUILD_ROOT_REL}"
     if [ $? != 0 ]; then
@@ -264,10 +279,9 @@ elif [ ! -z ${USE_OFSS_CONFIG_SCRIPT} ]; then
         exit 1
     fi
     unset IFS
-elif [[ "${KEEP_WORK_ARG}" == "" && -f "${OFS_ROOTDIR}/tools/ofss_config/${OFS_BOARD_CORE}.ofss" ]]; then
+elif [[ "${KEEP_WORK_ARG}" == "" && -f "${ofss_default}" ]]; then
     # Generating tree for the first time, no --ofss command was set, and
     # an OFSS file name matches the target board.
-    ofss_default="${OFS_ROOTDIR}/tools/ofss_config/${OFS_BOARD_CORE}.ofss"
     echo "Using default OFSS file: ${ofss_default}"
     echo "Command: \${OFS_ROOTDIR}/ofs-common/tools/ofss_config/gen_ofs_settings.py --ofss \"${ofss_default}\" --target ${BUILD_ROOT_REL}"
     "${OFS_ROOTDIR}"/ofs-common/tools/ofss_config/gen_ofs_settings.py --ofss "${ofss_default}" --target "${BUILD_ROOT_REL}"

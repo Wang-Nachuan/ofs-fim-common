@@ -67,17 +67,59 @@ while getopts "\-:h" OP; do
 done
 shift $((OPTIND-1))
 
-if [ ! -z "${OFSS_CONFIG_SCRIPT}" ]; then
-    OFSS_CONFIG_SCRIPT_ARG="--ofss=${OFSS_CONFIG_SCRIPT}"
-fi
-
-
 # Remove the optional trailing colon and variant string.
 OFS_TARGET="${1%%:*}"
 # Full string to pass options to build_top.sh
 OFS_TARGET_FULL=${1}
 echo "OFS_TARGET=$OFS_TARGET"
 echo "OFS_TARGET_FULL=$OFS_TARGET_FULL"
+
+
+# optional OFSS-based IP configuration -- modify PCIe SS and other
+# IP inside the work tree.
+#
+# The argument is a comma-separated list of .ofss configuration files.
+# Paths may be relative to the directory where the build command was
+# invoked, which was recorded as STARTING_DIR at the top of this script.
+
+ofss_default="${OFS_ROOTDIR}/tools/ofss_config/${OFS_TARGET}.ofss"
+OFSS_CONFIG_SCRIPT_ARG=""
+
+if [ "${OFSS_CONFIG_SCRIPT}" == "none" ]; then
+    # Nothing. Skip OFSS config.
+    echo "No OFSS configuration: --ofss none"
+elif [ ! -z ${OFSS_CONFIG_SCRIPT} ]; then
+    IFS=,
+    ofss_arr=(${OFSS_CONFIG_SCRIPT})
+    all_ofss_files=()
+    unset IFS
+    for ofss_rel in "${ofss_arr[@]}"; do
+        # Map special option "+" to the default OFSS for the board
+        if [ "${ofss_rel}" == "+" ]; then
+            ofss_rel=${ofss_default}
+        fi
+
+        # Convert paths relative to the original directory to absolute. Also
+        # check whether the file exists.
+        ofss=$(realpath "${ofss_rel}")
+        if [ $? != 0 ]; then
+            echo "\"${ofss_rel}\" file not found."
+            exit 1
+        fi
+        if [ ! -f "${ofss}" ]; then
+            echo "\"${ofss}\" file not found."
+            exit 1
+        fi
+        all_ofss_files+=(${ofss})
+    done
+
+    OFSS_CONFIG_SCRIPT_ARG=$(IFS=, ; echo "--ofss=${all_ofss_files[*]}")
+    unset IFS
+elif [ -f "${ofss_default}" ]; then
+    echo "Using default OFSS file: ${ofss_default}"
+    OFSS_CONFIG_SCRIPT_ARG="--ofss=${ofss_default}"
+fi
+
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 OFS_IP_SEARCH_PATH="$OFS_ROOTDIR/ofs-common/src/common/lib/**/*,$OFS_ROOTDIR/ipss/pmci/**/*,$OFS_ROOTDIR/src/pd_qsys/common/**/*,$OFS_ROOTDIR/src/afu_top/**/*,$"
