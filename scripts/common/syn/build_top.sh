@@ -31,22 +31,20 @@ usage() {
   echo "  Set the --ofss option to modify IP, such as the PCIe SS, using an .ofss" 1>&2
   echo "  configuration file. This parameter is consumed during the setup stage and" 1>&2
   echo "  IP is updated only inside the work tree. More than one .ofss file may be" 1>&2
-  echo "  passed to the --ofss switch by concatenating them separated by commas." 1>&2
+  echo "  passed to the --ofss switch by concatenating them, separated by commas." 1>&2
   echo "  For example: \"--ofss config_a.ofss,config_b.ofss\"." 1>&2
   echo "" 1>&2
-  echo "  When --ofss is not specified, the script searches for an .ofss file" 1>&2
-  echo "  in \${OFS_ROOTDIR}/tools/ofss_config/ that matches the board target." 1>&2
+  echo "  In addition to the .ofss files specified on the command line, the script" 1>&2
+  echo "  searches for an .ofss file in \${OFS_ROOTDIR}/tools/ofss_config/" 1>&2
+  echo "  that matches the board name. This file defines board-specific default" 1>&2
+  echo "  IP parameters -- typically configuring all IP in a reference platform." 1>&2
+  echo "  .ofss files on the command line override defaults." 1>&2
   echo "" 1>&2
-  echo "  The special OFSS file name \"+\" is expanded to the default .ofss file" 1>&2
-  echo "  for the board target. The expansion simplifies choosing the board default" 1>&2
-  echo "  plus one or more specific changes, such as:" 1>&2
-  echo "      --ofss +,\${OFS_ROOTDIR}/tools/ofss_config/hssi/hssi_4x100.ofss" 1>&2
-  echo "  to configure a change only to the HSSI configuration. The \"+\" is required" 1>&2
-  echo "  because specifying any --ofss argument disables the automatic board default." 1>&2
-  echo "" 1>&2
-  echo "  Set --ofss to \"none\" to disable OFSS-based IP configuration entirely." 1>&2
-  echo "  --ofss setup is always skipped when \"-k\" is set, because the setup" 1>&2
-  echo "  stage is not run." 1>&2
+  echo "  The special name \"nodefault\" disables the default file. Set" 1>&2
+  echo "  \"--ofss nodefault\" alone to disable OFSS processing entirely." 1>&2
+  echo "  Add \"nodefault\" anywhere in a comma-separate list of .ofss files" 1>&2
+  echo "  to disable loading the default while processing the files passed" 1>&2
+  echo "  to --ofss." 1>&2
   echo "" 1>&2
   echo "  The -e option runs only Quartus analysis and elaboration. It completes the" 1>&2
   echo "  \"setup\" stage, passes \"-end synthesis\" to the Quartus compilation flow" 1>&2

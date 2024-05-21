@@ -243,48 +243,48 @@ fi
 # invoked, which was recorded as STARTING_DIR at the top of this script.
 
 ofss_default="${OFS_ROOTDIR}/tools/ofss_config/${OFS_BOARD_CORE}.ofss"
+ofss_files_arr=()
 
-if [ "${USE_OFSS_CONFIG_SCRIPT}" == "none" ]; then
-    # Nothing. Skip OFSS config.
-    echo "No OFSS configuration: --ofss none"
-elif [ ! -z ${USE_OFSS_CONFIG_SCRIPT} ]; then
+if [ ! -z ${USE_OFSS_CONFIG_SCRIPT} ]; then
     IFS=,
     ofss_arr=(${USE_OFSS_CONFIG_SCRIPT})
-    all_ofss_files=()
     unset IFS
     for ofss_rel in "${ofss_arr[@]}"; do
-        # Map special option "+" to the default OFSS for the board
-        if [ "${ofss_rel}" == "+" ]; then
-            ofss_rel=${ofss_default}
+        # Map special option "nodefault" to disable the board default
+        if [ "${ofss_rel}" == "nodefault" ]; then
+            unset ofss_default
+        else
+            # Convert paths relative to the original directory to absolute. Also
+            # check whether the file exists.
+            ofss=$(cd "${STARTING_DIR}"; realpath "${ofss_rel}")
+            if [ $? != 0 ]; then
+                echo "\"${ofss_rel}\" file not found."
+                exit 1
+            fi
+            if [ ! -f "${ofss}" ]; then
+                echo "\"${ofss}\" file not found."
+                exit 1
+            fi
+            ofss_files_arr+=(${ofss})
         fi
-
-        # Convert paths relative to the original directory to absolute. Also
-        # check whether the file exists.
-        ofss=$(cd "${STARTING_DIR}"; realpath "${ofss_rel}")
-        if [ $? != 0 ]; then
-            echo "\"${ofss_rel}\" file not found."
-            exit 1
-        fi
-        if [ ! -f "${ofss}" ]; then
-            echo "\"${ofss}\" file not found."
-            exit 1
-        fi
-        all_ofss_files+=(${ofss})
     done
+fi
 
-    echo "Command: \${OFS_ROOTDIR}/ofs-common/tools/ofss_config/gen_ofs_settings.py --ofss \"${all_ofss_files[@]}\" --target ${BUILD_ROOT_REL}"
-    "${OFS_ROOTDIR}"/ofs-common/tools/ofss_config/gen_ofs_settings.py --ofss "${all_ofss_files[@]}" --target "${BUILD_ROOT_REL}"
-    if [ $? != 0 ]; then
-        unset IFS
-        exit 1
+if [[ "${KEEP_WORK_ARG}" == "" || "${ofss_files_arr}" != "" ]]; then
+    # Generating tree for the first time (-k isn't set) or an --ofss
+    # argument was set on the command line.
+
+    # Is there a default OFSS file for the board?
+    if [[ "${ofss_default}" != "" && -f "${ofss_default}" ]]; then
+        ofss_files_arr+=(${ofss_default})
     fi
-    unset IFS
-elif [[ "${KEEP_WORK_ARG}" == "" && -f "${ofss_default}" ]]; then
-    # Generating tree for the first time, no --ofss command was set, and
-    # an OFSS file name matches the target board.
-    echo "Using default OFSS file: ${ofss_default}"
-    echo "Command: \${OFS_ROOTDIR}/ofs-common/tools/ofss_config/gen_ofs_settings.py --ofss \"${ofss_default}\" --target ${BUILD_ROOT_REL}"
-    "${OFS_ROOTDIR}"/ofs-common/tools/ofss_config/gen_ofs_settings.py --ofss "${ofss_default}" --target "${BUILD_ROOT_REL}"
+fi
+
+# Generate IP from OFSS files
+if [ "${ofss_files_arr}" != "" ]; then
+    ofss_files=$(IFS=, ; echo "${ofss_files_arr[*]}")
+    echo "Command: \${OFS_ROOTDIR}/ofs-common/tools/ofss_config/gen_ofs_settings.py --ofss \"${ofss_files}\" --target ${BUILD_ROOT_REL}"
+    "${OFS_ROOTDIR}"/ofs-common/tools/ofss_config/gen_ofs_settings.py --ofss "${ofss_files}" --target "${BUILD_ROOT_REL}"
     if [ $? != 0 ]; then
         exit 1
     fi

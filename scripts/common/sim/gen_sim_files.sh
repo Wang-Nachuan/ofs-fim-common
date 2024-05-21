@@ -75,49 +75,37 @@ echo "OFS_TARGET=$OFS_TARGET"
 echo "OFS_TARGET_FULL=$OFS_TARGET_FULL"
 
 
-# optional OFSS-based IP configuration -- modify PCIe SS and other
-# IP inside the work tree.
-#
-# The argument is a comma-separated list of .ofss configuration files.
-# Paths may be relative to the directory where the build command was
-# invoked, which was recorded as STARTING_DIR at the top of this script.
-
-ofss_default="${OFS_ROOTDIR}/tools/ofss_config/${OFS_TARGET}.ofss"
-OFSS_CONFIG_SCRIPT_ARG=""
-
-if [ "${OFSS_CONFIG_SCRIPT}" == "none" ]; then
-    # Nothing. Skip OFSS config.
-    echo "No OFSS configuration: --ofss none"
-elif [ ! -z ${OFSS_CONFIG_SCRIPT} ]; then
+# Map any --ofss patsh to absolute
+unset OFSS_CONFIG_SCRIPT_ARG
+if [ ! -z ${OFSS_CONFIG_SCRIPT} ]; then
     IFS=,
     ofss_arr=(${OFSS_CONFIG_SCRIPT})
-    all_ofss_files=()
     unset IFS
-    for ofss_rel in "${ofss_arr[@]}"; do
-        # Map special option "+" to the default OFSS for the board
-        if [ "${ofss_rel}" == "+" ]; then
-            ofss_rel=${ofss_default}
-        fi
 
-        # Convert paths relative to the original directory to absolute. Also
-        # check whether the file exists.
-        ofss=$(realpath "${ofss_rel}")
-        if [ $? != 0 ]; then
-            echo "\"${ofss_rel}\" file not found."
-            exit 1
+    ofss_files_arr=()
+    for ofss_rel in "${ofss_arr[@]}"; do
+        if [ "${ofss_rel}" == "nodefault" ]; then
+            # Keep nodefault
+            ofss_files_arr+=(${ofss_rel})
+        else
+            # Convert paths relative to the original directory to absolute. Also
+            # check whether the file exists.
+            ofss=$(realpath "${ofss_rel}")
+            if [ $? != 0 ]; then
+                echo "\"${ofss_rel}\" file not found."
+                exit 1
+            fi
+            if [ ! -f "${ofss}" ]; then
+                echo "\"${ofss}\" file not found."
+                exit 1
+            fi
+            ofss_files_arr+=(${ofss})
         fi
-        if [ ! -f "${ofss}" ]; then
-            echo "\"${ofss}\" file not found."
-            exit 1
-        fi
-        all_ofss_files+=(${ofss})
     done
 
-    OFSS_CONFIG_SCRIPT_ARG=$(IFS=, ; echo "--ofss=${all_ofss_files[*]}")
-    unset IFS
-elif [ -f "${ofss_default}" ]; then
-    echo "Using default OFSS file: ${ofss_default}"
-    OFSS_CONFIG_SCRIPT_ARG="--ofss=${ofss_default}"
+    if [ "${ofss_files_arr}" != "" ]; then
+        OFSS_CONFIG_SCRIPT_ARG=$(IFS=, ; echo "--ofss=${ofss_files_arr[*]}")
+    fi
 fi
 
 
