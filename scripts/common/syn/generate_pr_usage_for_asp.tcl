@@ -75,7 +75,7 @@ proc emit_info_for_asp_config {revision project of} {
     puts $of " <presets version=\"12.1\">"
     puts $of "  <preset"
     puts $of "     name=\"oneapi_asp_preset\""
-    puts $of "     kind=\"oneAPI_kernel_wrapper\""
+    puts $of "     kind=\"oneapi_asp_editor\""
     puts $of "     version=\"All\""
     puts $of "     description=\"\""
     puts $of "     board=\"\""
