@@ -141,7 +141,17 @@ class OFS:
         """
         self.clean()
 
-        deploy_status = os.system(self.get_deploy_cmd())  # nosec
+        if not self.ip_preset or self.ip_component_params:
+            # Normal case: not using a preset or there are IP component
+            # parameters specified. Use ip-deploy.
+            cmd = self.get_deploy_cmd()
+        else:
+            # Memory subsystems with presets can be generated much
+            # faster using qsys-script. This will likely be fixed after
+            # Quartus 24.1.
+            cmd = self.get_qsys_script_cmd()
+
+        deploy_status = os.system(cmd)   # nosec
         if deploy_status != 0:
             raise self._errorExit("IP Deploy Failed!!")
 
@@ -171,6 +181,55 @@ class OFS:
         Fetch the IP Deploy Command
         """
         deploy_args = self.set_deploy_cmd_args()
+        deploy_cmd = " ".join(deploy_args)
+
+        logging.info("Deploy Command:")
+        logging.info(f"{deploy_cmd}")
+
+        return deploy_cmd
+
+    def set_qsys_script_args(self):
+        """
+        Set up qsys-script command. Results are equivalent to ip-deploy but
+        the script runs faster in some cases.
+
+        The arguments generated here work only with presets. The procedure
+        could be extended to handle all IP generation, but there is no
+        reason to do so.
+        """
+        qsys_args = ["qsys-script"]
+        qsys_args.append("--qpf=none")
+        qsys_args.append(self.get_quartus_search_string_arg())
+
+        if self.ip_path:
+            output_file = os.path.join(self.ip_path, self.ip_output_name)
+        else:
+            output_file = self.ip_output_name
+
+        # Tcl commands passed to --cmd argument
+        cmd = ["package require qsys"]
+        cmd.append(f"set_project_property DEVICE {{{self.part}}}")
+        cmd.append(f"set_project_property DEVICE_FAMILY {{{self.fpga_family}}}")
+        cmd.append("set_project_property BOARD {default}")
+        cmd.append("set_validation_property AUTOMATIC_VALIDATION false")
+        instance_name = self.ip_instance_name
+        if not instance_name:
+            instance_name = self.ip_output_name
+        cmd.append(f"add_component {instance_name} {output_file}.ip " +
+                   f"{self.ip_component} {instance_name}")
+        cmd.append(f"load_component {instance_name}")
+        cmd.append(f"apply_component_preset {{{self.ip_preset}}}")
+        cmd.append("save_component")
+
+        qsys_args.append(f"--cmd=\"{'; '.join(cmd)}\"")
+
+        return qsys_args
+
+    def get_qsys_script_cmd(self):
+        """
+        Fetch qsys-script command
+        """
+        deploy_args = self.set_qsys_script_args()
         deploy_cmd = " ".join(deploy_args)
 
         logging.info("Deploy Command:")
