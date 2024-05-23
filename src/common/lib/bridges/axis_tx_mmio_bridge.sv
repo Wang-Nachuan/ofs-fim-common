@@ -135,7 +135,8 @@ end
 // RSP FIFO
 fim_rdack_scfifo #(
     .DATA_WIDTH($bits(rsp_fifo_din)),
-    .DEPTH_LOG2(8))
+    .DEPTH_LOG2(8),
+    .ADD_RAM_OUTPUT_REGISTER("ON"))
 rsp_fifo (
     .clk            (clk),
     .sclr           (!rst_n),
@@ -183,7 +184,8 @@ end
 // CTT FIFO
 fim_rdack_scfifo #(
     .DATA_WIDTH($bits(ctt_t)),
-    .DEPTH_LOG2(8))
+    .DEPTH_LOG2(8),
+    .ADD_RAM_OUTPUT_REGISTER("ON"))
 ctt_fifo (
     .clk            (clk),
     .sclr           (!rst_n),
