@@ -17,7 +17,7 @@ module he_lb_csr #(
   parameter CSR_TAG_W = he_lb_pkg::CSR_TAG_W,
   parameter CLK_MHZ = 0,
   parameter ATOMICS_SUPPORTED = ofs_plat_host_chan_pcie_tlp_pkg::ATOMICS_SUPPORTED,
-  parameter HE_MEM = 0
+  parameter HE_MEM_DATA_WIDTH = 0
 )
 (
   input  logic clk,               
@@ -96,13 +96,13 @@ localparam        FEATURE_0_BEG        = 18'h0000;
 // For ease of maintainability they are implemented in a single source tree
 // At compile time, user can decide which test mode is synthesized.
 
-localparam NLB_AFU_ID_H = (HE_MEM == 1) ? 64'h8568_ab4e_6ba5_4616 : 64'h56e2_03e9_864f_49a7;
-localparam NLB_AFU_ID_L = (HE_MEM == 1) ? 64'hbb65_2a57_8330_a8eb : 64'hb94b_1228_4c31_e02b;
+localparam NLB_AFU_ID_H = (HE_MEM_DATA_WIDTH != 0) ? 64'h8568_ab4e_6ba5_4616 : 64'h56e2_03e9_864f_49a7;
+localparam NLB_AFU_ID_L = (HE_MEM_DATA_WIDTH != 0) ? 64'hbb65_2a57_8330_a8eb : 64'hb94b_1228_4c31_e02b;
 
 // Software API version
 //  - version 2 adds req_len_log2_high to csr2eng.cfg (longer max. request length)
 //  - version 3 adds bus width to info0 (assume 64 bytes before version 3)
-localparam HE_LB_API_VERSION = 3;
+localparam HE_LB_API_VERSION = 4;
 
 //`ifndef SIM_MODE // PAR_MODE
 //  `ifdef NLB400_MODE_0
@@ -488,8 +488,9 @@ begin
            NO_STAGED_CSR,
            1'b1,
            {64{RO}},
-           {37'h0,
-            2'($clog2(he_lb_pkg::DW/256)),  // Bus width (32 bytes << value)
+           {32'h0,
+            5'($clog2(HE_MEM_DATA_WIDTH/32)), // Local memory bus width (4 bytes << value)
+            2'($clog2(he_lb_pkg::DW/256)),    // PCIe bus width (32 bytes << value)
             ~1'(ATOMICS_SUPPORTED), // Set when atomic operations are NOT supported
             8'(HE_LB_API_VERSION),
             16'(CLK_MHZ)}

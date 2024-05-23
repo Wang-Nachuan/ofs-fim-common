@@ -132,6 +132,7 @@ module ofs_plat_afu
     // Local memory exists and the HE MEM instance has an available host port.
     //
     localparam HE_LB_EMIF_AVAIL = (HE_MEM_IDX < NUM_ENG);
+    localparam HE_LB_EMIF_WIDTH = `OFS_PLAT_PARAM_LOCAL_MEM_DATA_WIDTH;
 
     // Local memory interface
     ofs_plat_axi_mem_if
@@ -144,6 +145,7 @@ module ofs_plat_afu
     // No local memory
     //
     localparam HE_LB_EMIF_AVAIL = 0;
+    localparam HE_LB_EMIF_WIDTH = 0;
 
     // Dummy memory interface, needed by he_lb_main.
     ofs_plat_axi_mem_if
@@ -273,7 +275,7 @@ module ofs_plat_afu
             he_lb_csr
               #(
                 .CLK_MHZ(`OFS_PLAT_PARAM_CLOCKS_PCLK_FREQ),
-                .HE_MEM((p == HE_MEM_IDX) && (HE_LB_EMIF_AVAIL != 0))
+                .HE_MEM_DATA_WIDTH((p == HE_MEM_IDX && HE_LB_EMIF_AVAIL != 0) ? HE_LB_EMIF_WIDTH : 0)
                 )
               he_lb_csr
                (
@@ -291,7 +293,7 @@ module ofs_plat_afu
             // Instantiate an HE LB engine
             he_lb_engines
               #(
-                .EMIF((p == HE_MEM_IDX) && (HE_LB_EMIF_AVAIL != 0))
+                .EMIF(p == HE_MEM_IDX && HE_LB_EMIF_AVAIL != 0)
                 )
               he_lb
                (

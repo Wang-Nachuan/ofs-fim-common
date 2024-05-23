@@ -94,7 +94,8 @@ module he_mem_merge_banks
       #(
         .DATA_WIDTH($bits(t_bank_idx)),
         .DEPTH_LOG2(9),
-        .USE_EAB("ON")
+        .USE_EAB("ON"),
+        .ADD_RAM_OUTPUT_REGISTER("ON")
         )
       wr_rsp_bank_fifo
        (
@@ -127,7 +128,8 @@ module he_mem_merge_banks
       #(
         .DATA_WIDTH($bits(t_bank_idx)),
         .DEPTH_LOG2(9),
-        .USE_EAB("ON")
+        .USE_EAB("ON"),
+        .ADD_RAM_OUTPUT_REGISTER("ON")
         )
       rd_rsp_bank_fifo
        (

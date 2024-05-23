@@ -183,7 +183,7 @@ module he_lb_main
     he_lb_csr
       #(
         .CLK_MHZ(CLK_MHZ),
-        .HE_MEM(EMIF)
+        .HE_MEM_DATA_WIDTH(EMIF ? ext_mem_if.DATA_WIDTH : 0)
         )
       he_lb_csr
        (

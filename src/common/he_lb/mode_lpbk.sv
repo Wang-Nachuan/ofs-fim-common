@@ -46,6 +46,8 @@ module mode_lpbk
     localparam ID_WIDTH = axi_host_mem.RID_WIDTH;
     localparam DATA_WIDTH = axi_host_mem.DATA_WIDTH;
 
+    localparam EMIF_DATA_WIDTH = emif_if.DATA_WIDTH;
+
     // Maximum burst length of a read or write request
     logic [$clog2(he_lb_pkg::MAX_REQ_LEN)-1 : 0] req_len_log2;
     assign req_len_log2 =
@@ -353,7 +355,12 @@ module mode_lpbk
                 emif_if.wvalid = rd_rsp_data_valid;
                 emif_if.w = '0;
 
-                emif_if.w.data = rd_rsp_data;
+                // If the host read data is narrower then the local memory bus
+                // the top part of the memory bus will be filled with zeros.
+                // When the memory bus is narrower than the host channel, the
+                // host data is simply truncated here to the memory bus width.
+                // Clearly this is not how a real application should behave.
+                emif_if.w.data = EMIF_DATA_WIDTH'(rd_rsp_data);
                 emif_if.w.last = rd_rsp_data_eop;
                 emif_if.w.strb = ~('0);
             end
@@ -429,7 +436,7 @@ module mode_lpbk
 
 
             logic emif_rd_id_fifo_full;
-            assign wr_in_data = emif_if.r.data;
+            assign wr_in_data = DATA_WIDTH'(emif_if.r.data);
             assign wr_in_data_eop = emif_if.r.last;
             // Bit 0 of the RID is set only on the final request
             assign wr_in_data_final = emif_if.r.id[0];

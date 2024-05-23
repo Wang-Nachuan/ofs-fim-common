@@ -37,7 +37,10 @@ module fim_rdack_scfifo #(
 
    // Number of busy entries at which w_ready will go low.
    // Defaults to half full.
-   parameter ALMOST_FULL_THRESHOLD = 2 ** (DEPTH_LOG2 - 1)
+   parameter ALMOST_FULL_THRESHOLD = 2 ** (DEPTH_LOG2 - 1),
+
+   // Register the output (ON or OFF)?
+   parameter ADD_RAM_OUTPUT_REGISTER = "OFF"
 )(
    input  logic clk,
    input  logic sclr,
@@ -107,7 +110,7 @@ fim_scfifo #(
    .DEPTH_LOG2(DEPTH_LOG2),
    .USE_EAB(USE_EAB),
    .ALMOST_FULL_THRESHOLD(ALMOST_FULL_THRESHOLD),
-   .ADD_RAM_OUTPUT_REGISTER("OFF")
+   .ADD_RAM_OUTPUT_REGISTER(ADD_RAM_OUTPUT_REGISTER)
 ) sfifo (
    .clk     (clk),
    .sclr    (sclr),
