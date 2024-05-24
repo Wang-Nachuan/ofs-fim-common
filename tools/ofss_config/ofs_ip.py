@@ -6,7 +6,9 @@
 import logging
 import logging.handlers
 import os
+import re
 import shutil
+import subprocess
 import sys
 
 
@@ -151,7 +153,16 @@ class OFS:
             # Quartus 24.1.
             cmd = self.get_qsys_script_cmd()
 
-        deploy_status = os.system(cmd)   # nosec
+        # Drop PD debug messages, e.g. "2024.05.24.16:39:01 [Debug] <text>"
+        debug_msg_pattern = re.compile(r".*:[0-9]+ \[Debug\] .*")
+
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True) # nosec
+        for line in p.stdout:
+            line = line.decode().rstrip()
+            if not debug_msg_pattern.match(line):
+                print(line, flush=True)
+
+        deploy_status = p.wait()
         if deploy_status != 0:
             raise self._errorExit("IP Deploy Failed!!")
 
