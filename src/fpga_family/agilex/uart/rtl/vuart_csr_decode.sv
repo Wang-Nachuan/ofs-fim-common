@@ -51,8 +51,8 @@ module  vuart_csr_decode
    logic [DATA_WIDTH-1:0]                  fwr_wdata;
    logic                                   fwr_read;
    logic [ADDR_WIDTH-1:0]                  fwr_raddr;
-   logic [DATA_WIDTH-1:0]                  readdata;
-   logic                                   readdata_valid;
+   logic [DATA_WIDTH-1:0]                  readdata, readdata_q;
+   logic                                   readdata_valid, readdata_valid_q;
    
    logic                                   frd_write;
    logic [11:0]                            frd_waddr;
@@ -102,8 +102,8 @@ module  vuart_csr_decode
       
       .csr_read           (fwr_read),          // output logic
       .csr_raddr          (fwr_raddr),         // output logic [ADDR_WIDTH-1:0]
-      .csr_readdata       (readdata),          // input  logic [DATA_WIDTH-1:0]
-      .csr_readdata_valid (readdata_valid)     // input  logic
+      .csr_readdata       (readdata_q),        // input  logic [DATA_WIDTH-1:0]
+      .csr_readdata_valid (readdata_valid_q)   // input  logic
       );
 
 
@@ -117,6 +117,11 @@ module  vuart_csr_decode
       end
    end
    
+   always_ff @(posedge clk_csr) begin
+      readdata_valid_q <= readdata_valid;
+      readdata_q <= readdata;
+   end
+
    assign urt_read  = ~rdempty &  frd_for_urt & frd_read  & fifo_read;
    assign urt_write = ~rdempty &  frd_for_urt & frd_write & fifo_read;
    assign dfh_read  = ~rdempty & ~frd_for_urt & frd_read  & fifo_read;
