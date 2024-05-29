@@ -102,11 +102,13 @@ end
 
 // DC FIFO
 fim_dcfifo #(
-   .DATA_WIDTH            (DATA_WIDTH),
-   .DEPTH_RADIX           (DEPTH_LOG2),
-   .ALMOST_FULL_THRESHOLD (ALMOST_FULL_THRESHOLD),
-   .WRITE_ACLR_SYNC       (WRITE_ACLR_SYNC),
-   .READ_ACLR_SYNC        (READ_ACLR_SYNC)
+   .DATA_WIDTH              (DATA_WIDTH),
+   .DEPTH_RADIX             (DEPTH_LOG2),
+   .ALMOST_FULL_THRESHOLD   (ALMOST_FULL_THRESHOLD),
+   .WRITE_ACLR_SYNC         (WRITE_ACLR_SYNC),
+   .READ_ACLR_SYNC          (READ_ACLR_SYNC),
+   .OVERFLOW_CHECKING_PARAM ("OFF"),
+   .UNDERFLOW_CHECKING_PARAM("OFF")
 ) dcfifo (
    .aclr      (aclr),
    .data      (wdata), 
