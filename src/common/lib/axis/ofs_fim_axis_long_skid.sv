@@ -39,7 +39,7 @@ module ofs_fim_axis_long_skid
     localparam TID_WIDTH   = 8;
     localparam TDEST_WIDTH = 8;
 
-    (* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg [3:0] rst_n_q = 4'b0;
+    (* altera_attribute = {"-name PRESERVE_REGISTER_SYN_ONLY ON"} *) reg [3:0] rst_n_q = 4'b0;
     always @(posedge clk) begin
         rst_n_q <= { rst_n_q[2:0], rst_n };
     end

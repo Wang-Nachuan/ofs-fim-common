@@ -79,7 +79,7 @@ module pr_slot
         localparam PR_FREEZE_DIS = 1;
     `endif
 
-   (* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg [2:0] pr_freeze_emif_reg;
+   (* altera_attribute = {"-name PRESERVE_REGISTER_SYN_ONLY ON"} *) reg [2:0] pr_freeze_emif_reg;
    wire pr_freeze_emif_out = pr_freeze_emif_reg[2];
    logic [MAX_NUM_ETH_CHANNELS-1:0] pr_freeze_hssi;
    logic [MAX_NUM_ETH_CHANNELS-1:0] softreset_hssi;
@@ -103,7 +103,7 @@ module pr_slot
     localparam PCIE_TX_REG_MODE    =ST_BYPASS; 
 `endif //INCLUDE_PR
 
-(* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg [3:0] pr_freeze_fnmx_reg;
+(* altera_attribute = {"-name PRESERVE_REGISTER_SYN_ONLY ON"} *) reg [3:0] pr_freeze_fnmx_reg;
 wire pr_freeze_fnmx_out = pr_freeze_fnmx_reg[3];
 pcie_ss_axis_if     axi_tx_a_if_t1[PG_NUM_LINKS-1:0]();
 pcie_ss_axis_if     axi_rx_a_if_t1[PG_NUM_LINKS-1:0]();

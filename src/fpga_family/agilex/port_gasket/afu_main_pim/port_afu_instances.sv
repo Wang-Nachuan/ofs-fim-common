@@ -43,6 +43,7 @@ module port_afu_instances # (
    input  logic uclk_usr_div2,
 
    input  logic rst_n,
+   // Both soft reset and global rst_n trigger port_rst_n
    input  logic [PG_NUM_PORTS-1:0] port_rst_n,
 
    // PCIe A ports are the standard TLP channels. All host responses
@@ -77,12 +78,6 @@ module port_afu_instances # (
    `endif
 );
 
-logic [PG_NUM_PORTS-1:0] port_softreset_n = {PG_NUM_PORTS{1'b0}};
-logic [PG_NUM_PORTS-1:0] port_rst_n_q1 = {PG_NUM_PORTS{1'b0}};
-logic rst_n_q1 = 1'b0;
-
-always @(posedge clk) rst_n_q1 <= rst_n;
-
 
 `ifndef OPAE_PLATFORM_GEN
 
@@ -97,7 +92,7 @@ ofs_plat_if#(.ENABLE_LOG(1)) plat_ifc();
 // Clocks
 ofs_plat_std_clocks_gen_port_resets clocks (
    .pClk(clk),
-   .pClk_reset_n(port_softreset_n),
+   .pClk_reset_n(port_rst_n),
    .pClkDiv2(clk_div2),
    .pClkDiv4(clk_div4),
    .uClk_usr(uclk_usr),
@@ -133,7 +128,7 @@ generate
        map_host_chan
          (
           .clk(plat_ifc.clocks.pClk.clk),
-          .reset_n(port_softreset_n[p]),
+          .reset_n(port_rst_n[p]),
 
           .pcie_ss_tx_a_st(afu_axi_tx_a_if[p]),
           .pcie_ss_tx_b_st(afu_axi_tx_b_if[p]),
@@ -142,12 +137,6 @@ generate
 
           .port(plat_ifc.host_chan.ports[p])
           );
-
-      always @(posedge plat_ifc.host_chan.ports[p].clk)
-      begin
-         port_rst_n_q1[p]     <= port_rst_n[p];
-         port_softreset_n[p]  <= rst_n_q1 && port_rst_n_q1[p];
-      end
    end
 endgenerate
 

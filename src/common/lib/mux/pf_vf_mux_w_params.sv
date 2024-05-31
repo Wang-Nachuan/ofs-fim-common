@@ -287,11 +287,6 @@ module pf_vf_mux_w_params
    localparam REG_OUT = (ofs_fim_cfg_pkg::MAIN_CLK_MHZ > 470) ||
                         (ofs_fim_cfg_pkg::PCIE_TDATA_WIDTH > 512);
 
-   (* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg rst_n_q = 1'b0;
-   always @(posedge clk) begin
-      rst_n_q <= rst_n;
-   end
-
    fim_pf_vf_switch  # (// M X N switch with output FIFO
               .WIDTH       (    WIDTH      )              ,// Port Data Width                              
               .M           (    M          )              ,// Number of M Ports 
@@ -310,7 +305,7 @@ module pf_vf_mux_w_params
               .N_in_eop     (N_in_eop),    // Mux N to M data in end of packet
               .N_in_valid   (N_in_valid),  // Mux N to M data in valid
               .N_out_ready  (N_out_ready), // Mux N to M data out ready from next stage logic 
-              .rst_n        (rst_n_q),     // reset low active
+              .rst_n        (rst_n),       // reset low active
               .clk          (clk),         // clock
               //----------  output ----------------------------------
               .M_in_ready   (M_in_ready),  // Mux M to N ready 

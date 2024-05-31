@@ -38,6 +38,7 @@ module port_afu_instances
    input  logic uclk_usr_div2,
 
    input  logic rst_n,
+   // Both soft reset and global rst_n trigger port_rst_n
    input  logic [PG_NUM_PORTS-1:0] port_rst_n,
    
    // PCIe A ports are the standard TLP channels. All host responses
