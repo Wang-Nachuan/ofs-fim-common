@@ -85,13 +85,11 @@ localparam TOTAL_PORTS    = PG_NUM_LINKS * PG_NUM_PORTS;
 
 (* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg [TOTAL_PORTS-1:0] port_rst_n_q1 = {TOTAL_PORTS{1'b0}};
 (* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg [TOTAL_PORTS-1:0] port_rst_n_q2 = {TOTAL_PORTS{1'b0}};
-(* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg [TOTAL_PORTS-1:0] port_rst_n_q3 = {TOTAL_PORTS{1'b0}};
-(* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg [TOTAL_PORTS-1:0] port_rst_n_q4 = {TOTAL_PORTS{1'b0}};
+// A duplication tree will map port_rst_n_q2 to port_rst_n_q
+reg [TOTAL_PORTS-1:0] port_rst_n_q;
 
-(* altera_attribute = {"-name PRESERVE_REGISTER ON"} *) reg rst_n_q = 1'b0;
-always @(posedge clk) begin
-   rst_n_q <= rst_n;
-end
+reg rst_n_q;
+fim_dup_tree dup_rst(.clk, .din(rst_n), .dout(rst_n_q));
 
 // Registered streams, still on the FIM side of the PF/VF MUX.
 pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_tx_a_if_t1 [PG_NUM_LINKS-1:0](.clk(clk), .rst_n(rst_n_q));
@@ -102,10 +100,10 @@ pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) afu_axi_rx_b_if_
 // Demultiplexed streams on the AFU side of the PF/VF MUX.
 // The port_afu_instances() module receives a flattened array
 // of ports, merging links and ports into a single dimension.
-pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_rx_a_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q4));
-pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_tx_a_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q4));
-pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_rx_b_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q4));
-pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_tx_b_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q4));
+pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_rx_a_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q));
+pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_tx_a_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q));
+pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_rx_b_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q));
+pcie_ss_axis_if #(.DATA_W (TDATA_WIDTH), .USER_W (TUSER_WIDTH)) port_tx_b_if [TOTAL_PORTS-1:0](.clk(clk),.rst_n(port_rst_n_q));
 
 
 // Linear mapping function from link/port to the array that
@@ -247,10 +245,10 @@ generate
       for (genvar p = 0; p < PG_NUM_PORTS; p = p + 1) begin: conn
          localparam c = linearLinkPort(link, p);
 
-         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_tx_a (.clk, .rst_n(port_rst_n_q4[c]), .axis_s(port_tx_a_if[c]), .axis_m(tx_a_if[p]));
-         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_rx_a (.clk, .rst_n(port_rst_n_q4[c]), .axis_s(rx_a_if[p]), .axis_m(port_rx_a_if[c]));
-         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_tx_b (.clk, .rst_n(port_rst_n_q4[c]), .axis_s(port_tx_b_if[c]), .axis_m(tx_b_if[p]));
-         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_rx_b (.clk, .rst_n(port_rst_n_q4[c]), .axis_s(rx_b_if[p]), .axis_m(port_rx_b_if[c]));
+         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_tx_a (.clk, .rst_n(port_rst_n_q[c]), .axis_s(port_tx_a_if[c]), .axis_m(tx_a_if[p]));
+         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_rx_a (.clk, .rst_n(port_rst_n_q[c]), .axis_s(rx_a_if[p]), .axis_m(port_rx_a_if[c]));
+         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_tx_b (.clk, .rst_n(port_rst_n_q[c]), .axis_s(port_tx_b_if[c]), .axis_m(tx_b_if[p]));
+         ofs_fim_axis_pipeline #(.PL_DEPTH(0)) conn_rx_b (.clk, .rst_n(port_rst_n_q[c]), .axis_s(rx_b_if[p]), .axis_m(port_rx_b_if[c]));
       end
    end // block: mux
 endgenerate
@@ -271,7 +269,7 @@ port_afu_instances #(
    .uclk_usr      (uclk_usr),
    .uclk_usr_div2 (uclk_usr_div2),
    .rst_n         (rst_n_q),
-   .port_rst_n    (port_rst_n_q4),
+   .port_rst_n    (port_rst_n_q),
 
 `ifdef INCLUDE_HSSI
    .hssi_ss_st_tx  (hssi_ss_st_tx),
@@ -305,12 +303,12 @@ generate
 
          always @(posedge clk) port_rst_n_q1[c] <= port_rst_n[link][p];
          always @(posedge clk) port_rst_n_q2[c] <= port_rst_n_q1[c] && rst_n_q1;
+
+         // Multi-cycle duplication tree
+         fim_dup_tree dup_port_rst(.clk, .din(port_rst_n_q2[c]), .dout(port_rst_n_q[c]));
       end
    end
 endgenerate
-
-always @(posedge clk) port_rst_n_q3 <= port_rst_n_q2;
-always @(posedge clk) port_rst_n_q4 <= port_rst_n_q3;
 
 
 // ======================================================

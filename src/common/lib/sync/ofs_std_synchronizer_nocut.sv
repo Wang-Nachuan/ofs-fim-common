@@ -47,12 +47,15 @@ module ofs_std_synchronizer_nocut (
    //     1. Identify all flip-flops in this module as members of the synchronizer 
    //        to enable automatic metastability MTBF analysis.
 
-   (* altera_attribute = {"-name ADV_NETLIST_OPT_ALLOWED NEVER_ALLOW; -name SYNCHRONIZER_IDENTIFICATION FORCED; -name DONT_MERGE_REGISTER ON; -name PRESERVE_REGISTER ON  "} *) reg din_s1;
+   (* altera_attribute = {"-name ADV_NETLIST_OPT_ALLOWED NEVER_ALLOW; -name SYNCHRONIZER_IDENTIFICATION FORCED; -name DONT_MERGE_REGISTER ON; -name PRESERVE_REGISTER ON  "} *)
+   reg din_s1;
 
-   (* altera_attribute = {"-name ADV_NETLIST_OPT_ALLOWED NEVER_ALLOW; -name DONT_MERGE_REGISTER ON; -name PRESERVE_REGISTER ON"} *) reg [depth-2:0] dreg;    
+   (* altera_attribute = {"-name ADV_NETLIST_OPT_ALLOWED NEVER_ALLOW; -name DONT_MERGE_REGISTER ON; -name PRESERVE_REGISTER ON"} *)
+   reg [depth-2:0] dreg;
 
-   (* altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION OFF" *) reg dreg_R;    
-  
+   (* altera_attribute = {"-name SYNCHRONIZER_IDENTIFICATION OFF"} *)
+   reg rst_tree_in = 1'(rst_value);
+
    //synthesis translate_off
    initial begin
       if (depth <2) begin
@@ -95,14 +98,14 @@ endgenerate
 
    always @(posedge clk or negedge reset_n) begin
        if (reset_n == 0) 
-         din_last <= (rst_value == 0)? 1'b0 : 1'b1;
+         din_last <= 1'(rst_value);
        else
          din_last <= din;
    end
 
    always @(posedge clk or negedge reset_n) begin
        if (reset_n == 0) 
-         din_s1 <= (rst_value == 0)? 1'b0 : 1'b1;
+         din_s1 <= 1'(rst_value);
        else
          din_s1 <= next_din_s1;
    end
@@ -110,25 +113,12 @@ endgenerate
 `else 
 
    //synthesis translate_on   
-   generate if (rst_value == 0) begin : g_rst_to_0
-       always @(posedge clk or negedge reset_n) begin
-           if (reset_n == 0) 
-             din_s1 <= 1'b0;
-           else
-             din_s1 <= din;
-       end
+   always @(posedge clk or negedge reset_n) begin
+       if (reset_n == 0)
+         din_s1 <= 1'(rst_value);
+       else
+         din_s1 <= din;
    end
-   endgenerate
-   
-   generate if (rst_value == 1) begin : g_rst_to_1
-       always @(posedge clk or negedge reset_n) begin
-           if (reset_n == 0) 
-             din_s1 <= 1'b1;
-           else
-             din_s1 <= din;
-       end
-   end
-   endgenerate
    //synthesis translate_off      
 
 `endif
@@ -146,57 +136,42 @@ endgenerate
 
    // the remaining synchronizer registers form a simple shift register
    // of length depth-1
-   generate if (rst_value == 0) begin : g_rst_to_0x
-      if (depth < 3) begin
-         always @(posedge clk or negedge reset_n) begin
-            if (reset_n == 0) 
-              dreg <= {depth-1{1'b0}};            
-            else
-              dreg <= din_s1;
-         end         
-      end else begin : no_g_rst_to_0x
-         always @(posedge clk or negedge reset_n) begin
-            if (reset_n == 0) 
-              dreg <= {depth-1{1'b0}};
-            else
-              dreg <= {dreg[depth-3:0], din_s1};
-         end
+   if (depth < 3) begin : g
+      always @(posedge clk or negedge reset_n) begin
+         if (reset_n == 0)
+           dreg <= {depth-1{1'(rst_value)}};
+         else
+           dreg <= din_s1;
+      end
+   end else begin : no_g
+      always @(posedge clk or negedge reset_n) begin
+         if (reset_n == 0)
+           dreg <= {depth-1{1'(rst_value)}};
+         else
+           dreg <= {dreg[depth-3:0], din_s1};
       end
    end
-   endgenerate
-   
-   generate if (rst_value == 1) begin : g_rst_to_1x
-      if (depth < 3) begin
-         always @(posedge clk or negedge reset_n) begin
-            if (reset_n == 0) 
-              dreg <= {depth-1{1'b1}};            
-            else
-              dreg <= din_s1;
-         end         
-      end else begin : no_g_rst_to_1x
-         always @(posedge clk or negedge reset_n) begin
-            if (reset_n == 0) 
-              dreg <= {depth-1{1'b1}};
-            else
-              dreg <= {dreg[depth-3:0], din_s1};
-         end
-      end
-   end
-   endgenerate
 
-    // for accuracy sensitive synchronizer to turn off additional pipeline
-    generate if (turn_off_add_pipeline == 1) begin: g_additional_pipeline_off
-       assign dout = dreg[depth-2];
-    end
-    else begin: g_additional_pipeline_on
-        always @(posedge clk) begin
-            dreg_R <= dreg[depth-2];
-        end
-        assign dout = dreg_R;
-    end
-    endgenerate
+   // for accuracy sensitive synchronizer to turn off additional pipeline
+   generate if (turn_off_add_pipeline == 1) begin: g_additional_pipeline_off
+      assign dout = dreg[depth-2];
+   end
+   else begin: g_additional_pipeline_on
+      always @(posedge clk) begin
+         rst_tree_in <= dreg[depth-2];
+      end
+
+      fim_dup_tree
+        #(
+          .INIT_VALUE(rst_value)
+          )
+        dup
+         (
+          .clk,
+          .din(rst_tree_in),
+          .dout
+          );
+   end
+   endgenerate
 
 endmodule 
-
-
-                        

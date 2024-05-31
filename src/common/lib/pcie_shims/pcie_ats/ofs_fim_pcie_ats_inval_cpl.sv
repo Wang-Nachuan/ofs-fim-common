@@ -93,6 +93,13 @@ module ofs_fim_pcie_ats_inval_cpl
             //
             // ATS is enabled on at least one function. Generate completions.
             //
+
+            // Skid buffer for i_rxreq_if
+            pcie_ss_axis_if #(.DATA_W(TDATA_WIDTH), .USER_W(TUSER_WIDTH)) i_rxreq(.clk, .rst_n);
+            ofs_fim_axis_pipeline #(.PL_DEPTH(1)) rxreq_pipe(.clk, .rst_n,
+                                                             .axis_s(i_rxreq_if),
+                                                             .axis_m(i_rxreq));
+
             ofs_fim_pcie_ats_inval_cpl_impl
               #(
                 .TDATA_WIDTH(TDATA_WIDTH),
@@ -111,7 +118,7 @@ module ofs_fim_pcie_ats_inval_cpl
                 .rst_n_csr,
                 .pcie_flr_req,
                 .o_tx_if,
-                .i_rxreq_if,
+                .i_rxreq_if(i_rxreq),
                 .i_tx_if,
                 .o_rxreq_if
                 );
@@ -186,6 +193,11 @@ module ofs_fim_pcie_ats_inval_cpl_impl
     logic [NUM_PFS-1:0][NUM_VFS-1:0] vf_flr_rst_n_in;
     logic [NUM_PFS-1:0][NUM_VFS-1:0] vf_flr_rst_n;
 
+    pcie_ss_axis_pkg::t_axis_pcie_flr pcie_flr_req_q;
+    always_ff @(posedge clk_csr) begin
+        pcie_flr_req_q <= pcie_flr_req;
+    end
+
     flr_rst_mgr
       #(
         .NUM_PF(NUM_PFS),
@@ -197,7 +209,7 @@ module ofs_fim_pcie_ats_inval_cpl_impl
         .rst_n_sys(rst_n),
         .clk_csr,
         .rst_n_csr,
-        .pcie_flr_req,
+        .pcie_flr_req(pcie_flr_req_q),
         .pcie_flr_rsp(),
         .pf_flr_rst_n,
         .vf_flr_rst_n(vf_flr_rst_n_in)

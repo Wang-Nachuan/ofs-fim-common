@@ -143,7 +143,8 @@ endgenerate
 // If VF is not active, return a constant: not in reset.
 `define GET_FUNC_VF_RST_N(LINK, PF, VF, VF_ACTIVE) ((VF_ACTIVE != 0) ? vf_flr_rst_n[LINK][PF][VF] : 1'b1)
 
-(* altera_attribute = {"-name ADV_NETLIST_OPT_ALLOWED NEVER_ALLOW; -name DONT_MERGE_REGISTER ON; -name PRESERVE_REGISTER ON"} *) reg [PG_NUM_PORTS-1:0] port_rst_n[PG_NUM_LINKS-1:0] = '{PG_NUM_LINKS{'0}};
+reg [PG_NUM_PORTS-1:0] port_rst_in_n[PG_NUM_LINKS-1:0] = '{PG_NUM_LINKS{1'b0}};
+reg [PG_NUM_PORTS-1:0] port_rst_n[PG_NUM_LINKS-1:0] = '{PG_NUM_LINKS{1'b0}};
 
 // ----------------------------------------------------------------------------------------------------
 //  PCIe port_rst_n generation
@@ -168,9 +169,21 @@ generate
          // - VF Flr
          // - PCIe system reset
          always @(posedge clk) begin
-            port_rst_n[link][c] <= ~o_afu_softreset && pg_pf_flr_rst_n[link] &&
-                                   func_vf_rst_n[link][c] && rst_n;
+            port_rst_in_n[link][c] <= ~o_afu_softreset && pg_pf_flr_rst_n[link] &&
+                                      func_vf_rst_n[link][c] && rst_n;
          end
+
+         // Build a multi-cycle duplication reset tree
+         fim_dup_tree
+          #(
+            .TREE_DEPTH(3)
+            )
+           dup
+            (
+             .clk,
+             .din(port_rst_in_n[link][c]),
+             .dout(port_rst_n[link][c])
+             );
       end
    end
 endgenerate
@@ -327,7 +340,8 @@ fim_resync #(
    .SYNC_CHAIN_LENGTH (2),
    .WIDTH             (1),
    .INIT_VALUE        (1),
-   .NO_CUT            (0)
+   .NO_CUT            (0),
+   .TURN_OFF_ADD_PIPELINE(0)
 ) afu_softreset_sync (
    .clk   (clk),
    .reset (1'b0),
