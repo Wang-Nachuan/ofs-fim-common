@@ -129,7 +129,7 @@ module ofs_fim_pcie_ss_cpl_metering
     pcie_ss_hdr_pkg::PCIe_PUReqHdr_t txreq_hdr;
     assign txreq_tuser = axi_st_txreq_in.tuser_vendor;
     if (SB_HEADERS)
-        assign txreq_hdr = txreq_tuser[0];
+        assign txreq_hdr = txreq_tuser[0].hdr;
     else
         assign txreq_hdr = axi_st_txreq_in.tdata[$bits(txreq_hdr)-1:0];
 
@@ -343,6 +343,8 @@ module ofs_fim_pcie_ss_cpl_metering_impl
     logic [$clog2(CPL_DATA_ENTRY)-1:0] data_entry_count_decr_req[2];
     logic [$clog2(CPL_HDR_ENTRY)-1:0]  hdr_entry_count_decr_req[2];
 
+    logic [$clog2(CPL_DATA_ENTRY)-1:0] data_entry_count_incr_pending;
+    logic [$clog2(CPL_HDR_ENTRY)-1:0]  hdr_entry_count_incr_pending;
     logic [$clog2(MAX_DATA_ENTRY)-1:0] data_entry_count_incr;
     logic [$clog2(MAX_DATA_ENTRY)-1:0] data_entry_count_incr0;
     logic [$clog2(MAX_DATA_ENTRY)-1:0] data_entry_count_incr1;
@@ -507,7 +509,7 @@ module ofs_fim_pcie_ss_cpl_metering_impl
     assign cpl_lower_addr     = cpl_hdr_valid ? cpl_hdr[65:64] : 2'b00;
     assign cpl_success        = cpl_hdr_valid ? cpl_hdr[47:45]==3'b000 : 0;
 
-    assign cpl_actual_byte_cnt   = cpl_hdr_valid ? ({cpl_length[$clog2(MPS)-2:0],2'b00}-cpl_lower_addr) : 0;
+    assign cpl_actual_byte_cnt   = cpl_hdr_valid ? ({cpl_length[$clog2(MPS)-2:0],2'b00}-cpl_lower_addr) : '0;
     assign cpl_data_entry_return = cpl_actual_byte_cnt[$clog2(MPS):$clog2(ENTRY_SIZE)] + |cpl_actual_byte_cnt[$clog2(ENTRY_SIZE)-1:0];
 
     assign cpl_tag = cpl_hdr_tag;
@@ -590,20 +592,48 @@ module ofs_fim_pcie_ss_cpl_metering_impl
         end
     end
 
+    // Track credit increments from arriving completions. Unlike decrements
+    // from new requests, credit increments can be delayed. The only cost
+    // is the possibility of requests being held back.
     always_ff @(posedge clk) begin
+        // New credit arriving this cycle
         data_entry_count_incr <= data_entry_count_incr0 + data_entry_count_incr1;
         hdr_entry_count_incr <= hdr_entry_count_incr0 + hdr_entry_count_incr1;
+
+        // Updating data_entry_count and hdr_entry_count requires
+        // two additions: one to subtract credit consumed by requests
+        // and one to add credit returned by completions. A pair of
+        // additions in a single cycle would put the update on the
+        // critical path. Instead, we delay increments until a cycle
+        // when there are no new requests. In theory this might delay
+        // issuing new read requests. In practice, grants are much
+        // less frequent than every cycle. Long read request rates
+        // are limited by completions. The system bandwidth of short
+        // reads is less than the available bus bandwidth.
+        if (c2h_grant[0] || c2h_grant[1]) begin
+            // New request issued this cycle. Tracking incoming increment
+            // credits until they can be added to the main counters.
+            data_entry_count_incr_pending <= data_entry_count_incr_pending + data_entry_count_incr;
+            hdr_entry_count_incr_pending <= hdr_entry_count_incr_pending + hdr_entry_count_incr;
+        end
+        else begin
+            // Pending increments were applied to the main counters.
+            // Only note new incoming updates.
+            data_entry_count_incr_pending <= data_entry_count_incr;
+            hdr_entry_count_incr_pending <= hdr_entry_count_incr;
+        end
     end
 
+    // Only one of the groups of updates will be applied per cycle.
     always_comb begin
-        data_entry_count_no_decr = data_entry_count + data_entry_count_incr;
-        hdr_entry_count_no_decr  = hdr_entry_count + hdr_entry_count_incr;
+        data_entry_count_no_decr = data_entry_count + data_entry_count_incr_pending;
+        hdr_entry_count_no_decr  = hdr_entry_count + hdr_entry_count_incr_pending;
 
-        data_entry_count_decr_req[0] = data_entry_count - c2h_req_data_entries[0] + data_entry_count_incr;
-        hdr_entry_count_decr_req[0]  = hdr_entry_count - c2h_req_hdr_entries[0] + hdr_entry_count_incr;
+        data_entry_count_decr_req[0] = data_entry_count - c2h_req_data_entries[0];
+        hdr_entry_count_decr_req[0]  = hdr_entry_count - c2h_req_hdr_entries[0];
 
-        data_entry_count_decr_req[1] = data_entry_count - c2h_req_data_entries[1] + data_entry_count_incr;
-        hdr_entry_count_decr_req[1]  = hdr_entry_count - c2h_req_hdr_entries[1] + hdr_entry_count_incr;
+        data_entry_count_decr_req[1] = data_entry_count - c2h_req_data_entries[1];
+        hdr_entry_count_decr_req[1]  = hdr_entry_count - c2h_req_hdr_entries[1];
     end 
 
     always_ff @(posedge clk) begin
