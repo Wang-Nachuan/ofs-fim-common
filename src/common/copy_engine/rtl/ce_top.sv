@@ -145,6 +145,32 @@ wire  [CSR_ADDR_WIDTH-1:0           ]   axi4mmrx_csr_waddr      ;
       .m_if  (ace_lite_tx_if)
    );
    
+   ofs_fim_axi_mmio_if #(
+      .AWID_WIDTH(axi4mm_rx_if.AWID_WIDTH),
+      .AWADDR_WIDTH(axi4mm_rx_if.AWADDR_WIDTH),
+      .AWUSER_WIDTH(axi4mm_rx_if.AWUSER_WIDTH),
+      .WDATA_WIDTH(axi4mm_rx_if.WDATA_WIDTH),
+      .WUSER_WIDTH(axi4mm_rx_if.WUSER_WIDTH),
+      .BUSER_WIDTH(axi4mm_rx_if.BUSER_WIDTH),
+      .ARID_WIDTH(axi4mm_rx_if.ARID_WIDTH),
+      .ARADDR_WIDTH(axi4mm_rx_if.ARADDR_WIDTH),
+      .ARUSER_WIDTH(axi4mm_rx_if.ARUSER_WIDTH),
+      .RDATA_WIDTH(axi4mm_rx_if.RDATA_WIDTH),
+      .RUSER_WIDTH(axi4mm_rx_if.RUSER_WIDTH)
+   ) axi4mm_rx_d ();
+
+   logic h2f_or_rst_n = 1'b0;
+   assign axi4mm_rx_d.rst_n = h2f_or_rst_n;
+   assign axi4mm_rx_d.clk = clk;
+
+   always @(posedge clk) begin
+      h2f_or_rst_n <= ~(rst | h2f_reset);
+   end
+
+   ofs_fim_axi_mmio_reg axi4mm_rx_reg(
+      .s_mmio(axi4mm_rx_if),
+      .m_mmio(axi4mm_rx_d)
+   );
    
 //wire                              MmioRspFiFo_AxistRx_full      ;                   
 
@@ -446,41 +472,41 @@ ce_axi4mm_rx
 
    .clk                          (clk                        ),
    .h2f_reset                    (h2f_reset                  ),
-   .ce2hps_rx_awready            (axi4mm_rx_if.awready       ),
-   .hps2ce_rx_awvalid            (axi4mm_rx_if.awvalid       ),
-   .hps2ce_rx_awaddr             (axi4mm_rx_if.awaddr        ),
-   .hps2ce_rx_awprot             (axi4mm_rx_if.awprot        ),
-   .hps2ce_rx_awlen              (axi4mm_rx_if.awlen         ),
-   .hps2ce_rx_awid               (axi4mm_rx_if.awid          ),
-   .hps2ce_rx_awsize             (axi4mm_rx_if.awsize        ),
-   .hps2ce_rx_awburst            (axi4mm_rx_if.awburst       ),
-   .hps2ce_rx_awcache            (axi4mm_rx_if.awcache       ),
-   .hps2ce_rx_awqos              (axi4mm_rx_if.awqos         ), //
-   .ce2hps_rx_wready             (axi4mm_rx_if.wready        ),
-   .hps2ce_rx_wvalid             (axi4mm_rx_if.wvalid        ),
-   .hps2ce_rx_wdata              (axi4mm_rx_if.wdata         ),
-   .hps2ce_rx_wstrb              (axi4mm_rx_if.wstrb         ),
-   .hps2ce_rx_wlast              (axi4mm_rx_if.wlast         ),
-   .ce2hps_rx_bvalid             (axi4mm_rx_if.bvalid        ),
-   .ce2hps_rx_bresp              (axi4mm_rx_if.bresp         ),            
-   .ce2hps_rx_bid                (axi4mm_rx_if.bid           ),            
-   .hps2ce_rx_bready             (axi4mm_rx_if.bready        ),
-   .ce2hps_rx_arready            (axi4mm_rx_if.arready       ),
-   .hps2ce_rx_arvalid            (axi4mm_rx_if.arvalid       ),
-   .hps2ce_rx_araddr             (axi4mm_rx_if.araddr        ),
-   .hps2ce_rx_arprot             (axi4mm_rx_if.arprot        ),
-   .hps2ce_rx_arid               (axi4mm_rx_if.arid          ),
-   .hps2ce_rx_arlen              (axi4mm_rx_if.arlen         ),
-   .hps2ce_rx_arsize             (axi4mm_rx_if.arsize        ),
-   .hps2ce_rx_arburst            (axi4mm_rx_if.arburst       ),
-   .hps2ce_rx_arcache            (axi4mm_rx_if.arcache       ),
-   .hps2ce_rx_arqos              (axi4mm_rx_if.arqos         ), //
-   .hps2ce_rx_rready             (axi4mm_rx_if.rready        ),
-   .ce2hps_rx_rvalid             (axi4mm_rx_if.rvalid        ),
-   .ce2hps_rx_rdata              (axi4mm_rx_if.rdata         ),
-   .ce2hps_rx_rlast              (axi4mm_rx_if.rlast         ),
-   .ce2hps_rx_rid                (axi4mm_rx_if.rid           ),
-   .ce2hps_rx_rresp              (axi4mm_rx_if.rresp         ),
+   .ce2hps_rx_awready            (axi4mm_rx_d.awready       ),
+   .hps2ce_rx_awvalid            (axi4mm_rx_d.awvalid       ),
+   .hps2ce_rx_awaddr             (axi4mm_rx_d.awaddr        ),
+   .hps2ce_rx_awprot             (axi4mm_rx_d.awprot        ),
+   .hps2ce_rx_awlen              (axi4mm_rx_d.awlen         ),
+   .hps2ce_rx_awid               (axi4mm_rx_d.awid          ),
+   .hps2ce_rx_awsize             (axi4mm_rx_d.awsize        ),
+   .hps2ce_rx_awburst            (axi4mm_rx_d.awburst       ),
+   .hps2ce_rx_awcache            (axi4mm_rx_d.awcache       ),
+   .hps2ce_rx_awqos              (axi4mm_rx_d.awqos         ), //
+   .ce2hps_rx_wready             (axi4mm_rx_d.wready        ),
+   .hps2ce_rx_wvalid             (axi4mm_rx_d.wvalid        ),
+   .hps2ce_rx_wdata              (axi4mm_rx_d.wdata         ),
+   .hps2ce_rx_wstrb              (axi4mm_rx_d.wstrb         ),
+   .hps2ce_rx_wlast              (axi4mm_rx_d.wlast         ),
+   .ce2hps_rx_bvalid             (axi4mm_rx_d.bvalid        ),
+   .ce2hps_rx_bresp              (axi4mm_rx_d.bresp         ),
+   .ce2hps_rx_bid                (axi4mm_rx_d.bid           ),
+   .hps2ce_rx_bready             (axi4mm_rx_d.bready        ),
+   .ce2hps_rx_arready            (axi4mm_rx_d.arready       ),
+   .hps2ce_rx_arvalid            (axi4mm_rx_d.arvalid       ),
+   .hps2ce_rx_araddr             (axi4mm_rx_d.araddr        ),
+   .hps2ce_rx_arprot             (axi4mm_rx_d.arprot        ),
+   .hps2ce_rx_arid               (axi4mm_rx_d.arid          ),
+   .hps2ce_rx_arlen              (axi4mm_rx_d.arlen         ),
+   .hps2ce_rx_arsize             (axi4mm_rx_d.arsize        ),
+   .hps2ce_rx_arburst            (axi4mm_rx_d.arburst       ),
+   .hps2ce_rx_arcache            (axi4mm_rx_d.arcache       ),
+   .hps2ce_rx_arqos              (axi4mm_rx_d.arqos         ), //
+   .hps2ce_rx_rready             (axi4mm_rx_d.rready        ),
+   .ce2hps_rx_rvalid             (axi4mm_rx_d.rvalid        ),
+   .ce2hps_rx_rdata              (axi4mm_rx_d.rdata         ),
+   .ce2hps_rx_rlast              (axi4mm_rx_d.rlast         ),
+   .ce2hps_rx_rid                (axi4mm_rx_d.rid           ),
+   .ce2hps_rx_rresp              (axi4mm_rx_d.rresp         ),
    .acelitetx_axi4mmrx_bresp     (acelitetx_bresp            ),     
    .axistrx_axi4mmrx_cplerr      (axistrx_cplerr             ),     
    .axi4mmrx_csr_wdata           (axi4mmrx_csr_wdata         ), 

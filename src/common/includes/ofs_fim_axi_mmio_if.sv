@@ -81,16 +81,16 @@ interface ofs_fim_axi_mmio_if #(
 	
    modport master (
         input  awready, wready, 
-               bvalid, bid, bresp, 
+               bvalid, bid, bresp, buser,
                arready, 
-               rvalid, rid, rdata, rresp, rlast,
+               rvalid, rid, rdata, rresp, rlast, ruser,
         output clk, rst_n, 
-               awvalid, awid, awaddr, awlen, awsize, awburst, 
-               awcache, awprot, awqos,
-               wvalid, wdata, wstrb, wlast,
+               awvalid, awid, awaddr, awlen, awsize, awburst, awlock,
+               awcache, awprot, awqos, awuser,
+               wvalid, wdata, wstrb, wlast, wuser,
                bready, 
-               arvalid, arid, araddr, arlen, arsize, arburst, 
-               arcache, arprot, arqos,
+               arvalid, arid, araddr, arlen, arsize, arburst, arlock,
+               arcache, arprot, arqos, aruser,
                rready
    );
    
@@ -98,32 +98,32 @@ interface ofs_fim_axi_mmio_if #(
         input  awready, wready, 
                arready, 
         output clk, rst_n, 
-               awvalid, awid, awaddr, awlen, awsize, awburst, 
-               awcache, awprot, awqos,
-               wvalid, wdata, wstrb, wlast,
-               arvalid, arid, araddr, arlen, arsize, arburst,
-               arcache, arprot, arqos
+               awvalid, awid, awaddr, awlen, awsize, awburst, awlock,
+               awcache, awprot, awqos, awuser,
+               wvalid, wdata, wstrb, wlast, wuser,
+               arvalid, arid, araddr, arlen, arsize, arburst, arlock,
+               arcache, arprot, arqos, aruser
    );
   
    modport rsp (
-        input  bvalid, bid, bresp, 
-               rvalid, rid, rdata, rresp, rlast,
+        input  bvalid, bid, bresp, buser,
+               rvalid, rid, rdata, rresp, rlast, ruser,
         output bready, 
                rready
    );
 
    modport slave (
         output awready, wready, 
-               bvalid, bid, bresp, 
+               bvalid, bid, bresp, buser,
                arready, 
-               rvalid, rid, rdata, rresp, rlast,
+               rvalid, rid, rdata, rresp, rlast, ruser,
         input  clk, rst_n, 
-               awvalid, awid, awaddr, awlen, awsize, awburst,
-               awcache, awprot, awqos,
-               wvalid, wdata, wstrb, wlast,
+               awvalid, awid, awaddr, awlen, awsize, awburst, awlock,
+               awcache, awprot, awqos, awuser,
+               wvalid, wdata, wstrb, wlast, wuser,
                bready, 
-               arvalid, arid, araddr, arlen, arsize, arburst,
-               arcache, arprot, arqos,
+               arvalid, arid, araddr, arlen, arsize, arburst, arlock,
+               arcache, arprot, arqos, aruser,
                rready
    );
   

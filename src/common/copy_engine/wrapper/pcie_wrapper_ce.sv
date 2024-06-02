@@ -163,6 +163,7 @@ ce_top #(
 ) ce_top_inst (
   .clk            (fim_clk                  ),
   .rst            (~fim_rst_n               ),
+  .h2f_reset      (1'b0                     ),
   .axis_rx_if     (pcie_ss_axis_rx_if[0]    ),    // Mux to AFU   PF4
   .axis_rxreq_if  (pcie_ss_axis_rxreq_if[0] ),
   .axis_tx_if     (pcie_ss_axis_tx_if[0]    ),    // AFU to MUX   PF4
