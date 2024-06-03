@@ -42,6 +42,7 @@ set_global_assignment -name SOURCE_TCL_SCRIPT_FILE $::env(BUILD_ROOT_REL)/ofs-co
 #Sys PLL module
 #--------------------
 set_global_assignment -name SOURCE_TCL_SCRIPT_FILE $::env(BUILD_ROOT_REL)/ofs-common/src/fpga_family/agilex/sys_pll/sys_pll_design_files.tcl
+set_global_assignment -name SDC_FILE  $::env(BUILD_ROOT_REL)/ofs-common/src/fpga_family/agilex/sys_pll/sys_pll.sdc
 
 #--------------------
 #UART module
