@@ -1,8 +1,8 @@
-# Copyright 2020 Intel Corporation
+# Copyright 2020-2024 Intel Corporation
 # SPDX-License-Identifier: MIT
 
 ##
-## Invoke from quartus_sh -t or as a hook at the end of quartus_sta.
+## Invoke from quartus_sta -t or as a hook at the end of quartus_sta.
 ##
 ## When the user clock is in "auto" mode, compute the achieved Fmax.
 ## The chosen user clock frequency is written to
@@ -208,7 +208,7 @@ proc get_fmax_from_report { clkname required jitter_compensation} {
     # Find the "Fmax Summary" numbers reported in Quartus.  This may not
     # account for clock transfers but it does account for pos-to-neg edge same
     # clock transfers.  Whatever we calculate should be less than this.
-    set fmax_panel_name "Timing Analyzer||* Model||* Model Fmax Summary"
+    set fmax_panel_name "Timing Analyzer||*Fmax Summary"
     foreach panel_name [get_report_panel_names] {
       if {[string match $fmax_panel_name $panel_name] == 1} {
         set result [find_report_panel_row $panel_name 2 equal $clkname]
@@ -320,7 +320,7 @@ proc PrintHelp {} {
     puts "Compute user clock frequencies based on the AFU JSON requests and actual frequencies"
     puts "achieved following place and route."
     puts ""
-    puts "Usage: compute_user_clock_freqs.tcl --project=<project> --revision=<revision>"
+    puts "Usage: quartus_sta -t compute_user_clock_freqs.tcl --project=<project> --revision=<revision>"
 }
 
 # Entry point when run as the primary script
@@ -335,18 +335,15 @@ proc main {} {
     set revision $::options::optionMap(--revision)
 
     project_open -revision $revision $project
-    load_package design
-    design::load_design -snapshot final
+    create_timing_netlist
+    read_sdc
 
     if { [compute_uclk $project $revision] } {
-        # Force sta timing netlist to be rebuilt
-        file delete [glob -nocomplain db/$revision_name.sta_cmp.*.tdb]
-        file delete -force -- [glob -nocomplain qdb/_compiler/$revision_name/*/*/final/1/.cache*]
-        file delete [glob -nocomplain qdb/_compiler/$revision_name/*/*/final/1/*cache*]
-        file delete [glob -nocomplain qdb/_compiler/$revision_name/*/*/final/1/timing_netlist*]
+        post_message "Updating timing netlist with new user clock frequency."
+        read_sdc
+        update_timing_netlist
     }
 
-    design::unload_design
     project_close
 }
 
