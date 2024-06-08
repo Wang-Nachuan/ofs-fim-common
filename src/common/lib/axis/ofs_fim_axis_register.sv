@@ -20,10 +20,10 @@ module ofs_fim_axis_register
     parameter ENABLE_TDEST         = 0,
     parameter ENABLE_TUSER         = 0,
    
-    parameter TDATA_WIDTH          = 32,
+    parameter TDATA_WIDTH          = ofs_pcie_ss_cfg_pkg::TDATA_WIDTH,
     parameter TID_WIDTH            = 8,
     parameter TDEST_WIDTH          = 8,
-    parameter TUSER_WIDTH          = 1,
+    parameter TUSER_WIDTH          = ofs_pcie_ss_cfg_pkg::TUSER_WIDTH,
 
     // Preserve registers for crossing a PR boundary? Set to "RX" for flow
     // into a PR region and "TX" for flow out of a PR region.
