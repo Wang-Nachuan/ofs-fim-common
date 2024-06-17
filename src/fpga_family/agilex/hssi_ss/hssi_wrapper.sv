@@ -60,14 +60,20 @@ localparam UNUSED_PORT = MAX_NUM_ETH_CHANNELS - NUM_ETH_CHANNELS; // Number of E
 logic [NUM_ETH_CHANNELS-1:0][NUM_LANES-1:0] serial_tx_p,serial_tx_n;
 logic [NUM_ETH_CHANNELS-1:0][NUM_LANES-1:0] serial_rx_p,serial_rx_n;
 
+// Short cold reset on clk_csr, generated inside this module.
+// It is used only for forcing some initial values on reset
+// ack sync chains.
+logic [3:0]                             cold_rst_n_csr_in = '0;
+wire                                    cold_rst_n_csr = cold_rst_n_csr_in[0];
+
 logic [MAX_NUM_ETH_CHANNELS-1:0]        axis_tx_areset,csr_axis_tx_areset;
 logic [MAX_NUM_ETH_CHANNELS-1:0]        axis_rx_areset,csr_axis_rx_areset;
 logic [MAX_NUM_ETH_CHANNELS-1:0]        tx_rst;
 logic [MAX_NUM_ETH_CHANNELS-1:0]        rx_rst;
-logic [MAX_NUM_ETH_CHANNELS-1:0]        tx_rst_ack_n,sync_tx_rst_ack_n;
-logic [MAX_NUM_ETH_CHANNELS-1:0]        rx_rst_ack_n,sync_rx_rst_ack_n;
+logic [MAX_NUM_ETH_CHANNELS-1:0]        tx_rst_ack_n,sync_tx_rst_ack;
+logic [MAX_NUM_ETH_CHANNELS-1:0]        rx_rst_ack_n,sync_rx_rst_ack;
 logic                                   cold_rst;
-logic                                   cold_rst_ack_n,sync_cold_rst_ack_n;
+logic                                   cold_rst_ack_n,sync_cold_rst_ack;
 logic [MAX_NUM_ETH_CHANNELS-1:0]        tx_pll_locked,sync_tx_pll_locked;
 logic [MAX_NUM_ETH_CHANNELS-1:0]        tx_lanes_stable,sync_tx_lanes_stable;
 logic [MAX_NUM_ETH_CHANNELS-1:0]        rx_pcs_ready,sync_rx_pcs_ready;
@@ -135,6 +141,10 @@ ofs_fim_axi_lite_if #(.AWADDR_WIDTH(11), .ARADDR_WIDTH(11)) wrapper_csr_if();
 //    ETH_PORT_EN_ARRAY[PORT_12] = 1
 `INST_FULL_ENUM_PORT_INDEX
 
+
+always @(posedge clk_csr) begin
+    cold_rst_n_csr_in <= { 1'b1, cold_rst_n_csr_in[3:1] };
+end
 
 assign o_hssi_clk_pll = st_tx_clk;
 assign st_tx_clk = clk_pll;
@@ -250,10 +260,10 @@ hssi_wrapper_csr hssi_wrapper_csr (
    .o_axis_rx_areset    (csr_axis_rx_areset),
    .o_tx_rst            (tx_rst),
    .o_rx_rst            (rx_rst),
-   .i_tx_rst_ack        (~sync_tx_rst_ack_n),
-   .i_rx_rst_ack        (~sync_rx_rst_ack_n),
+   .i_tx_rst_ack        (sync_tx_rst_ack),
+   .i_rx_rst_ack        (sync_rx_rst_ack),
    .o_cold_rst          (cold_rst),
-   .i_cold_rst_ack      (~sync_cold_rst_ack_n),
+   .i_cold_rst_ack      (sync_cold_rst_ack),
    .i_tx_pll_locked     (sync_tx_pll_locked),
    .i_tx_lanes_stable   (sync_tx_lanes_stable),
    .i_rx_pcs_ready      (sync_rx_pcs_ready),
@@ -288,9 +298,9 @@ generate
          .i_clk(clk_csr),
          .i_rst(~rst_n_csr | tx_rst[nump]),
       `ifdef INCLUDE_FTILE
-         .i_ack(~sync_tx_rst_ack_n[nump]),
+         .i_ack(sync_tx_rst_ack[nump]),
       `else
-         .i_ack(sync_tx_pll_locked[nump] & ~sync_tx_rst_ack_n[nump]),
+         .i_ack(sync_tx_pll_locked[nump] & sync_tx_rst_ack[nump]),
       `endif
          .o_rst(handshaked_tx_rst[nump])
       );
@@ -299,9 +309,9 @@ generate
          .i_clk(clk_csr),
          .i_rst(~rst_n_csr | rx_rst[nump]),
       `ifdef INCLUDE_FTILE
-         .i_ack(~sync_rx_rst_ack_n[nump]),
+         .i_ack(sync_rx_rst_ack[nump]),
       `else
-         .i_ack(sync_tx_pll_locked[nump] & ~sync_rx_rst_ack_n[nump]),
+         .i_ack(sync_tx_pll_locked[nump] & sync_rx_rst_ack[nump]),
       `endif
          .o_rst(handshaked_rx_rst[nump])
       );
@@ -311,7 +321,7 @@ endgenerate
 rst_ack cold_rst_ack(
    .i_clk(clk_csr),
    .i_rst(~rst_n_csr | cold_rst),
-   .i_ack(~sync_cold_rst_ack_n),
+   .i_ack(sync_cold_rst_ack),
    .o_rst(handshaked_cold_rst)
 );
 
@@ -325,9 +335,9 @@ fim_resync #(
     .NO_CUT             (0)
    ) inst_sync_ack (
     .clk                (clk_csr),
-    .reset              (~rst_n_csr),
-    .d                  ({cold_rst_ack_n,rx_rst_ack_n,tx_rst_ack_n}),
-    .q                  ({sync_cold_rst_ack_n,sync_rx_rst_ack_n,sync_tx_rst_ack_n})
+    .reset              (~cold_rst_n_csr),
+    .d                  ({~cold_rst_ack_n,~rx_rst_ack_n,~tx_rst_ack_n}),
+    .q                  ({sync_cold_rst_ack,sync_rx_rst_ack,sync_tx_rst_ack})
 );
 
 fim_resync #(

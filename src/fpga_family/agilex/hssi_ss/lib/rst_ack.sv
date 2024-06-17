@@ -26,7 +26,9 @@ typedef enum bit [1:0] {
     S_WAIT_RST_DEASSERT    = 2'b10,   // This state is entered when acknowledge for Reset received
     S_WAIT_ACK_DEASSERT    = 2'b11    // This state is entered when input reset is de-asserted, return to IDLE when ack is de-asserted
 } rst_state;
-rst_state state, next_state;
+
+rst_state state = S_RST_ASSERT;       // Start in reset
+rst_state next_state;
 
 // FSM transition logic //
 always_comb begin : state_transition
@@ -64,6 +66,6 @@ always @(posedge i_clk) begin
    state <= next_state;
 end
 
-assign o_rst = (next_state == S_RST_ASSERT) | (next_state == S_WAIT_RST_DEASSERT);
+assign o_rst = (state == S_RST_ASSERT) | (state == S_WAIT_RST_DEASSERT);
 
 endmodule //rst_ack
