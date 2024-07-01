@@ -153,7 +153,7 @@ if (AR_REG_MODE == 0) begin
     always @(posedge clk) begin
       if (~rst_n) begin
         s_arready_reg     <=  1'b0;
-        s_arready_reg     <=  1'b0;
+        s_arready_reg_dup <=  1'b0;
       end else begin
         s_arready_reg     <=  s_arready_pre;
         s_arready_reg_dup <=  s_arready_pre;
@@ -415,7 +415,7 @@ if (R_REG_MODE == 0) begin
     
     always @(posedge clk) begin
       if (~rst_n) begin
-        m_rready_reg_dup  <=  1'b0;
+        m_rready_reg      <=  1'b0;
         m_rready_reg_dup  <=  1'b0;
       end else begin
         m_rready_reg      <=  m_rready_pre;

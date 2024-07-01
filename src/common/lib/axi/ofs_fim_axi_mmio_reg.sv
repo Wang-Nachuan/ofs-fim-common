@@ -22,12 +22,19 @@ module ofs_fim_axi_mmio_reg
     parameter R_REG_MODE           = 0  // 0: skid buffer 1: simple buffer 2: bypass
     )
    (
+    input  logic clk,
+    input  logic rst_n,
     ofs_fim_axi_mmio_if.slave  s_mmio,
     ofs_fim_axi_mmio_if.master m_mmio
     );
 
     axi_register
       #(
+        .AW_REG_MODE(AW_REG_MODE),
+        .W_REG_MODE(W_REG_MODE),
+        .B_REG_MODE(B_REG_MODE),
+        .AR_REG_MODE(AR_REG_MODE),
+        .R_REG_MODE(R_REG_MODE),
         .ENABLE_AWUSER(1),
         .ENABLE_WUSER(1),
         .ENABLE_BUSER(1),
@@ -47,8 +54,8 @@ module ofs_fim_axi_mmio_reg
         )
       axi_reg
        (
-        .clk(m_mmio.clk),
-        .rst_n(m_mmio.rst_n),
+        .clk,
+        .rst_n,
 
         .s_awready(s_mmio.awready),
         .s_awvalid(s_mmio.awvalid),

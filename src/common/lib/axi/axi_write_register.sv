@@ -173,7 +173,7 @@ if (AW_REG_MODE == 0) begin
     always @(posedge clk) begin
       if (~rst_n) begin
         s_awready_reg     <=  1'b0;
-        s_awready_reg     <=  1'b0;
+        s_awready_reg_dup <=  1'b0;
       end else begin
         s_awready_reg     <=  s_awready_pre;
         s_awready_reg_dup <=  s_awready_pre;
@@ -626,7 +626,7 @@ if (B_REG_MODE == 0) begin
  
     always @(posedge clk) begin
       if (~rst_n) begin
-        m_bready_reg_dup  <=  1'b0;
+        m_bready_reg      <=  1'b0;
         m_bready_reg_dup  <=  1'b0;
       end else begin
         m_bready_reg      <=  m_bready_pre;

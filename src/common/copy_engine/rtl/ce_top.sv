@@ -159,15 +159,20 @@ wire  [CSR_ADDR_WIDTH-1:0           ]   axi4mmrx_csr_waddr      ;
       .RUSER_WIDTH(axi4mm_rx_if.RUSER_WIDTH)
    ) axi4mm_rx_d ();
 
-   logic h2f_or_rst_n = 1'b0;
-   assign axi4mm_rx_d.rst_n = h2f_or_rst_n;
+   assign axi4mm_rx_d.rst_n = ~h2f_reset;
    assign axi4mm_rx_d.clk = clk;
 
-   always @(posedge clk) begin
-      h2f_or_rst_n <= ~(rst | h2f_reset);
-   end
-
-   ofs_fim_axi_mmio_reg axi4mm_rx_reg(
+   // Simple buffering is sufficient. The state machine in the ce_axi4mm_rx
+   // endpoint is not pipelined.
+   ofs_fim_axi_mmio_reg #(
+      .AW_REG_MODE(1),
+      .W_REG_MODE(1),
+      .B_REG_MODE(1),
+      .AR_REG_MODE(1),
+      .R_REG_MODE(1)
+   ) axi4mm_rx_reg(
+      .clk,
+      .rst_n(~h2f_reset),
       .s_mmio(axi4mm_rx_if),
       .m_mmio(axi4mm_rx_d)
    );
